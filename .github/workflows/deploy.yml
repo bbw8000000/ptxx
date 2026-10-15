@@ -14,6 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # GitHub Pages 项目站发布在 https://bbw8000000.github.io/ptxx/
+      # 与生产站点 zilvd.icu 共用同一份源码，靠这两个变量区分构建目标。
+      SITE_URL: https://bbw8000000.github.io
+      BASE_PATH: /ptxx
     steps:
       - uses: actions/checkout@v7
 
@@ -37,7 +42,7 @@ jobs:
         run: echo "PUBLIC_API_BASE=${{ vars.PUBLIC_API_BASE }}" >> .env
       - run: npm run build
 
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -52,14 +57,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v5
-
-  notify-search:
-    needs: deploy
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-      - name: Submit URLs to IndexNow
-        run: bash scripts/submit-indexnow.sh
+        uses: actions/deploy-pages@v4
