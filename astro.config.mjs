@@ -9,8 +9,8 @@ import rehypeDemoteProjectHeadings from './scripts/rehype-demote-project-heading
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const site = process.env.SITE_URL?.trim() || 'http://101.42.44.71'
-const requestedBase = process.env.BASE_PATH?.trim() || '/blog'
+const site = process.env.SITE_URL?.trim() || 'https://zilvd.icu'
+const requestedBase = process.env.BASE_PATH?.trim() || '/'
 const base = requestedBase === '/' ? '/' : `/${requestedBase.replace(/^\/+|\/+$/g, '')}`
 const projectSnapshotDirectory = resolve(process.cwd(), 'src', 'content', 'projects')
 const mirroredProjects = existsSync(projectSnapshotDirectory)

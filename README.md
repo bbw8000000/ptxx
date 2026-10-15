@@ -8,11 +8,11 @@
 <h1 align="center">盘腿修仙</h1>
 
 <p align="center">
-  <i>又逢雨季的个人博客 — AI 工具 · 在线工具 · 成长记录</i>
+  <i>学修仙的个人博客 — AI 工具 · 在线工具 · 成长记录</i>
 </p>
 
 <p align="center">
-  <a href="http://101.42.44.71/blog/">访问博客</a>
+  <a href="https://zilvd.icu/">访问博客</a>
   ·
   <a href="#核心路线">核心路线</a>
   ·

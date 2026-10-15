@@ -29,7 +29,7 @@
           </div>
           <h1>盘腿修仙 RSS</h1>
           <p>将下方地址复制到你的 RSS 阅读器中，即可订阅博客更新。</p>
-          <div class="feed-url">http://101.42.44.71/blog/rss.xml</div>
+          <div class="feed-url">https://zilvd.icu/rss.xml</div>
           <p class="hint">
             推荐阅读器：<a href="https://feedly.com">Feedly</a> · <a href="https://www.inoreader.com">Inoreader</a> · <a href="https://miniflux.app">Miniflux</a><br/>
             或使用浏览器插件如 Feedbro、RSS Reader

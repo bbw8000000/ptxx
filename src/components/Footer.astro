@@ -162,12 +162,29 @@ const recentPosts = allPosts
       </div>
     </div>
 
-    <!-- 底部 -->
-    <div class="pt-6 border-t border-white/[0.04] flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-text-muted/50 reveal-target">
-      <p class="font-serif">&copy; {year} 又逢雨季 · 盘腿修仙</p>
-      <div class="flex items-center gap-3 font-serif">
-        <span>雨天更适合相遇</span>
-      </div>
+    <!-- 底部：版权 + ICP备案 + 公安网安备案（居中；移动端竖向堆叠，桌面单行） -->
+    <div
+      class="pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row flex-wrap items-center justify-center gap-y-1 sm:gap-x-2 text-center text-xs text-text-muted/50 font-serif leading-relaxed reveal-target"
+    >
+      <span class="whitespace-nowrap">&copy;2026 个人主页 版权所有</span>
+      <span class="hidden sm:inline text-text-muted/30" aria-hidden="true">·</span>
+      <a
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener nofollow"
+        class="whitespace-nowrap hover:text-accent transition-colors duration-300"
+      >
+        冀ICP备2026022498号-1
+      </a>
+      <span class="hidden sm:inline text-text-muted/30" aria-hidden="true">·</span>
+      <a
+        href="https://beian.mps.gov.cn/#/query/webSearch?code=13011102001214"
+        target="_blank"
+        rel="noopener nofollow"
+        class="whitespace-nowrap hover:text-accent transition-colors duration-300"
+      >
+        冀公网安备13011102001214号
+      </a>
     </div>
   </div>
 </footer>
