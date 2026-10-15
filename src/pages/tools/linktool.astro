@@ -1,0 +1,128 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="链接批量处理" description="批量提取、去重、清理追踪参数和排序链接">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">链接批量处理</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        粘贴一段文字，自动提取里面的所有网址，然后可以一键去重、去排序、清理追踪参数（utm_* 等）。
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-border/40 dark:border-dark-border/40 bg-surface-alt/50 dark:bg-dark-surface-alt/50 p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">原始内容</label>
+        <textarea
+          id="input"
+          class="w-full h-40 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent"
+          placeholder="把包含网址的文字粘贴到这里..."
+        ></textarea>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          id="extract"
+          class="px-4 py-1.5 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light transition-all"
+        >
+          提取网址
+        </button>
+        <label class="flex items-center gap-2 text-xs text-text-muted dark:text-dark-text-muted cursor-pointer">
+          <input id="dedup" type="checkbox" checked class="accent-accent" /> 去重
+        </label>
+        <label class="flex items-center gap-2 text-xs text-text-muted dark:text-dark-text-muted cursor-pointer">
+          <input id="clean" type="checkbox" checked class="accent-accent" /> 清理追踪参数
+        </label>
+        <label class="flex items-center gap-2 text-xs text-text-muted dark:text-dark-text-muted cursor-pointer">
+          <input id="sort" type="checkbox" class="accent-accent" /> 按字母排序
+        </label>
+        <button
+          id="copy"
+          class="ml-auto px-4 py-1.5 text-sm font-medium bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 text-text dark:text-dark-text rounded-lg hover:border-accent transition-all"
+        >
+          复制结果
+        </button>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">
+          结果（<span id="count">0</span> 条）
+        </label>
+        <textarea
+          id="output"
+          readonly
+          class="w-full h-48 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-sm text-text dark:text-dark-text resize-y focus:outline-none"
+          placeholder="处理结果会显示在这里，每行一个"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input') as HTMLTextAreaElement
+    const outputEl = document.getElementById('output') as HTMLTextAreaElement
+    const countEl = document.getElementById('count') as HTMLElement
+    const dedupEl = document.getElementById('dedup') as HTMLInputElement
+    const cleanEl = document.getElementById('clean') as HTMLInputElement
+    const sortEl = document.getElementById('sort') as HTMLInputElement
+    const extractBtn = document.getElementById('extract') as HTMLButtonElement
+    const copyBtn = document.getElementById('copy') as HTMLButtonElement
+
+    const URL_RE = /https?:\/\/[^\s<>"'()]+/g
+
+    function cleanUrl(raw: string): string {
+      try {
+        const u = new URL(raw)
+        if (cleanEl.checked) {
+          const keep = Array.from(u.searchParams.keys()).filter(
+            (k) => !k.toLowerCase().startsWith('utm_'),
+          )
+          u.search = ''
+          keep.forEach((k) => u.searchParams.set(k, u.searchParams.get(k) || ''))
+        }
+        u.hash = ''
+        return u.href.replace(/\/$/, '')
+      } catch {
+        return raw.replace(/[.,;:!?]+$/, '')
+      }
+    }
+
+    function extract() {
+      const raw = inputEl.value
+      if (!raw.trim()) {
+        outputEl.value = ''
+        countEl.textContent = '0'
+        return
+      }
+      let urls: string[] = (raw.match(URL_RE) || []).map(cleanUrl)
+      if (dedupEl.checked) urls = [...new Set(urls)]
+      if (sortEl.checked) urls.sort((a, b) => a.localeCompare(b))
+      outputEl.value = urls.join('\n')
+      countEl.textContent = String(urls.length)
+    }
+
+    extractBtn.addEventListener('click', extract)
+    copyBtn.addEventListener('click', async () => {
+      if (!outputEl.value) return
+      try {
+        await navigator.clipboard.writeText(outputEl.value)
+        const old = copyBtn.textContent
+        copyBtn.textContent = '已复制 ✓'
+        setTimeout(() => {
+          copyBtn.textContent = old
+        }, 1500)
+      } catch {
+        outputEl.select()
+        document.execCommand('copy')
+      }
+    })
+  </script>
+</BaseLayout>

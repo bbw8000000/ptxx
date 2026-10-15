@@ -1,0 +1,352 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import HomeHero from '../components/home/HomeHero.astro'
+import HomeReadingPaths from '../components/home/HomeReadingPaths.astro'
+import HomeTechDaily from '../components/home/HomeTechDaily.astro'
+import HomeRecentPosts from '../components/home/HomeRecentPosts.astro'
+import HomeNowSnapshot from '../components/home/HomeNowSnapshot.astro'
+import HomeCurrentMe from '../components/home/HomeCurrentMe.astro'
+import HomeFootnote from '../components/home/HomeFootnote.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const sortedPosts = [...allPosts].sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+)
+const recentPosts = sortedPosts.slice(0, 6)
+const now = new Date()
+
+const thisMonth = sortedPosts.filter((p) => {
+  const d = p.data.pubDate
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+}).length
+const totalWords = allPosts.reduce((sum, p) => sum + (p.body?.length || 0), 0)
+const wordCount = totalWords > 10000 ? `${(totalWords / 10000).toFixed(1)}万` : `${totalWords}`
+const focusCards = [
+  {
+    label: 'AI 工具',
+    text: '先看真实使用场景、提示词和踩坑记录。',
+    href: `${import.meta.env.BASE_URL}tag/${encodeURIComponent('AI')}/`,
+  },
+  {
+    label: '在线工具',
+    text: '直接打开浏览器本地运行的小工具。',
+    href: `${import.meta.env.BASE_URL}tools/`,
+  },
+  {
+    label: '成长记录',
+    text: '看普通人怎么试错、复盘和继续往前走。',
+    href: `${import.meta.env.BASE_URL}growth/`,
+  },
+]
+const pickPathPosts = (ids: string[]) =>
+  ids
+    .map((id) => sortedPosts.find((post) => post.id === id))
+    .filter((post): post is (typeof sortedPosts)[number] => post !== undefined)
+
+const readingPaths = [
+  {
+    label: 'Start here',
+    title: 'AI 工具实践',
+    description: '从真实使用场景开始，看工具、提示词和工作流到底怎么落地。',
+    href: `${import.meta.env.BASE_URL}tag/${encodeURIComponent('AI')}/`,
+    posts: pickPathPosts(['ai-coding-tools', 'growth-002', 'growth-005']),
+  },
+  {
+    label: 'Growth log',
+    title: '普通人成长记录',
+    description: '不是鸡血路线，而是把犹豫、试错、复盘和继续做下去都记下来。',
+    href: `${import.meta.env.BASE_URL}category/${encodeURIComponent('成长记录')}/`,
+    posts: pickPathPosts(['growth-012', 'growth-011', 'growth-009']),
+  },
+  {
+    label: 'Build notes',
+    title: '开发与效率笔记',
+    description: '围绕博客、前端、Git 和日常开发，把能复用的经验沉淀出来。',
+    href: `${import.meta.env.BASE_URL}category/${encodeURIComponent('技术')}/`,
+    posts: pickPathPosts(['astro-blog-03', 'git-tips', 'vscode-productivity']),
+  },
+]
+
+let streak = 0
+const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+for (let i = 0; i < 365; i++) {
+  const day = new Date(today)
+  day.setDate(day.getDate() - i)
+  const hasPost = sortedPosts.some((p) => {
+    const d = new Date(
+      p.data.pubDate.getFullYear(),
+      p.data.pubDate.getMonth(),
+      p.data.pubDate.getDate(),
+    )
+    return d.getTime() === day.getTime()
+  })
+  if (hasPost || i > 0) {
+    if (hasPost) streak++
+    else if (i > 0) break
+  }
+}
+if (streak === 0) {
+  for (let i = 1; i <= 365; i++) {
+    const day = new Date(today)
+    day.setDate(day.getDate() - i)
+    const hasPost = sortedPosts.some((p) => {
+      const d = new Date(
+        p.data.pubDate.getFullYear(),
+        p.data.pubDate.getMonth(),
+        p.data.pubDate.getDate(),
+      )
+      return d.getTime() === day.getTime()
+    })
+    if (hasPost) streak++
+    else break
+  }
+}
+const activityItems = [
+  '三条主线：AI 工具 / 在线工具 / 成长记录',
+  `本月新增：${thisMonth} 篇记录`,
+  streak > 0 ? `连续更新：${streak} 天` : '状态：慢慢打磨中',
+]
+---
+
+<BaseLayout title="首页" description="盘腿修仙 — AI 工具、真实试错和普通人能用的经验">
+  <div class="home-page">
+    <div class="home-section-stack">
+      <HomeHero
+        focusCards={focusCards}
+        postCount={allPosts.length}
+        thisMonth={thisMonth}
+        wordCount={wordCount}
+        streak={streak}
+      />
+      <HomeCurrentMe />
+      <HomeReadingPaths paths={readingPaths} />
+      <HomeTechDaily />
+      <HomeRecentPosts posts={recentPosts} />
+      <HomeNowSnapshot />
+      <HomeFootnote />
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .home-page {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding-bottom: 2rem;
+  }
+
+  .home-page::before,
+  .home-page::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .home-page::before {
+    inset: 4rem 0 auto;
+    height: 42rem;
+    background:
+      radial-gradient(ellipse 42% 55% at 18% 10%, rgba(122, 149, 175, 0.16), transparent 68%),
+      radial-gradient(ellipse 28% 42% at 82% 18%, rgba(200, 182, 142, 0.08), transparent 72%);
+    opacity: 0.9;
+  }
+
+  .home-page::after {
+    right: -12rem;
+    top: 20rem;
+    width: 34rem;
+    height: 62rem;
+    border: 1px solid rgba(122, 149, 175, 0.08);
+    border-radius: 999px;
+    transform: rotate(18deg);
+    box-shadow: inset 0 0 80px rgba(122, 149, 175, 0.04);
+  }
+
+  .home-page-orbit {
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(1px);
+  }
+
+  .home-page-orbit--cold {
+    left: -10rem;
+    top: 38rem;
+    width: 26rem;
+    height: 26rem;
+    border: 1px solid rgba(122, 149, 175, 0.1);
+    background: radial-gradient(circle, rgba(122, 149, 175, 0.05), transparent 62%);
+    animation: homeOrbitDrift 18s ease-in-out infinite alternate;
+  }
+
+  .home-page-orbit--warm {
+    right: 8vw;
+    top: 74rem;
+    width: 16rem;
+    height: 16rem;
+    border: 1px solid rgba(200, 182, 142, 0.08);
+    background: radial-gradient(circle, rgba(200, 182, 142, 0.035), transparent 64%);
+    animation: homeOrbitDrift 22s ease-in-out infinite alternate-reverse;
+  }
+
+  .home-live-strip {
+    position: sticky;
+    top: 4.5rem;
+    z-index: 3;
+    max-width: 1200px;
+    margin: 0 auto -1.5rem;
+    overflow: hidden;
+    border: 1px solid rgba(226, 238, 248, 0.1);
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      rgba(6, 10, 18, 0.58),
+      rgba(32, 45, 68, 0.42),
+      rgba(6, 10, 18, 0.58)
+    );
+    backdrop-filter: blur(16px) saturate(145%);
+    -webkit-backdrop-filter: blur(16px) saturate(145%);
+    box-shadow:
+      0 18px 50px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .home-live-strip::before,
+  .home-live-strip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 4rem;
+    pointer-events: none;
+  }
+
+  .home-live-strip::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(6, 10, 18, 0.86), transparent);
+  }
+
+  .home-live-strip::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(6, 10, 18, 0.86), transparent);
+  }
+
+  .home-live-strip-track {
+    display: flex;
+    width: max-content;
+    animation: homeLiveTicker 34s linear infinite;
+  }
+
+  .home-live-strip-group {
+    display: flex;
+    gap: 2.5rem;
+    padding: 0.72rem 1.25rem;
+  }
+
+  .home-live-strip-track span {
+    color: rgba(214, 218, 225, 0.72);
+    font-family: var(--font-serif);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .home-live-strip-track span::before {
+    content: '';
+    display: inline-block;
+    width: 0.36rem;
+    height: 0.36rem;
+    margin-right: 0.65rem;
+    border-radius: 999px;
+    background: rgba(200, 182, 142, 0.68);
+    box-shadow: 0 0 16px rgba(200, 182, 142, 0.22);
+    vertical-align: 0.08em;
+  }
+
+  .home-page-spine {
+    position: absolute;
+    left: max(1.25rem, calc((100vw - 1200px) / 2 - 2.25rem));
+    top: 8rem;
+    bottom: 5rem;
+    width: 1px;
+    pointer-events: none;
+    z-index: 0;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(122, 149, 175, 0.22),
+      rgba(200, 182, 142, 0.16),
+      transparent
+    );
+  }
+
+  .home-section-stack {
+    position: relative;
+    z-index: 1;
+  }
+  .home-section-stack > section {
+    margin-bottom: 2.5rem;
+  }
+  .home-section-stack > section:last-child {
+    margin-bottom: 0;
+  }
+
+  @keyframes homeOrbitDrift {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(1.6rem, -1.2rem, 0) scale(1.04);
+    }
+  }
+
+  @keyframes homeLiveTicker {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .home-live-strip {
+      position: relative;
+      top: auto;
+      margin: 0 1.25rem -1rem;
+    }
+
+    .home-page-spine {
+      left: 0.75rem;
+      opacity: 0.45;
+    }
+
+    .home-page::after,
+    .home-page-orbit--warm {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .home-live-strip {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-page-orbit--cold,
+    .home-page-orbit--warm,
+    .home-live-strip-track {
+      animation: none;
+    }
+
+    .home-live-strip-group[aria-hidden='true'] {
+      display: none;
+    }
+  }
+</style>

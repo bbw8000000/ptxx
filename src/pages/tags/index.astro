@@ -1,0 +1,130 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+
+// Count posts per tag
+const tagCounts = new Map<string, number>()
+allPosts.forEach((post) => {
+  post.data.tags.forEach((tag) => {
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+  })
+})
+
+// Sort by count descending
+const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1])
+---
+
+<BaseLayout title="标签" description="按标签浏览文章">
+  <div class="tags-page max-w-5xl mx-auto px-6 py-16">
+    <div class="tags-hero mb-10">
+      <span class="tags-kicker">标签</span>
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-text mb-3">标签</h1>
+      <p class="text-text-muted font-serif text-lg">
+        {sortedTags.length} 个标签 · {allPosts.length} 篇文章
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      {sortedTags.map(([tag, count]) => (
+        <a
+          href={`${import.meta.env.BASE_URL}tag/${tag}/`}
+          class="tag-index-card reveal-target group flex items-center justify-between px-5 py-4 rounded-xl transition-all duration-400"
+        >
+          <span class="font-serif font-medium text-text group-hover:text-accent transition-colors duration-300">
+            {tag}
+          </span>
+          <span class="tag-index-count text-xs px-2 py-0.5 rounded-full">{count}</span>
+        </a>
+      ))}
+    </div>
+
+    {sortedTags.length === 0 && (
+      <div class="text-center py-24 text-text-muted dark:text-dark-text-muted">
+        <p class="text-lg font-serif">暂无标签</p>
+      </div>
+    )}
+  </div>
+
+  <style>
+    .tags-hero {
+      position: relative;
+      overflow: hidden;
+      padding: 2rem;
+      border: 1px solid var(--border-glass);
+      border-radius: 1.6rem;
+      background:
+        linear-gradient(145deg, rgba(32, 45, 68, 0.52), rgba(6, 10, 18, 0.3)),
+        radial-gradient(ellipse at 12% 0%, rgba(226, 238, 248, 0.13), transparent 48%),
+        radial-gradient(circle at 100% 100%, rgba(200, 142, 82, 0.08), transparent 44%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      box-shadow: var(--shadow-glass-floating);
+    }
+
+    .tags-kicker {
+      display: inline-block;
+      padding: 0.28rem 0.8rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border-warm);
+      border-radius: 999px;
+      background: rgba(200, 142, 82, 0.055);
+      color: var(--color-accent);
+      font-family: var(--font-sans);
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .tag-index-card {
+      border: 1px solid var(--border-glass);
+      background:
+        linear-gradient(145deg, rgba(32, 45, 68, 0.48), rgba(6, 10, 18, 0.28)),
+        radial-gradient(ellipse at 12% 0%, rgba(226, 238, 248, 0.1), transparent 48%);
+      box-shadow:
+        0 18px 48px rgba(0, 0, 0, 0.34),
+        var(--inner-glass);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    }
+
+    .tag-index-card:hover,
+    .tag-index-card:focus-visible {
+      border-color: var(--border-warm);
+      box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.44),
+        var(--glow-warm),
+        var(--glass-rim-strong);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .tag-index-card:focus-visible {
+      outline: 2px solid rgba(200, 182, 142, 0.42);
+      outline-offset: 4px;
+    }
+
+    .tag-index-count {
+      border: 1px solid rgba(226, 238, 248, 0.1);
+      background: linear-gradient(135deg, rgba(122, 149, 175, 0.09), rgba(6, 10, 18, 0.18));
+      color: rgba(214, 218, 225, 0.68);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    }
+
+    @media (max-width: 560px) {
+      .tags-hero,
+      .tag-index-card {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tag-index-card {
+        transition: none;
+        transform: none !important;
+      }
+    }
+  </style>
+</BaseLayout>

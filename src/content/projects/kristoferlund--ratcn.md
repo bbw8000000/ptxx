@@ -1,0 +1,197 @@
+---
+title: "kristoferlund/ratcn"
+owner: "kristoferlund"
+name: "ratcn"
+fullName: "kristoferlund/ratcn"
+description: "Beautifully designed terminal UI components for Ratatui apps"
+sourceUrl: "https://github.com/kristoferlund/ratcn"
+stars: 160
+forks: 3
+language: "Rust"
+topics: ["component-library", "components", "ratatui", "rust", "terminal-ui", "tui"]
+license: "MIT"
+homepage: "https://ratcn.com"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-09-17T06:48:28Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+ratcn
+
+
+  Themeable terminal UI components for Ratatui. Copy, customize, and own them.
+
+
+  
+  
+  
+  
+
+
+  Try the Showcase &middot;
+  Getting Started &middot;
+  Website &middot;
+  Docs
+
+
+  
+    Watch the ratcn showcase video.
+  
+
+
+A shadcn-inspired, themeable component library for [Ratatui](https://ratatui.rs),
+plus a small interaction runtime for focus, hover, and event routing. It is a
+toolkit, not a framework: every piece is usable piecemeal, and nothing takes
+over your app loop.
+
+## Try the showcase
+
+See what ratcn feels like in your own terminal. Open the live showcase with one
+command, no Rust installation or account needed:
+
+```sh
+ssh ratcn.com
+```
+
+Browse interactive component demos, switch themes, drag cards across a Kanban
+board, and explore full demo apps. These are working Ratatui interfaces, not
+recordings. Try the controls with your keyboard and mouse, then
+[explore the demos and their source](https://ratcn.com/docs/demos).
+
+## Preview status
+
+This is a preview release. Three things are worth knowing before you build on
+it:
+
+- **The API is unstable.** The public surface is still moving. Pin an exact
+  version and expect to edit when you upgrade.
+- **The CLI sets up terminal apps and copies components.** `cargo ratcn init`
+  configures terminal Cargo packages and can install a starter only over Cargo's
+  untouched default `main.rs`; `cargo ratcn add` copies a built-in component when
+  you want to own its source.
+- **Twelve components are available:**
+  `Button`, `List`, `Select`, `Tabs`, `Dialog`, `ToasterWidget`,
+  `BarChartWidget`, `Tooltip`, `ScrollArea`, `Checkbox`, `Cycle`, and
+  `ProgressWidget`.
+
+If you want specific components, patterns, or features, please
+open an issue.
+
+## What it is
+
+A component module holds up to two cooperating halves:
+
+- A **paint-only widget** (`ButtonWidget`, `ListWidget`, `BarChartWidget`, ...)
+  is a plain ratatui `Widget` that only paints. It is usable on its own without
+  the runtime. BarChart and Toast are paint-only and stop here.
+- An **interactive component** (`Button`, `List`, `Select`, ...) — declared
+  through the runtime each frame, it handles focus, events, and messages. Most
+  paint via a widget half. Dialog and ScrollArea are the exceptions:
+  interactive composites with no separate paint widget.
+
+Your app owns state, events, and updates. The library enters your loop at
+exactly two removable call sites: `Ratcn::render` and `Ratcn::handle_event`.
+Components read state and return messages; your `update` function is the only
+state writer.
+
+## Getting started
+
+Requires Rust 1.88 (1.90 for the browser build). The recommended way to set up a
+terminal project is with the `cargo-ratcn` CLI. Install it, create a Cargo
+package, and initialize it:
+
+```sh
+cargo install cargo-ratcn
+cargo new my-app
+cd my-app
+cargo ratcn init
+```
+
+> [!NOTE]
+> On Arch Linux, the CLI is available from the official
+> [`cargo-ratcn` package](https://archlinux.org/packages/extra/x86_64/cargo-ratcn/):
+> `pacman -S cargo-ratcn`
+
+`init` adds `ratcn` with its `termina` feature and a compatible `ratatui`, writes
+`ratcn.toml`, and creates `src/components/mod.rs`. In an interactive terminal,
+on Cargo's untouched default `src/main.rs`, it offers **Keep it unchanged**,
+**Create a minimal app**, or **Create a demo app**. Custom application source
+and `src/main.rs` in noninteractive runs remain unchanged.
+
+Choose **Create a demo app**, then run `cargo run` for a button and a Hello World
+toast. See [Getting started](https://ratcn.com/docs/getting-started)
+for the source. Use `cargo ratcn --help` for available commands.
+
+For a native crossterm app that already owns its event loop:
+
+```sh
+cargo add ratcn --features crossterm
+cargo add ratatui --no-default-features --features layout-cache,std,crossterm
+```
+
+For a browser app, select the ratzilla integration instead:
+
+```sh
+cargo add ratcn --features ratzilla
+cargo add ratatui --no-default-features --features layout-cache,std
+cargo add ratzilla
+```
+
+The crate also ships a terminal host of its own: `ratcn::terminal::Session`
+(feature `termina`) opens the terminal, asks it for its background and
+foreground, solves a `Theme` from the pair with `Theme::adaptive`, and
+re-solves when the user changes it. Use it in place of crossterm when you want
+the app to paint in the terminal's own colors.
+
+## Copying a component
+
+Each component module is written as one self-contained unit, so you can copy
+the module into your project and modify it there when the built-in styling and
+behavior hooks are not enough:
+
+```sh
+cargo ratcn add dialog
+```
+
+`cargo ratcn add --list` shows the built-ins available from the exact `ratcn`
+package your project resolved. The command adds the component file and module
+declarations; switch the app import to `crate::components::dialog::Dialog` to
+use the copy.
+
+Existing component files are preserved unless you pass `--force`.
+**`cargo ratcn add dialog --force` overwrites `src/components/dialog.rs`, including
+your edits.** Use `cargo ratcn add --help` for add options.
+
+A copied module still depends on:
+
+- the `ratcn` runtime — the `Component` trait, `DeclareCtx`/`EventCtx`,
+  `EventResult`, and the normalized event types;
+- the theme types (`Theme`, and `BorderStyle` where a border is painted), plus
+  the copy-support modules: `button_shape`, `geometry`, `linear_nav`,
+  `list_core`, `selection_indicator`, and `text_width`;
+- `ratatui` itself.
+
+Components never depend on sibling components, so each module copies alone.
+The `copy-fixture` crate in this repository makes that copy at build time and
+compiles each component on its own, so the claim is checked by the build rather
+than asserted.
+
+## Documentation
+
+The [documentation site](https://ratcn.com), [documentation
+source](https://github.com/kristoferlund/ratcn/tree/main/docs), and [repository
+source](https://github.com/kristoferlund/ratcn) cover the concepts, components,
+and live WebAssembly previews. The demo crates under `demos/` are the canonical
+integration examples.
+
+To build the site from a checkout, use the pinned toolchain, install Trunk
+`0.21.14`, run `pnpm install --frozen-lockfile`, then run `pnpm run docs:build`.
+The pinned toolchain installs the `wasm32-unknown-unknown` target used by the demos.
+Publishing this source does not deploy the hosted site; deployment remains a
+separate release step, so the currently hosted content may lag the repository.
+
+## License
+
+MIT

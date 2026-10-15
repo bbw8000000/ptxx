@@ -1,0 +1,77 @@
+---
+// 文章底部个人印章 — 手写风格落款
+---
+
+<div class="flex justify-end mt-14 pt-6">
+  <div class="post-stamp group relative">
+    <svg
+      width="72"
+      height="72"
+      viewBox="0 0 72 72"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      class="opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:drop-shadow-lg group-hover:drop-shadow-accent/20 dark:group-hover:drop-shadow-dark-accent/20"
+    >
+      <!-- 印章边框 -->
+      <rect
+        x="4"
+        y="4"
+        width="64"
+        height="64"
+        rx="4"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-dasharray="0"
+      />
+      <rect
+        x="8"
+        y="8"
+        width="56"
+        height="56"
+        rx="2"
+        stroke="currentColor"
+        stroke-width="0.8"
+        opacity="0.4"
+      />
+      <!-- "又逢雨季" 竖排 -->
+      <text
+        x="36"
+        y="26"
+        text-anchor="middle"
+        fill="currentColor"
+        font-size="14"
+        font-weight="700"
+        font-family="'Noto Serif SC', 'PingFang SC', serif"
+      >
+        又逢
+      </text>
+      <text
+        x="36"
+        y="46"
+        text-anchor="middle"
+        fill="currentColor"
+        font-size="14"
+        font-weight="700"
+        font-family="'Noto Serif SC', 'PingFang SC', serif"
+      >
+        雨季
+      </text>
+      <!-- 装饰小点 -->
+      <circle cx="36" cy="58" r="1.5" fill="currentColor" opacity="0.4" />
+    </svg>
+  </div>
+</div>
+
+<style>
+  .post-stamp {
+    color: var(--color-accent);
+    transform: rotate(-3deg);
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .post-stamp:hover {
+    transform: rotate(0deg) scale(1.05);
+  }
+  :root.dark .post-stamp {
+    color: var(--color-dark-accent);
+  }
+</style>

@@ -1,0 +1,33 @@
+name: CI
+
+# PR 阶段的门禁。
+# 部署与日更工作流只在 push / schedule 上触发，所以此前 PR 完全没有校验，
+# 所有检查都发生在合并进 main 之后。
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm test
+      - run: python3 scripts/generate_daily_digest.py --self-test

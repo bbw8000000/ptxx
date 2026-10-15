@@ -1,0 +1,787 @@
+---
+import { getCollection, getEntry, render } from 'astro:content'
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import {
+  isRestrictedGithubProject,
+  loadGithubProjectArchive,
+  loadRetiredProjects,
+  type GithubProjectArchiveItem,
+} from '../../../lib/githubProjectArchive'
+import { extractOfficialPackageLinks } from '../../../lib/officialPackageLinks'
+import { loadGoneProjects } from '../../../lib/goneProjects'
+import { loadProjectAliases } from '../../../lib/projectAliases'
+import { isMostlyNonChinese } from '../../../lib/textLanguage'
+import ProjectSummary from '../../../components/ProjectSummary.astro'
+
+type ProjectAccess = 'snapshot' | 'summary' | 'restricted'
+
+interface ProjectPageData extends GithubProjectArchiveItem {
+  forks: number
+  license: string
+  homepage?: string
+  defaultBranch: string
+  snapshotDate?: string
+  pushedAt?: string
+  snapshotId?: string
+  access: ProjectAccess
+}
+
+export async function getStaticPaths() {
+  const archiveItems = loadGithubProjectArchive()
+  const snapshots = await getCollection('projects')
+  const snapshotsByName = new Map(
+    snapshots.map((snapshot) => [snapshot.data.fullName.toLowerCase(), snapshot]),
+  )
+  const projects = new Map<string, ProjectPageData>()
+
+  for (const archived of archiveItems) {
+    const snapshot = snapshotsByName.get(archived.fullName.toLowerCase())
+    const data = snapshot?.data
+    const seenDate = data?.snapshotDate.toISOString().slice(0, 10)
+    projects.set(archived.fullName.toLowerCase(), {
+      owner: data?.owner ?? archived.owner,
+      name: data?.name ?? archived.name,
+      fullName: data?.fullName ?? archived.fullName,
+      description: data?.description ?? archived.description,
+      sourceUrl: data?.sourceUrl ?? archived.sourceUrl,
+      stars: data?.stars ?? archived.stars,
+      language: data?.language ?? archived.language,
+      topics: data?.topics ?? archived.topics,
+      firstSeen: archived.firstSeen || seenDate || '',
+      lastSeen: archived.lastSeen || seenDate || '',
+      appearances: archived.appearances || 1,
+      forks: data?.forks ?? 0,
+      license: data?.license ?? '未收录',
+      homepage: data?.homepage,
+      defaultBranch: data?.defaultBranch ?? '未收录',
+      snapshotDate: seenDate,
+      pushedAt: data?.pushedAt?.toISOString(),
+      snapshotId: snapshot?.id,
+      access: snapshot
+        ? 'snapshot'
+        : isRestrictedGithubProject(archived)
+          ? 'restricted'
+          : 'summary',
+    })
+  }
+
+  for (const snapshot of snapshots) {
+    const data = snapshot.data
+    const key = data.fullName.toLowerCase()
+    if (projects.has(key)) continue
+    const seenDate = data.snapshotDate.toISOString().slice(0, 10)
+    projects.set(key, {
+      owner: data.owner,
+      name: data.name,
+      fullName: data.fullName,
+      description: data.description,
+      sourceUrl: data.sourceUrl,
+      stars: data.stars,
+      language: data.language,
+      topics: data.topics,
+      firstSeen: seenDate,
+      lastSeen: seenDate,
+      appearances: 1,
+      forks: data.forks,
+      license: data.license,
+      homepage: data.homepage,
+      defaultBranch: data.defaultBranch,
+      snapshotDate: seenDate,
+      pushedAt: data.pushedAt?.toISOString(),
+      snapshotId: snapshot.id,
+      access: 'snapshot',
+    })
+  }
+
+  return [...projects.values()].map((project) => ({
+    params: { owner: project.owner, repo: project.name },
+    props: { project },
+  }))
+}
+
+const { project } = Astro.props as { project: ProjectPageData }
+const goneNames = loadGoneProjects()
+const aliases = loadProjectAliases()
+const snapshot = project.snapshotId ? await getEntry('projects', project.snapshotId) : undefined
+const renderedSnapshot = snapshot ? await render(snapshot) : null
+const Content = renderedSnapshot?.Content
+const base = import.meta.env.BASE_URL
+const isSnapshot = project.access === 'snapshot'
+const isRestricted = project.access === 'restricted'
+// 仓库已从 GitHub 消失：链接会 404，页面上要如实说明。
+// 与 access 并列而不是并入，因为它和「是否有快照」「是否命中安全策略」互不冲突。
+//
+// 两份清单都要查，因为它们记录的是不同来源的事实：
+//   projects-without-readme.json —— 回填快照时发现仓库已经不在了
+//   projects-gone.json           —— check_gone_projects.py 逐仓库实测 API 得到的结论
+// 后者覆盖面更广（429 个站内无快照的项目里 198 个已删），两者可能只有一份命中。
+const retiredNames = loadRetiredProjects()
+const isRetired =
+  retiredNames.has(project.fullName.toLowerCase()) || goneNames.has(project.fullName.toLowerCase())
+
+// 第三种情况：仓库既没消失、也不是被安全策略拦下，而是**改名/转手了**。
+// 日报正文里留下的是收录当时的旧名，所以这种旧名页面会一直存在；页面上必须说明
+// 它搬去哪了，否则读者会以为项目没了（实测 9 个回填候选全是改名）。
+const renamedTo = aliases.get(project.fullName.toLowerCase())
+const isRenamed = Boolean(renamedTo) && !isSnapshot && !isRetired
+
+const distributionLinks =
+  isSnapshot && snapshot ? extractOfficialPackageLinks(snapshot.body ?? '') : []
+// 正文是不是外文（多数项目是英文 README），决定要不要给「用浏览器整页翻译」的提示
+const readmeIsForeign = isMostlyNonChinese(snapshot?.body ?? '')
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    value,
+  )
+}
+---
+
+<BaseLayout
+  title={`${project.fullName} - 站内项目资料`}
+  description={project.description}
+  robots={isSnapshot ? 'index, follow' : 'noindex, nofollow'}
+  pagefind={isSnapshot}
+  ogType="article"
+>
+  <article class="project-page">
+    <header class="project-hero">
+      <nav class="project-breadcrumb" aria-label="面包屑">
+        <a href={`${base}projects/`}>项目资料库</a>
+        <span aria-hidden="true">/</span>
+        <span>{project.owner}</span>
+      </nav>
+
+      <div class="project-identity">
+        <p class="project-owner">{project.owner}</p>
+        <h1>{project.name}</h1>
+        <p class="project-description">{project.description}</p>
+      </div>
+
+      <div
+        class:list={['project-availability', { 'is-restricted': isRestricted || isRetired }]}
+        role="status"
+      >
+        <span class="project-availability-dot" aria-hidden="true"></span>
+        <span>
+          {isRetired
+            ? '该项目已从 GitHub 下架，站内仅保留当时的公开摘要'
+            : Content
+              ? 'README 已保存到本站，可直接阅读'
+              : isRestricted
+                ? '本站仅保留安全提示，不提供使用内容'
+                : '项目摘要已保存到本站'}
+        </span>
+      </div>
+    </header>
+
+    <div class="project-shell">
+      <div class="project-main">
+        <section class="project-section" aria-labelledby="readme-heading">
+          <div class="project-section-heading">
+            <p>
+              {isSnapshot
+                ? 'Documentation snapshot'
+                : isRestricted
+                  ? 'Safety notice'
+                  : 'Local project summary'}
+            </p>
+            <h2 id="readme-heading">
+              {isSnapshot
+                ? 'README 快照'
+                : isRetired
+                  ? '项目已下架'
+                  : isRestricted
+                    ? '站内安全提示'
+                    : '项目摘要'}
+            </h2>
+          </div>
+
+          {Content ? (
+            <>
+              {readmeIsForeign && (
+                // 读者主动触发：默认只给一个「翻译成中文」按钮，不自动生成译文。
+                // 用浏览器整页翻译的做法写在这块内部的说明里（下方另有一条静态提示兜底）。
+                <ProjectSummary slug={project.fullName} body={snapshot?.body ?? ''} />
+              )}
+              {readmeIsForeign && (
+                // 不依赖任何 API 的兜底提示：摘要服务没配好、或读者想要更完整的中文时，
+                // 浏览器自带的整页翻译始终可用。
+                <p class="project-language-note">
+                  下面正文是项目自己的英文 README。想读全文就用<b>浏览器自带的整页翻译</b>： Chrome
+                  / Edge 点地址栏右侧的翻译图标，或用右键菜单里的「翻译成中文」；
+                  手机浏览器一般在菜单里。
+                </p>
+              )}
+              <div class="project-readme prose">
+                <Content />
+              </div>
+            </>
+          ) : isRestricted ? (
+            <div class="project-empty-readme project-risk-notice">
+              <h3>此项目仅保留站内风险提示</h3>
+              <p>{project.description}</p>
+              <p>
+                自动筛选检测到外挂、破解或其他高风险特征。本站不保存
+                README、安装说明、下载地址或可执行文件。
+              </p>
+              {isRetired && <p>该仓库现已在 GitHub 上不可访问。</p>}
+            </div>
+          ) : isRetired ? (
+            <div class="project-empty-readme project-retired-notice">
+              <h3>该项目已从 GitHub 下架</h3>
+              <p>{project.description}</p>
+              <p>
+                原始仓库已无法访问（被删除或转为私有），因此本站不会再补齐 README 快照。
+                这里保留的只是当时抓取到的公开摘要，内容已不再更新。
+              </p>
+            </div>
+          ) : renamedTo ? (
+            // 这个仓库**没有**消失，只是改名或转手了。日报里留下的是收录当时的名字，
+            // 所以旧名页面会一直存在；不说明的话读者会以为项目没了。
+            <div class="project-empty-readme project-renamed-notice">
+              <h3>这个项目改名了</h3>
+              <p>{project.description}</p>
+              <p>
+                仓库现在叫 <a href={`${base}projects/${renamedTo}/`}>{renamedTo}</a>
+                （GitHub 上从 {project.fullName} 重定向过去），README 快照在那边。
+              </p>
+            </div>
+          ) : (
+            <div class="project-empty-readme">
+              <h3>当前保存的是项目摘要</h3>
+              <p>{project.description}</p>
+              <p>README 会在项目再次进入每日精选或执行历史回填时补充。</p>
+            </div>
+          )}
+        </section>
+
+        {!isRestricted && (
+          <section
+            class="project-section project-distribution"
+            aria-labelledby="distribution-heading"
+          >
+            <div class="project-section-heading">
+              <p>Official distribution</p>
+              <h2 id="distribution-heading">获取与安装</h2>
+            </div>
+
+            {distributionLinks.length > 0 ? (
+              <>
+                <p class="project-distribution-copy">
+                  以下地址来自本站保存的
+                  README，并指向对应生态的官方软件包页面。本站不托管安装包或二进制文件。
+                </p>
+                <ul class="project-distribution-list">
+                  {distributionLinks.map((link) => (
+                    <li>
+                      <a href={link.href} target="_blank" rel="noopener noreferrer">
+                        <strong>{link.label}</strong>
+                        <span>{link.display}</span>
+                        <span class="project-external-mark" aria-hidden="true">
+                          ↗
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p class="project-distribution-note">
+                  安装前请在官方包页核对包名、维护者、版本和签名；具体命令以该项目 README
+                  与官方文档为准。
+                </p>
+              </>
+            ) : (
+              <div class="project-distribution-empty">
+                <h3>暂未发现可确认的官方软件包地址</h3>
+                <p>
+                  {isSnapshot
+                    ? '当前 README 快照没有出现 npm、PyPI、Crates.io、pub.dev 等官方包页链接。本站不会根据仓库名称猜测下载地址。'
+                    : '当前仅保存了项目摘要，尚无 README 可用于核对官方分发来源。本站不会根据仓库名称猜测下载地址。'}
+                </p>
+                <p>本站不托管项目文件；需要安装时，请以项目维护者发布的官方文档为准。</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section class="project-section project-safety" aria-labelledby="safety-heading">
+          <div>
+            <p class="project-section-label">
+              {isRestricted ? 'Safety boundary' : 'Before installing'}
+            </p>
+            <h2 id="safety-heading">{isRestricted ? '站内安全边界' : '使用前核验'}</h2>
+          </div>
+          <p>
+            {isRestricted
+              ? '本站仅保留公开摘要用于识别和风险提示，不保存 README、安装命令、下载地址或可执行文件，也不提供使用指导。'
+              : '本站保存公开资料用于阅读，不代表安全审计或功能背书。安装前请核对许可证、依赖来源和发布签名，不要直接运行来源不明的二进制文件或高权限脚本。'}
+          </p>
+        </section>
+      </div>
+
+      <aside class="project-facts" aria-label="项目资料">
+        <div class="project-facts-grid">
+          <div>
+            <span>Stars</span>
+            <strong>{formatNumber(project.stars)}</strong>
+          </div>
+          <div>
+            <span>Forks</span>
+            <strong>{isSnapshot ? formatNumber(project.forks) : '未收录'}</strong>
+          </div>
+          <div>
+            <span>语言</span>
+            <strong>{project.language}</strong>
+          </div>
+          <div>
+            <span>许可证</span>
+            <strong>{project.license}</strong>
+          </div>
+          <div>
+            <span>默认分支</span>
+            <strong>{project.defaultBranch}</strong>
+          </div>
+          <div>
+            <span>日报收录</span>
+            <strong>{project.appearances} 次</strong>
+          </div>
+        </div>
+
+        {project.topics.length > 0 && (
+          <div class="project-topics" aria-label="项目标签">
+            {project.topics.map((topic) => (
+              <span>{topic}</span>
+            ))}
+          </div>
+        )}
+
+        <dl class="project-dates">
+          {project.snapshotDate && (
+            <div>
+              <dt>资料快照</dt>
+              <dd>{project.snapshotDate}</dd>
+            </div>
+          )}
+          {project.lastSeen && (
+            <div>
+              <dt>最近收录</dt>
+              <dd>{project.lastSeen}</dd>
+            </div>
+          )}
+        </dl>
+
+        {isSnapshot && (
+          <div class="project-actions">
+            {project.homepage && (
+              <a href={project.homepage} target="_blank" rel="noopener noreferrer">
+                项目主页
+              </a>
+            )}
+            {isRetired ? (
+              <span class="project-source-link is-retired">原始仓库已不可访问</span>
+            ) : (
+              <a
+                class="project-source-link"
+                href={project.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                原始仓库
+              </a>
+            )}
+          </div>
+        )}
+      </aside>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .project-page {
+    width: min(100%, 76rem);
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .project-hero {
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .project-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--color-text-muted);
+    font: 0.75rem/1.4 var(--font-mono);
+  }
+
+  .project-breadcrumb a {
+    color: var(--color-accent-hover);
+    text-decoration: none;
+  }
+
+  .project-identity {
+    max-width: 54rem;
+    margin-top: 2rem;
+  }
+
+  .project-owner,
+  .project-section-heading p,
+  .project-section-label {
+    margin: 0 0 0.65rem;
+    color: var(--color-warm);
+    font: 0.72rem/1.4 var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .project-identity h1 {
+    margin: 0;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .project-description {
+    max-width: 48rem;
+    margin: 1.25rem 0 0;
+    color: var(--color-text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.85;
+  }
+
+  .project-availability {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 2.75rem;
+    margin-top: 1.75rem;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .project-availability-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--color-accent-hover);
+    box-shadow: 0 0 0 0.3rem rgba(122, 149, 175, 0.12);
+  }
+
+  .project-availability.is-restricted .project-availability-dot {
+    background: var(--color-warm);
+    box-shadow: none;
+  }
+
+  .project-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 4rem;
+    align-items: start;
+    padding-top: 3rem;
+  }
+
+  .project-main,
+  .project-section {
+    min-width: 0;
+  }
+
+  .project-section + .project-section {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .project-section-heading h2,
+  .project-distribution h2,
+  .project-safety h2 {
+    margin: 0;
+    color: var(--color-text);
+    font: 700 1.45rem/1.25 var(--font-display);
+  }
+
+  .project-readme {
+    margin-top: 2rem;
+  }
+
+  .project-empty-readme {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.5rem;
+    background: var(--surface-paper);
+  }
+
+  .project-empty-readme h3 {
+    margin: 0 0 0.75rem;
+    color: var(--color-text);
+    font-size: 1rem;
+  }
+
+  .project-risk-notice {
+    border-color: var(--color-warm);
+  }
+
+  .project-risk-notice h3 {
+    color: var(--color-warm);
+  }
+
+  /* 仓库已从 GitHub 消失：提示框用弱化样式，避免和「安全提示」抢注意力 */
+  .project-retired-notice {
+    border-style: dashed;
+  }
+
+  /* 外文 README 的翻译提示：不依赖任何 API，静态文字即可生效 */
+  .project-language-note {
+    margin-bottom: 1.5rem;
+    border-left: 2px solid rgba(122, 149, 175, 0.4);
+    border-radius: 0.4rem;
+    padding: 0.7rem 1rem;
+    background: rgba(122, 149, 175, 0.07);
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.75;
+  }
+
+  .project-language-note b {
+    color: var(--color-text);
+  }
+
+  .project-retired-notice h3 {
+    color: var(--color-text-muted);
+  }
+
+  .project-source-link.is-retired {
+    color: var(--color-text-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  .project-empty-readme p,
+  .project-distribution-copy,
+  .project-distribution-note,
+  .project-distribution-empty p,
+  .project-safety > p {
+    margin: 0.5rem 0 0;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+  }
+
+  .project-safety {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .project-safety > p {
+    margin-top: 0;
+  }
+
+  .project-distribution-copy {
+    max-width: 46rem;
+    margin-top: 1.25rem;
+  }
+
+  .project-distribution-list {
+    margin: 1.5rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+  }
+
+  .project-distribution-list li {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .project-distribution-list a {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    min-height: 3.5rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .project-distribution-list a:hover {
+    color: var(--color-text);
+  }
+
+  .project-distribution-list strong {
+    color: var(--color-accent-hover);
+    font: 600 0.78rem/1.4 var(--font-mono);
+  }
+
+  .project-distribution-list a > span:not(.project-external-mark) {
+    overflow-wrap: anywhere;
+    font: 0.76rem/1.5 var(--font-mono);
+  }
+
+  .project-external-mark {
+    color: var(--color-text-muted);
+    font-size: 1rem;
+  }
+
+  .project-distribution-note {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+  }
+
+  .project-distribution-empty {
+    margin-top: 1.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--color-border-strong);
+  }
+
+  .project-distribution-empty h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 0.95rem;
+  }
+
+  .project-facts {
+    position: sticky;
+    top: 6rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border-glass);
+    border-radius: 0.5rem;
+    background: var(--surface-glass);
+    backdrop-filter: blur(12px) saturate(130%);
+  }
+
+  .project-facts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem 1rem;
+  }
+
+  .project-facts-grid span,
+  .project-dates dt {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+  }
+
+  .project-facts-grid strong {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--color-text);
+    font: 600 0.92rem/1.35 var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  .project-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .project-topics span {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.7rem;
+  }
+
+  .project-dates {
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .project-dates div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.6rem;
+  }
+
+  .project-dates dd {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font: 0.72rem/1.4 var(--font-mono);
+  }
+
+  .project-actions {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1.5rem;
+  }
+
+  .project-actions a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-accent);
+    border-radius: 0.4rem;
+    color: var(--color-text);
+    text-decoration: none;
+    transition:
+      transform var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .project-actions a:hover {
+    transform: translateY(-1px);
+    border-color: var(--color-accent-hover);
+  }
+
+  .project-actions .project-source-link {
+    border-color: var(--color-border-strong);
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 900px) {
+    .project-page {
+      padding-top: 3rem;
+    }
+    .project-identity h1 {
+      font-size: 2.6rem;
+    }
+    .project-shell {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+    .project-facts {
+      position: static;
+      order: -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .project-page {
+      padding-inline: 1rem;
+    }
+    .project-identity h1 {
+      font-size: 2.15rem;
+    }
+    .project-safety {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .project-distribution-list a {
+      grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+      gap: 0.65rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .project-distribution-list a,
+    .project-actions a {
+      transition: none;
+    }
+    .project-actions a:hover {
+      transform: none;
+    }
+  }
+</style>

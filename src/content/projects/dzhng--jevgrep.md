@@ -1,0 +1,167 @@
+---
+title: "dzhng/jevgrep"
+owner: "dzhng"
+name: "jevgrep"
+fullName: "dzhng/jevgrep"
+description: "Find code by asking what it does. A CLI for coding agents that uses Jev to discover relevant files and source context."
+sourceUrl: "https://github.com/dzhng/jevgrep"
+stars: 293
+forks: 20
+language: "TypeScript"
+topics: ["ai-sdk", "claude-code", "cli", "code-search", "codex", "coding-agents", "context-retrieval", "developer-tools"]
+license: "MIT"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-09-26T21:45:13Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+*图片：jevgrep — Find the context. Start coding.*
+
+# jevgrep
+
+[*图片：npm*](https://www.npmjs.com/package/@dzhng/jevgrep)
+*图片：MIT license*
+*图片：Node.js 22+*
+*图片：Release*
+
+**Find code by asking what it does.**
+
+Coding agents spend part of every unfamiliar task finding the right files.
+Jevgrep gives them a place to start: ask a repository question, and `jg` returns
+relevant files, reading leads, and verbatim source excerpts in one stdout response.
+It uses [Jev](https://vercel.com/ai-gateway/models/jev) to judge relevance across
+folders, files, and declarations. Your coding agent then implements and tests the change.
+
+```sh
+npm install -g @dzhng/jevgrep
+jg auth
+jg skill
+jg "How are telemetry events recorded and sent?" ./my-project
+```
+
+Requires **Node.js 22+**, **macOS or Linux**, and a key for **Vercel AI Gateway, TypeSafe, or OpenRouter**.
+No separate Python, Bun, or ripgrep installation is required to use `jg`.
+
+Provider selection requires **0.3.0 or newer**. Upgrade an older installation with
+`npm install --global @dzhng/jevgrep@latest`.
+
+## Install the agent skill — required for agent setup
+
+Installing the CLI alone does not teach your coding agent to use it. **Install
+the skill as well**, from the project where your agent works:
+
+```sh
+jg skill
+```
+
+The installer detects your coding agents (Claude Code, Codex, OpenCode and
+others) and asks where to install. Add `--global` for a user-wide install, or
+`--yes` for unattended installation. The
+skill teaches the agent when to call `jg`, how to use
+returned context, and when to fill gaps with its normal tools. It skips redundant
+retrieval when the needed context is already known. The current repository skill
+checks for `jg` and installs the CLI if it is missing; authentication still needs
+your selected provider’s key. The skill installer itself does not configure credentials.
+
+`jg skill` delegates to the skills CLI
+and needs npm/npx plus network access. You can also run that installer directly,
+without the CLI installed:
+
+```sh
+npx skills add dzhng/jevgrep --skill jevgrep
+```
+
+In 0.1.0, `jg skill` only prints the bundled skill; use `npx skills` with that version.
+
+### Upgrade
+
+There is currently no `jg upgrade` command. Upgrade the CLI with npm:
+
+```sh
+npm install -g @dzhng/jevgrep@latest
+jg --version
+```
+
+Update the installed skill separately by rerunning `jg skill`. Updating the npm package does not
+overwrite skill files in your projects. See the package guide
+for authentication details.
+
+## Start with a question, leave with source
+
+Use `jg` when you know the behavior you need to understand but not where it lives:
+
+```sh
+jg "Where is authentication checked before a request reaches a handler?" .
+jg "How are database connections created, pooled, and closed?" ./src
+jg "Which tests cover retry behavior when a request times out?" .
+```
+
+Jevgrep explores the repository hierarchy and follows qualifying branches. It
+selects files using content previews, then identifies useful source units and
+surrounding context. It keeps qualifying file locations even when it cannot
+confidently return an excerpt; it does not force every search into a fixed top-two
+list.
+
+The summary comes first, followed by file locations, reading leads, and selected
+source with line references. Python and TypeScript/JavaScript support declaration
+parsing; other text uses a fallback. The output is evidence for the agent to use,
+not a generated answer or a guarantee that every relevant file was found.
+See a recorded output example.
+
+When you already know an exact symbol or path, a direct read or `rg` search may be
+all you need. Jevgrep is most useful for questions that span unfamiliar files.
+
+## What we measured
+
+*图片：Jevgrep workflow and benchmark: 40% lower Sol task cost in one ten-task SWE-bench repeat, with 7/10 solves versus 8/10 baseline. Jev cost excluded.*
+
+**About 40% lower coding-agent cost in one ten-task SWE-bench repeat.** Full Sol
+cost fell from **$7.62 to $4.52**, including failed tasks and excluding Jev costs.
+Solve rate was **7/10 with `jg`, versus 8/10 for the saved baseline**. This is a cost
+reduction with a quality tradeoff, not evidence of equal or better solve quality.
+
+The earlier run of the same corrected runtime solved 6/10 at $5.54. Both runs
+remain separate; baselines were run once and reused, and outcomes were never
+pooled. Both failed the original quality gate. The sample is a tuned Python
+subset evaluated with Sol, so it does not establish general savings, faster
+execution, or results for other coding agents.
+
+The full results and paired trace analysis
+include exact costs, failed tasks, and separately observed Jev charges. See the
+evaluation guide for methodology.
+
+## Source, credentials, and local state
+
+Searches send eligible source content to Jev through the provider selected during auth. Default
+filesystem filtering respects ignore files and excludes hidden, dependency/build,
+binary, and obvious credential files. These filters are not a guarantee that all
+sensitive information has been removed; choose a search root you intend to send.
+
+`jg auth` asks for your provider, then saves its key in an owner-only config file.
+Re-running auth replaces that setup; searches always use the saved provider.
+`jg doctor` checks it with synthetic input. Existing saved keys without a provider
+remain Vercel keys. Environment-based credentials and endpoint overrides are not
+used; run `jg auth` if you previously relied on them.
+Evaluation answers are cached locally by default. The CLI writes its output to
+stdout and does not create report files. Use `jg --help` for cache controls,
+search overrides, and incomplete-result behavior.
+
+## Development
+
+The repository uses TypeScript, Bun workspaces, and Turborepo. From a checkout:
+
+```sh
+bun install --frozen-lockfile
+bun run dev --help
+bun run verify
+```
+
+Verification includes Docker tests of the installed Node-only package. For the
+reasoning behind retrieval, parsing, caching, and failure handling, start with the
+architecture and implementation record.
+Release guidance covers tag-triggered npm publication and
+verification of the exact public package.
+
+MIT. Artwork and generation prompts.

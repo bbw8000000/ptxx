@@ -1,0 +1,213 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="颜色转换器" description="在线 HEX / RGB / HSL 颜色转换工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">颜色转换器</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">HEX / RGB / HSL 互转</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">
+            颜色选择
+          </label>
+          <input
+            type="color"
+            id="picker"
+            value="#c23a2b"
+            class="w-full h-12 rounded-xl cursor-pointer"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">HEX</label>
+          <input
+            type="text"
+            id="hex"
+            value="#c23a2b"
+            class="w-full bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">RGB</label>
+          <input
+            type="text"
+            id="rgb"
+            value="rgb(194, 58, 43)"
+            class="w-full bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">HSL</label>
+          <input
+            type="text"
+            id="hsl"
+            value="hsl(6, 64%, 46%)"
+            class="w-full bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          />
+        </div>
+      </div>
+
+      <div>
+        <div
+          id="preview"
+          class="w-full h-48 rounded-xl border border-border/40 dark:border-dark-border/40 mb-6 shadow-lg shadow-black/10 dark:shadow-black/30"
+          style="background: #c23a2b"
+        ></div>
+        <div class="flex gap-4">
+          <div class="flex-1 text-center p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt shadow-sm">
+            <p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">浅色背景</p>
+            <div
+              class="h-10 rounded-lg flex items-center justify-center"
+              style="background: #f7f3ee; color: #c23a2b; font-weight: bold;"
+            >
+              Aa
+            </div>
+          </div>
+          <div class="flex-1 text-center p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt shadow-sm">
+            <p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">深色背景</p>
+            <div
+              class="h-10 rounded-lg flex items-center justify-center"
+              style="background: #1a1a1e; color: #c23a2b; font-weight: bold;"
+            >
+              Aa
+            </div>
+          </div>
+        </div>
+        <p id="error" class="mt-3 text-xs text-red-500 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    const picker = document.getElementById('picker')
+    const hex = document.getElementById('hex')
+    const rgb = document.getElementById('rgb')
+    const hsl = document.getElementById('hsl')
+    const preview = document.getElementById('preview')
+    const errorEl = document.getElementById('error')
+
+    function showError(msg) {
+      errorEl.textContent = msg
+      errorEl.classList.remove('hidden')
+    }
+    function hideError() {
+      errorEl.classList.add('hidden')
+    }
+
+    function hexToRgb(h) {
+      h = h.replace('#', '')
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]
+      const n = parseInt(h, 16)
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255
+      g /= 255
+      b /= 255
+      const max = Math.max(r, g, b),
+        min = Math.min(r, g, b)
+      let h,
+        s,
+        l = (max + min) / 2
+      if (max === min) {
+        h = s = 0
+      } else {
+        const d = max - min
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+        switch (max) {
+          case r:
+            h = ((g - b) / d + (g < b ? 6 : 0)) / 6
+            break
+          case g:
+            h = ((b - r) / d + 2) / 6
+            break
+          case b:
+            h = ((r - g) / d + 4) / 6
+            break
+        }
+      }
+      return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)]
+    }
+
+    function hslToRgb(h, s, l) {
+      h /= 360
+      s /= 100
+      l /= 100
+      if (s === 0) {
+        const v = Math.round(l * 255)
+        return [v, v, v]
+      }
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1
+        if (t > 1) t -= 1
+        if (t < 1 / 6) return p + (q - p) * 6 * t
+        if (t < 1 / 2) return q
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+        return p
+      }
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+      const p = 2 * l - q
+      return [
+        Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+        Math.round(hue2rgb(p, q, h) * 255),
+        Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+      ]
+    }
+
+    function updateAll(source) {
+      hideError()
+      try {
+        let r, g, b
+        if (source === 'picker' || source === 'hex') {
+          const h = source === 'picker' ? picker.value : hex.value
+          ;[r, g, b] = hexToRgb(h)
+          hex.value = '#' + h.replace('#', '')
+          picker.value = rgbToHex(r, g, b)
+        } else if (source === 'rgb') {
+          const m = rgb.value.match(/(\d+)/g)
+          if (!m || m.length < 3) return
+          ;[r, g, b] = m.map(Number)
+          hex.value = rgbToHex(r, g, b)
+          picker.value = hex.value
+        } else if (source === 'hsl') {
+          const m = hsl.value.match(/(\d+)/g)
+          if (!m || m.length < 3) return
+          ;[r, g, b] = hslToRgb(+m[0], +m[1], +m[2])
+          hex.value = rgbToHex(r, g, b)
+          picker.value = hex.value
+        }
+
+        if (source !== 'rgb') rgb.value = `rgb(${r}, ${g}, ${b})`
+        const [hh, ss, ll] = rgbToHsl(r, g, b)
+        if (source !== 'hsl') hsl.value = `hsl(${hh}, ${ss}%, ${ll}%)`
+
+        preview.style.background = hex.value
+      } catch (e) {
+        showError('颜色格式无效')
+      }
+    }
+
+    picker.addEventListener('input', () => updateAll('picker'))
+    hex.addEventListener('input', () => updateAll('hex'))
+    rgb.addEventListener('input', () => updateAll('rgb'))
+    hsl.addEventListener('input', () => updateAll('hsl'))
+  </script>
+</BaseLayout>

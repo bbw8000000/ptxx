@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 350" width="900" height="350">
+  <rect width="900" height="350" fill="#f5f0eb"/>
+  <text x="60" y="200" font-family="'Noto Serif SC', 'LXGW WenKai', serif" font-size="42" font-weight="700" fill="#2c2c2c" letter-spacing="3">成长记录 #1</text>
+  <rect x="60" y="222" width="40" height="2" rx="1" fill="#c23a2b" opacity="0.5"/>
+  <text x="60" y="262" font-family="'Noto Serif SC', serif" font-size="16" fill="#8a8275" letter-spacing="1">每一步都算数</text>
+</svg>

@@ -1,0 +1,169 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="正则测试" description="在线正则表达式测试工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">正则测试</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">在线测试正则表达式</p>
+    </div>
+
+    <div class="space-y-4">
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">
+            正则表达式
+          </label>
+          <input
+            type="text"
+            id="pattern"
+            class="w-full bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+            placeholder="(\d{4})-(\d{2})-(\d{2})"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">标志</label>
+          <input
+            type="text"
+            id="flags"
+            value="g"
+            class="w-20 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">测试文本</label>
+        <textarea
+          id="text"
+          class="w-full h-40 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-none focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入要匹配的文本..."
+        >2026-05-23 是一个好日子
+2025-01-01 也是</textarea>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium text-text dark:text-dark-text">匹配结果</label>
+          <span id="match-count" class="text-xs text-text-muted dark:text-dark-text-muted"></span>
+        </div>
+        <div
+          id="result"
+          class="w-full min-h-[120px] bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text whitespace-pre-wrap shadow-sm"
+        ></div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">捕获组</label>
+        <div id="groups" class="space-y-2"></div>
+      </div>
+    </div>
+    <p id="error" class="mt-3 text-xs text-red-500 hidden"></p>
+  </div>
+
+  <script is:inline>
+    const pattern = document.getElementById('pattern')
+    const flags = document.getElementById('flags')
+    const text = document.getElementById('text')
+    const result = document.getElementById('result')
+    const groups = document.getElementById('groups')
+    const matchCount = document.getElementById('match-count')
+    const errorEl = document.getElementById('error')
+
+    function test() {
+      errorEl.classList.add('hidden')
+      result.innerHTML = ''
+      groups.innerHTML = ''
+
+      if (!pattern.value) {
+        matchCount.textContent = ''
+        return
+      }
+
+      try {
+        const re = new RegExp(pattern.value, flags.value)
+        const str = text.value
+        let matches = []
+        let m
+
+        if (flags.value.includes('g')) {
+          while ((m = re.exec(str)) !== null) {
+            matches.push({ index: m.index, match: m[0], groups: m.slice(1) })
+            if (m[0].length === 0) re.lastIndex++
+          }
+        } else {
+          m = re.exec(str)
+          if (m) matches.push({ index: m.index, match: m[0], groups: m.slice(1) })
+        }
+
+        matchCount.textContent = `${matches.length} 个匹配`
+
+        if (matches.length === 0) {
+          result.textContent = '无匹配'
+          return
+        }
+
+        // 高亮显示
+        let html = ''
+        let lastIndex = 0
+        const allMatches = []
+        const re2 = new RegExp(
+          pattern.value,
+          flags.value.includes('g') ? flags.value : flags.value + 'g',
+        )
+        let m2
+        while ((m2 = re2.exec(str)) !== null) {
+          allMatches.push({ index: m2.index, end: m2.index + m2[0].length, match: m2[0] })
+          if (m2[0].length === 0) re2.lastIndex++
+        }
+
+        allMatches.forEach((am) => {
+          html += escapeHtml(str.slice(lastIndex, am.index))
+          html += `<mark class="bg-accent/20 dark:bg-dark-accent/20 text-accent dark:text-dark-accent px-0.5 rounded">${escapeHtml(am.match)}</mark>`
+          lastIndex = am.end
+        })
+        html += escapeHtml(str.slice(lastIndex))
+        result.innerHTML = html
+
+        // 捕获组
+        if (matches[0].groups.length > 0) {
+          matches.forEach((m, i) => {
+            const div = document.createElement('div')
+            div.className = 'p-3 bg-surface-alt dark:bg-dark-surface-alt rounded-lg'
+            div.innerHTML =
+              `<p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">匹配 ${i + 1}: "${escapeHtml(m.match)}"</p>` +
+              m.groups
+                .map(
+                  (g, j) =>
+                    `<p class="text-xs"><span class="text-text-muted dark:text-dark-text-muted">组 ${j + 1}:</span> <span class="text-accent dark:text-dark-accent">"${escapeHtml(g || '')}"</span></p>`,
+                )
+                .join('')
+            groups.appendChild(div)
+          })
+        }
+      } catch (e) {
+        errorEl.textContent = '正则错误: ' + e.message
+        errorEl.classList.remove('hidden')
+      }
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }
+
+    pattern.addEventListener('input', test)
+    flags.addEventListener('input', test)
+    text.addEventListener('input', test)
+    test()
+  </script>
+</BaseLayout>

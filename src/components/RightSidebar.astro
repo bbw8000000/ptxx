@@ -1,0 +1,72 @@
+---
+interface Props {
+  totalPosts: number
+  thisMonth: number
+  wordCount: string
+}
+
+const { totalPosts, thisMonth, wordCount } = Astro.props
+---
+
+<div class="glass-container click-wave" style="padding: 2rem;" data-click-wave>
+  <div class="sidebar-header">
+    <span class="sidebar-tag">NOW BUILDING</span>
+    <h2 class="font-display text-sm font-bold text-text">真实进度</h2>
+    <span class="sidebar-badge">Live</span>
+  </div>
+
+  <div class="sidebar-body">
+    <h3>AI 工具分享</h3>
+    <p>把真正用得上的工具、脚本和踩坑经验整理出来，给普通人也能看懂。</p>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="stat-num">{totalPosts}</span>
+        <span class="stat-label">文章</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">{thisMonth}</span>
+        <span class="stat-label">本月</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">{wordCount}</span>
+        <span class="stat-label">字数</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <span class="footer-label">CURRENT MOOD</span>
+    <p>不端着，先做出来。</p>
+  </div>
+</div>
+
+<script>
+  function initClickWave(target: HTMLElement) {
+    if (target.dataset.waveReady === 'true') return
+    target.dataset.waveReady = 'true'
+
+    target.addEventListener('click', (event: MouseEvent) => {
+      const rect = target.getBoundingClientRect()
+
+      target.style.setProperty('--wave-x', `${event.clientX - rect.left}px`)
+      target.style.setProperty('--wave-y', `${event.clientY - rect.top}px`)
+      target.classList.remove('is-waving')
+      void target.offsetWidth
+      target.classList.add('is-waving')
+    })
+
+    target.addEventListener('animationend', (event: AnimationEvent) => {
+      if (event.animationName === 'clickWave') {
+        target.classList.remove('is-waving')
+      }
+    })
+  }
+
+  function initClickWaves() {
+    document.querySelectorAll<HTMLElement>('[data-click-wave]').forEach(initClickWave)
+  }
+
+  initClickWaves()
+  document.addEventListener('astro:page-load', initClickWaves)
+</script>

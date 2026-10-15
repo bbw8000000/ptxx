@@ -1,0 +1,131 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout
+  title="内容与自动采集声明"
+  description="盘腿修仙关于 GitHub 自动采集、风险项目与外部链接的说明"
+>
+  <article class="disclaimer-page">
+    <header>
+      <p class="disclaimer-kicker">Disclaimer</p>
+      <h1>内容与自动采集声明</h1>
+      <p>本站的 GitHub 日报包含自动采集与规则筛选结果。阅读或访问相关内容前，请留意以下边界。</p>
+      <time datetime="2026-07-17">更新于 2026 年 7 月 17 日</time>
+    </header>
+
+    <section>
+      <h2>自动采集</h2>
+      <p>
+        GitHub 日报会根据 GitHub 的公开数据自动整理项目名称、描述、语言、标签和 Star
+        数量。公开数据可能延迟、变更或包含项目作者自行填写的不准确信息，本站不保证其完整性与实时性。
+      </p>
+    </section>
+
+    <section>
+      <h2>不构成安全背书</h2>
+      <p>
+        项目被收录、展示或拥有较高 Star
+        数量，不代表本站已审计其源代码，也不代表项目安全、合法、稳定或适合生产环境。安装依赖、运行脚本或提供账号凭据前，应自行检查代码、权限与发布来源。
+      </p>
+    </section>
+
+    <section>
+      <h2>风险项目隔离</h2>
+      <p>
+        自动规则识别到的外挂、破解、恶意软件及相似项目会与正常日报分开，仅保留用于安全观察的文字记录，不提供仓库或下载链接。规则可能误判，观察记录不代表对项目或作者作出最终定性。
+      </p>
+    </section>
+
+    <section>
+      <h2>外部链接</h2>
+      <p>
+        本站无法控制第三方页面后续发生的内容变化。访问 GitHub
+        或其他外部网站后产生的下载、授权、隐私和安全风险，由访问者依据对应网站规则自行判断。
+      </p>
+    </section>
+
+    <section>
+      <h2>纠错与移除</h2>
+      <p>
+        如发现项目归类错误、描述失实、内容侵权或希望申请更正，可通过{' '}
+        <a href="https://github.com/bbw8000000" target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>{' '}
+        联系站点维护者，并附上对应页面和可核验的信息。
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .disclaimer-page {
+    width: min(100% - 2.5rem, 48rem);
+    margin: 0 auto;
+    padding: 4.5rem 0 6rem;
+  }
+
+  .disclaimer-page header {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-glass);
+  }
+
+  .disclaimer-kicker {
+    margin-bottom: 1rem;
+    color: var(--color-warm);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .disclaimer-page h1 {
+    margin-bottom: 1rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .disclaimer-page header > p:not(.disclaimer-kicker),
+  .disclaimer-page section p {
+    color: var(--color-text-secondary);
+    font-family: var(--font-serif);
+    line-height: 1.9;
+  }
+
+  .disclaimer-page time {
+    display: block;
+    margin-top: 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  .disclaimer-page section {
+    padding-top: 2rem;
+  }
+
+  .disclaimer-page h2 {
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .disclaimer-page a {
+    color: var(--color-accent);
+    text-underline-offset: 0.2em;
+  }
+
+  @media (max-width: 768px) {
+    .disclaimer-page {
+      padding-top: 3rem;
+    }
+
+    .disclaimer-page h1 {
+      font-size: 2.25rem;
+    }
+  }
+</style>

@@ -1,0 +1,115 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="字数统计" description="在线字符、单词、行数统计工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">字数统计</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        实时统计字符、单词、行数
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm hover:shadow-md transition-shadow">
+        <p id="stat-chars" class="text-3xl font-bold text-accent dark:text-dark-accent font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">字符</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm hover:shadow-md transition-shadow">
+        <p
+          id="stat-chars-nospace"
+          class="text-3xl font-bold text-accent dark:text-dark-accent font-mono"
+        >
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">不含空格</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm hover:shadow-md transition-shadow">
+        <p id="stat-words" class="text-3xl font-bold text-accent dark:text-dark-accent font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">单词/词</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm hover:shadow-md transition-shadow">
+        <p id="stat-lines" class="text-3xl font-bold text-accent dark:text-dark-accent font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">行</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm">
+        <p id="stat-cn" class="text-2xl font-bold text-text dark:text-dark-text font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">中文字符</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm">
+        <p id="stat-en" class="text-2xl font-bold text-text dark:text-dark-text font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">英文字母</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm">
+        <p id="stat-num" class="text-2xl font-bold text-text dark:text-dark-text font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">数字</p>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-alt dark:bg-dark-surface-alt text-center shadow-sm">
+        <p id="stat-punct" class="text-2xl font-bold text-text dark:text-dark-text font-mono">
+          0
+        </p>
+        <p class="text-xs text-text-muted dark:text-dark-text-muted mt-1">标点符号</p>
+      </div>
+    </div>
+
+    <textarea
+      id="input"
+      class="w-full h-64 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-serif text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+      placeholder="在此输入或粘贴文本..."
+    ></textarea>
+  </div>
+
+  <script is:inline>
+    const input = document.getElementById('input')
+    const stats = {
+      chars: document.getElementById('stat-chars'),
+      charsNoSpace: document.getElementById('stat-chars-nospace'),
+      words: document.getElementById('stat-words'),
+      lines: document.getElementById('stat-lines'),
+      cn: document.getElementById('stat-cn'),
+      en: document.getElementById('stat-en'),
+      num: document.getElementById('stat-num'),
+      punct: document.getElementById('stat-punct'),
+    }
+
+    function update() {
+      const text = input.value
+      stats.chars.textContent = text.length
+      stats.charsNoSpace = text.replace(/\s/g, '').length
+      document.getElementById('stat-chars-nospace').textContent = stats.charsNoSpace
+      stats.words.textContent = text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+      stats.lines.textContent = text === '' ? 0 : text.split('\n').length
+      stats.cn.textContent = (text.match(/[一-鿿]/g) || []).length
+      stats.en.textContent = (text.match(/[a-zA-Z]/g) || []).length
+      stats.num.textContent = (text.match(/\d/g) || []).length
+      stats.punct.textContent = (text.match(/[^\w\s一-鿿]/g) || []).length
+    }
+
+    input.addEventListener('input', update)
+  </script>
+</BaseLayout>

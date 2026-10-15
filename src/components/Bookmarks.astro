@@ -1,0 +1,97 @@
+---
+// 收藏夹 — 本地收藏文章
+---
+
+<button
+  id="bookmark-btn"
+  type="button"
+  aria-pressed="false"
+  title="收藏文章"
+  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans
+         border border-border/60 dark:border-dark-border/60 rounded-lg
+         text-text-muted dark:text-dark-text-muted
+         hover:text-accent dark:hover:text-dark-accent hover:border-accent dark:hover:border-dark-accent
+         hover:shadow-md hover:shadow-accent/10 dark:hover:shadow-dark-accent/10
+         transition-all duration-300"
+>
+  <svg
+    id="bookmark-icon"
+    class="w-3.5 h-3.5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    stroke-width="2"
+  >
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+    />
+  </svg>
+  <span id="bookmark-text">收藏</span>
+</button>
+
+<script is:inline>
+  window.__refreshBookmarkButton = function () {}
+
+  window.__initBookmarkButton = function () {
+    const btn = document.getElementById('bookmark-btn')
+    const icon = document.getElementById('bookmark-icon')
+    const text = document.getElementById('bookmark-text')
+    if (!btn || !icon || !text) return
+
+    const slug = window.location.pathname.replace(/.*\/blog\//, '').replace(/\/$/, '')
+    if (!slug) return
+
+    const readBookmarks = () => {
+      try {
+        const value = JSON.parse(localStorage.getItem('bookmarks') || '[]')
+        return Array.isArray(value) ? value : []
+      } catch {
+        return []
+      }
+    }
+
+    function updateUI() {
+      const bookmarks = readBookmarks()
+      const nowBookmarked = bookmarks.includes(slug)
+      icon.setAttribute('fill', nowBookmarked ? 'currentColor' : 'none')
+      text.textContent = nowBookmarked ? '已收藏' : '收藏'
+      btn.classList.toggle('text-accent', nowBookmarked)
+      btn.classList.toggle('dark:text-dark-accent', nowBookmarked)
+      btn.setAttribute('aria-pressed', String(nowBookmarked))
+      btn.setAttribute('title', nowBookmarked ? '取消收藏' : '收藏文章')
+    }
+
+    window.__refreshBookmarkButton = updateUI
+    updateUI()
+
+    if (btn.dataset.bookmarkReady === 'true') return
+    btn.dataset.bookmarkReady = 'true'
+    btn.addEventListener('click', () => {
+      const bookmarks = readBookmarks()
+      const idx = bookmarks.indexOf(slug)
+      if (idx > -1) {
+        bookmarks.splice(idx, 1)
+      } else {
+        bookmarks.push(slug)
+      }
+      try {
+        localStorage.setItem('bookmarks', JSON.stringify(bookmarks))
+      } catch (error) {
+        // 存储被禁用或配额写满：本次会话内按钮状态仍然更新，只是不持久化。
+        console.error('Failed to save bookmarks:', error)
+      }
+      updateUI()
+      window.dispatchEvent(new CustomEvent('bookmarks:changed'))
+    })
+  }
+
+  window.__initBookmarkButton()
+  if (!window.__bookmarkButtonPageLoadReady) {
+    window.__bookmarkButtonPageLoadReady = true
+    document.addEventListener('astro:page-load', () => window.__initBookmarkButton())
+    window.addEventListener('storage', () => window.__refreshBookmarkButton())
+    window.addEventListener('bookmarks:changed', () => window.__refreshBookmarkButton())
+  }
+</script>

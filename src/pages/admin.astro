@@ -1,0 +1,704 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="管理面板" description="博客后台管理" robots="noindex, nofollow" pagefind={false}>
+  <div class="max-w-4xl mx-auto px-6 py-16">
+    <div id="admin-gate" class="text-center py-20">
+      <svg
+        class="w-16 h-16 mx-auto mb-4 text-text-muted dark:text-dark-text-muted"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+        />
+      </svg>
+      <p class="text-text-muted dark:text-dark-text-muted mb-4">请先登录</p>
+      <form id="admin-auth-form" class="mx-auto max-w-sm space-y-3 text-left" novalidate>
+        <label for="admin-auth-email" class="sr-only">
+          邮箱
+        </label>
+        <input
+          id="admin-auth-email"
+          type="email"
+          autocomplete="email"
+          placeholder="管理员邮箱"
+          required
+          class="w-full rounded-xl border border-border/40 dark:border-dark-border/40 bg-surface-alt dark:bg-dark-surface-alt px-4 py-3 text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        <label for="admin-auth-password" class="sr-only">
+          密码
+        </label>
+        <input
+          id="admin-auth-password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="密码"
+          required
+          class="w-full rounded-xl border border-border/40 dark:border-dark-border/40 bg-surface-alt dark:bg-dark-surface-alt px-4 py-3 text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        <button
+          type="submit"
+          id="admin-auth-submit"
+          class="w-full px-6 py-2.5 rounded-xl text-sm font-medium bg-accent text-white cursor-pointer transition-colors"
+        >
+          登录
+        </button>
+      </form>
+      <p
+        id="admin-auth-status"
+        class="mt-4 text-sm text-red-500 hidden"
+        role="status"
+        aria-live="polite"
+      ></p>
+    </div>
+
+    <div id="admin-no-access" class="hidden text-center py-20">
+      <p class="text-red-500">无权限访问。请使用管理员账号登录。</p>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="font-display text-2xl font-bold text-text dark:text-dark-text">管理面板</h1>
+        <span id="admin-user-info" class="text-sm text-text-muted dark:text-dark-text-muted"></span>
+      </div>
+
+      <!-- 统计 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 text-center">
+          <p id="stat-total" class="text-2xl font-bold text-text dark:text-dark-text">
+            -
+          </p>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted">全部评论</p>
+        </div>
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 text-center">
+          <p id="stat-pending" class="text-2xl font-bold text-amber-500">
+            -
+          </p>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted">待审核</p>
+        </div>
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 text-center">
+          <p id="stat-approved" class="text-2xl font-bold text-green-500">
+            -
+          </p>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted">已通过</p>
+        </div>
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 text-center">
+          <p id="stat-rejected" class="text-2xl font-bold text-red-500">
+            -
+          </p>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted">已拒绝</p>
+        </div>
+      </div>
+
+      <!-- 筛选 -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button
+          data-filter="all"
+          class="filter-btn px-4 py-2 text-sm rounded-lg bg-accent text-white"
+        >
+          全部
+        </button>
+        <button
+          data-filter="pending"
+          class="filter-btn px-4 py-2 text-sm rounded-lg bg-surface-alt dark:bg-dark-surface-alt text-text dark:text-dark-text"
+        >
+          待审核
+        </button>
+        <button
+          data-filter="approved"
+          class="filter-btn px-4 py-2 text-sm rounded-lg bg-surface-alt dark:bg-dark-surface-alt text-text dark:text-dark-text"
+        >
+          已通过
+        </button>
+        <button
+          data-filter="rejected"
+          class="filter-btn px-4 py-2 text-sm rounded-lg bg-surface-alt dark:bg-dark-surface-alt text-text dark:text-dark-text"
+        >
+          已拒绝
+        </button>
+      </div>
+      <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] mb-6">
+        <label class="sr-only" for="admin-comment-search">
+          搜索评论
+        </label>
+        <input
+          id="admin-comment-search"
+          type="search"
+          placeholder="搜索作者、页面或评论内容"
+          class="w-full min-h-11 px-4 py-2.5 rounded-lg border border-border/60 dark:border-dark-border/60 bg-surface-alt dark:bg-dark-surface-alt text-text dark:text-dark-text focus:outline-none focus:border-accent"
+        />
+        <div class="flex flex-wrap gap-2">
+          <button
+            id="admin-select-page"
+            type="button"
+            class="px-3 py-2 text-sm rounded-lg border border-border/60 dark:border-dark-border/60 text-text dark:text-dark-text"
+          >
+            选择本页
+          </button>
+          <button
+            id="admin-batch-approve"
+            type="button"
+            disabled
+            class="px-3 py-2 text-sm rounded-lg bg-green-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            批量通过
+          </button>
+          <button
+            id="admin-batch-reject"
+            type="button"
+            disabled
+            class="px-3 py-2 text-sm rounded-lg bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            批量拒绝
+          </button>
+        </div>
+      </div>
+
+      <!-- 评论列表 -->
+      <div id="admin-comments" class="space-y-4"></div>
+      <div id="admin-pagination" class="hidden items-center justify-center gap-3 mt-6">
+        <button
+          id="admin-page-prev"
+          type="button"
+          class="min-h-11 px-3 py-2 text-sm rounded-lg border border-border/60 dark:border-dark-border/60 text-text dark:text-dark-text disabled:opacity-40"
+          aria-label="上一页"
+        >
+          上一页
+        </button>
+        <span
+          id="admin-page-info"
+          class="text-sm text-text-muted dark:text-dark-text-muted"
+          aria-live="polite"
+        ></span>
+        <button
+          id="admin-page-next"
+          type="button"
+          class="min-h-11 px-3 py-2 text-sm rounded-lg border border-border/60 dark:border-dark-border/60 text-text dark:text-dark-text disabled:opacity-40"
+          aria-label="下一页"
+        >
+          下一页
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .admin-comment {
+      background: var(--color-surface-alt);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+    :root.dark .admin-comment {
+      background: var(--color-dark-surface-alt);
+    }
+    .admin-comment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .admin-comment-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .admin-comment-avatar {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .admin-comment-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .admin-comment-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--color-text);
+    }
+    :root.dark .admin-comment-name {
+      color: var(--color-dark-text);
+    }
+    .admin-comment-page {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    :root.dark .admin-comment-page {
+      color: var(--color-dark-text-muted);
+    }
+    .admin-comment-time {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    .admin-comment-body {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--color-text);
+      margin-bottom: 0.75rem;
+    }
+    :root.dark .admin-comment-body {
+      color: var(--color-dark-text);
+    }
+    .admin-comment-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .admin-comment-actions button {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .admin-comment-actions button:hover {
+      opacity: 0.8;
+    }
+    .btn-approve {
+      background: #22c55e;
+      color: white;
+    }
+    .btn-reject {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-delete {
+      background: transparent;
+      color: #ef4444;
+      border: 1px solid #ef4444;
+    }
+    .status-badge {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+    .status-approved {
+      background: #22c55e20;
+      color: #22c55e;
+    }
+    .status-pending {
+      background: #f59e0b20;
+      color: #f59e0b;
+    }
+    .status-rejected {
+      background: #ef444420;
+      color: #ef4444;
+    }
+  </style>
+</BaseLayout>
+
+<script>
+  import {
+    isFirebaseConfigured,
+    onAuth,
+    login,
+    adminListComments,
+    adminSetStatus,
+    deleteComment,
+    type AdminCommentCounts,
+    type Comment,
+    type CommentStatus,
+  } from '../lib/api'
+  import { escapeHtml, safeImageUrl } from '../lib/dom'
+
+  declare global {
+    interface Window {
+      __adminCleanup?: () => void
+    }
+  }
+
+  // 服务端分页：只保留当前页数据，筛选与搜索都交给 SQL。
+  // 原实现一次取回最多 500 条、在浏览器里过滤，超过 500 条时四个统计卡和
+  // 搜索结果都会静默失真。
+  let pageItems: (Comment & { id: string })[] = []
+  let currentFilter: 'all' | CommentStatus = 'all'
+  let currentPage = 1
+  let searchQuery = ''
+  let totalItems = 0
+  let searchTimer = 0
+  let counts: AdminCommentCounts = { all: 0, approved: 0, pending: 0, rejected: 0 }
+  const PAGE_SIZE = 20
+  const selectedIds = new Set<string>()
+
+  function formatDate(ts: Comment['createdAt']) {
+    if (!ts) return ''
+    const d = ts.toDate()
+    return d.toLocaleString('zh-CN', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  // 统计来自服务端的全表计数，不再由「当前取回的那一批」推算。
+  function renderStats(next: AdminCommentCounts) {
+    const el = (id: string) => document.getElementById(id)
+    if (el('stat-total')) el('stat-total')!.textContent = String(next.all)
+    if (el('stat-pending')) el('stat-pending')!.textContent = String(next.pending)
+    if (el('stat-approved')) el('stat-approved')!.textContent = String(next.approved)
+    if (el('stat-rejected')) el('stat-rejected')!.textContent = String(next.rejected)
+  }
+
+  function updateAdminControls(
+    pageItems: (Comment & { id: string })[],
+    totalItems: number,
+    totalPages: number,
+  ) {
+    const pagination = document.getElementById('admin-pagination')
+    const pageInfo = document.getElementById('admin-page-info')
+    const prev = document.getElementById('admin-page-prev') as HTMLButtonElement | null
+    const next = document.getElementById('admin-page-next') as HTMLButtonElement | null
+    const selectPage = document.getElementById('admin-select-page') as HTMLButtonElement | null
+    const approve = document.getElementById('admin-batch-approve') as HTMLButtonElement | null
+    const reject = document.getElementById('admin-batch-reject') as HTMLButtonElement | null
+    const showPagination = totalItems > PAGE_SIZE
+    pagination?.classList.toggle('hidden', !showPagination)
+    pagination?.classList.toggle('flex', showPagination)
+    if (pageInfo) pageInfo.textContent = '第 ' + currentPage + ' / ' + totalPages + ' 页'
+    if (prev) prev.disabled = currentPage <= 1
+    if (next) next.disabled = currentPage >= totalPages
+    const selectedCount = selectedIds.size
+    if (approve) {
+      approve.disabled = selectedCount === 0
+      approve.textContent = selectedCount ? '批量通过 (' + selectedCount + ')' : '批量通过'
+    }
+    if (reject) {
+      reject.disabled = selectedCount === 0
+      reject.textContent = selectedCount ? '批量拒绝 (' + selectedCount + ')' : '批量拒绝'
+    }
+    if (selectPage) {
+      const allSelected =
+        pageItems.length > 0 && pageItems.every((comment) => selectedIds.has(comment.id))
+      selectPage.textContent = allSelected ? '取消选择' : '选择本页'
+    }
+  }
+
+  async function batchReview(status: 'approved' | 'rejected') {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    try {
+      await Promise.all(ids.map((id) => adminSetStatus(id, status)))
+      selectedIds.clear()
+      await loadComments()
+    } catch (error) {
+      console.error('Batch review failed:', error)
+      alert('批量操作失败，请重试')
+    }
+  }
+
+  function renderComments() {
+    const container = document.getElementById('admin-comments')
+    if (!container) return
+
+    // pageItems 已经是服务端返回的当前页，浏览器里不再切片。
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
+    updateAdminControls(pageItems, totalItems, totalPages)
+
+    if (pageItems.length === 0) {
+      container.innerHTML =
+        '<p class="text-center text-text-muted dark:text-dark-text-muted py-8">暂无评论</p>'
+      return
+    }
+
+    container.innerHTML = pageItems
+      .map((c) => {
+        const displayName = String(c.displayName || '匿名')
+        const photoURL = safeImageUrl(c.photoURL)
+        const safeId = escapeHtml(c.id)
+        const checked = selectedIds.has(c.id) ? ' checked' : ''
+        const avatarHtml = photoURL
+          ? `<img src="${escapeHtml(photoURL)}" alt="" referrerpolicy="no-referrer" />`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--color-accent);color:white;font-size:0.7rem;font-weight:600">${escapeHtml(displayName).charAt(0).toUpperCase()}</div>`
+        const [statusClass, statusText] =
+          c.status === 'approved'
+            ? ['status-approved', '已通过']
+            : c.status === 'pending'
+              ? ['status-pending', '待审核']
+              : ['status-rejected', '已拒绝']
+        return `
+        <div class="admin-comment">
+          <div class="admin-comment-header">
+            <div class="admin-comment-meta">
+              <input class="admin-comment-select" type="checkbox" data-id="${safeId}" aria-label="选择 ${escapeHtml(displayName)} 的评论"${checked} />
+              <div class="admin-comment-avatar">${avatarHtml}</div>
+              <span class="admin-comment-name">${escapeHtml(displayName)}</span>
+              <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <span class="admin-comment-time">${escapeHtml(formatDate(c.createdAt))}</span>
+          </div>
+          <p class="admin-comment-page">页面: ${escapeHtml(c.pageId)}</p>
+          <div class="admin-comment-body">${escapeHtml(c.content).replace(/\n/g, '<br>')}</div>
+          <div class="admin-comment-actions">
+            ${c.status !== 'approved' ? `<button class="btn-approve" data-id="${safeId}" data-action="approve">通过</button>` : ''}
+            ${c.status !== 'rejected' ? `<button class="btn-reject" data-id="${safeId}" data-action="reject">拒绝</button>` : ''}
+            <button class="btn-delete" data-id="${safeId}" data-action="delete">删除</button>
+          </div>
+        </div>
+      `
+      })
+      .join('')
+
+    // 按钮事件
+    container.querySelectorAll('button[data-action]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id')!
+        const action = btn.getAttribute('data-action')!
+        if (action === 'delete' && !confirm('确定删除？')) return
+        try {
+          if (action === 'approve') await adminSetStatus(id, 'approved')
+          else if (action === 'reject') await adminSetStatus(id, 'rejected')
+          else if (action === 'delete') await deleteComment(id)
+          selectedIds.delete(id)
+          await loadComments()
+        } catch (e) {
+          console.error(e)
+          alert('操作失败')
+        }
+      })
+    })
+    container.querySelectorAll<HTMLInputElement>('.admin-comment-select').forEach((input) => {
+      input.addEventListener('change', () => {
+        const id = input.getAttribute('data-id')
+        if (!id) return
+        if (input.checked) selectedIds.add(id)
+        else selectedIds.delete(id)
+        updateAdminControls(pageItems, totalItems, totalPages)
+      })
+    })
+  }
+
+  async function loadComments() {
+    const container = document.getElementById('admin-comments')
+    if (container) {
+      container.innerHTML =
+        '<p class="text-center text-text-muted dark:text-dark-text-muted py-8" role="status">正在加载评论…</p>'
+    }
+    try {
+      const page = await adminListComments({
+        status: currentFilter === 'all' ? undefined : currentFilter,
+        q: searchQuery.trim() || undefined,
+        limit: PAGE_SIZE,
+        offset: (currentPage - 1) * PAGE_SIZE,
+      })
+
+      // 删掉本页最后一条后，offset 可能越过末尾：回退一页重新取。
+      if (page.comments.length === 0 && currentPage > 1 && page.total > 0) {
+        currentPage -= 1
+        await loadComments()
+        return
+      }
+
+      pageItems = page.comments
+      totalItems = page.total
+      if (!page.serverPaginated) {
+        // 旧版 API（站点与 API 分开部署，可能还没跟上）会忽略 limit / offset / q，
+        // 一次返回最多 500 条。退回浏览器内分页，避免把全部评论铺在一页上。
+        // 该状态下搜索不生效（服务端没实现），但分页与状态筛选仍可用。
+        const start = (currentPage - 1) * PAGE_SIZE
+        pageItems = page.comments.slice(start, start + PAGE_SIZE)
+      }
+      counts = page.counts
+      renderStats(counts)
+      renderComments()
+    } catch (error) {
+      console.error('Failed to load admin comments:', error)
+      if (container) {
+        container.innerHTML =
+          '<div class="text-center text-text-muted dark:text-dark-text-muted py-8" role="alert"><p>评论加载失败，请重试。</p><button id="admin-comments-retry" type="button" class="mt-3 px-4 py-2 text-sm rounded-lg bg-accent text-white">重新加载</button></div>'
+        document
+          .getElementById('admin-comments-retry')
+          ?.addEventListener('click', () => loadComments(), { once: true })
+      }
+    }
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    window.__adminCleanup?.()
+    const controller = new AbortController()
+    let authUnsubscribe: (() => void) | null = null
+    currentPage = 1
+    searchQuery = ''
+    selectedIds.clear()
+    const gate = document.getElementById('admin-gate')
+    const noAccess = document.getElementById('admin-no-access')
+    const panel = document.getElementById('admin-panel')
+    const userInfo = document.getElementById('admin-user-info')
+    const authForm = document.getElementById('admin-auth-form') as HTMLFormElement | null
+    const authEmail = document.getElementById('admin-auth-email') as HTMLInputElement | null
+    const authPassword = document.getElementById('admin-auth-password') as HTMLInputElement | null
+    const authSubmit = document.getElementById('admin-auth-submit')
+    const authStatus = document.getElementById('admin-auth-status')
+    const searchInput = document.getElementById('admin-comment-search') as HTMLInputElement | null
+    const selectPage = document.getElementById('admin-select-page') as HTMLButtonElement | null
+    const batchApprove = document.getElementById('admin-batch-approve') as HTMLButtonElement | null
+    const batchReject = document.getElementById('admin-batch-reject') as HTMLButtonElement | null
+    const prevPage = document.getElementById('admin-page-prev') as HTMLButtonElement | null
+    const nextPage = document.getElementById('admin-page-next') as HTMLButtonElement | null
+
+    if (!gate || !panel) return
+
+    const setAuthStatus = (message: string) => {
+      if (!authStatus) return
+      authStatus.textContent = message
+      authStatus.classList.toggle('hidden', !message)
+    }
+    if (!isFirebaseConfigured) {
+      setAuthStatus('评论后台尚未配置 API 地址（PUBLIC_API_BASE）。')
+      authSubmit?.setAttribute('disabled', '')
+      return
+    }
+
+    authForm?.addEventListener(
+      'submit',
+      async (event) => {
+        event.preventDefault()
+        const email = authEmail?.value.trim() || ''
+        const password = authPassword?.value || ''
+        if (!email || !password) {
+          setAuthStatus('请填写邮箱和密码')
+          return
+        }
+        if (authSubmit) {
+          authSubmit.setAttribute('disabled', 'disabled')
+          authSubmit.textContent = '登录中...'
+        }
+        try {
+          setAuthStatus('')
+          await login(email, password)
+        } catch (error) {
+          setAuthStatus(error instanceof Error ? error.message : '登录失败，请重试')
+        } finally {
+          if (authSubmit) {
+            authSubmit.removeAttribute('disabled')
+            authSubmit.textContent = '登录'
+          }
+        }
+      },
+      { signal: controller.signal },
+    )
+
+    // 筛选按钮
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener(
+        'click',
+        () => {
+          const next = btn.getAttribute('data-filter') || 'all'
+          currentFilter =
+            next === 'approved' || next === 'pending' || next === 'rejected' ? next : 'all'
+          currentPage = 1
+          selectedIds.clear()
+          document.querySelectorAll('.filter-btn').forEach((b) => {
+            b.classList.remove('bg-accent', 'text-white')
+            b.classList.add(
+              'bg-surface-alt',
+              'dark:bg-dark-surface-alt',
+              'text-text',
+              'dark:text-dark-text',
+            )
+          })
+          btn.classList.remove(
+            'bg-surface-alt',
+            'dark:bg-dark-surface-alt',
+            'text-text',
+            'dark:text-dark-text',
+          )
+          btn.classList.add('bg-accent', 'text-white')
+          void loadComments()
+        },
+        { signal: controller.signal },
+      )
+    })
+
+    // 搜索改为服务端查询，输入时防抖，避免每敲一个字就打一次接口。
+    searchInput?.addEventListener(
+      'input',
+      () => {
+        searchQuery = searchInput.value
+        currentPage = 1
+        selectedIds.clear()
+        window.clearTimeout(searchTimer)
+        searchTimer = window.setTimeout(() => {
+          void loadComments()
+        }, 300)
+      },
+      { signal: controller.signal },
+    )
+    prevPage?.addEventListener(
+      'click',
+      () => {
+        currentPage = Math.max(1, currentPage - 1)
+        selectedIds.clear()
+        void loadComments()
+      },
+      { signal: controller.signal },
+    )
+    nextPage?.addEventListener(
+      'click',
+      () => {
+        currentPage += 1
+        selectedIds.clear()
+        void loadComments()
+      },
+      { signal: controller.signal },
+    )
+    selectPage?.addEventListener(
+      'click',
+      () => {
+        // pageItems 就是当前页
+        const allSelected =
+          pageItems.length > 0 && pageItems.every((comment) => selectedIds.has(comment.id))
+        pageItems.forEach((comment) =>
+          allSelected ? selectedIds.delete(comment.id) : selectedIds.add(comment.id),
+        )
+        renderComments()
+      },
+      { signal: controller.signal },
+    )
+    batchApprove?.addEventListener('click', () => batchReview('approved'), {
+      signal: controller.signal,
+    })
+    batchReject?.addEventListener('click', () => batchReview('rejected'), {
+      signal: controller.signal,
+    })
+
+    authUnsubscribe = onAuth(async (user) => {
+      if (!user) {
+        gate.classList.remove('hidden')
+        noAccess?.classList.add('hidden')
+        panel.classList.add('hidden')
+        return
+      }
+
+      if (!user.isAdmin) {
+        gate.classList.add('hidden')
+        noAccess?.classList.remove('hidden')
+        panel.classList.add('hidden')
+        return
+      }
+
+      gate.classList.add('hidden')
+      noAccess?.classList.add('hidden')
+      panel.classList.remove('hidden')
+      if (userInfo) userInfo.textContent = `管理员: ${user.displayName || user.email}`
+
+      await loadComments()
+    })
+    window.__adminCleanup = () => {
+      controller.abort()
+      window.clearTimeout(searchTimer)
+      authUnsubscribe?.()
+      authUnsubscribe = null
+    }
+  })
+  document.addEventListener('astro:before-swap', () => window.__adminCleanup?.(), { once: true })
+</script>

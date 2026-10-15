@@ -1,0 +1,648 @@
+---
+import BaseLayout from './BaseLayout.astro'
+import TagCloud from '../components/TagCloud.astro'
+import Comment from '../components/Comment.astro'
+import PostNav from '../components/PostNav.astro'
+import RelatedPosts from '../components/RelatedPosts.astro'
+import ShareLike from '../components/ShareLike.astro'
+import PostStamp from '../components/PostStamp.astro'
+import ImageLightbox from '../components/ImageLightbox.astro'
+import FocusMode from '../components/FocusMode.astro'
+import CopyLink from '../components/CopyLink.astro'
+import AuthorCard from '../components/AuthorCard.astro'
+import Bookmarks from '../components/Bookmarks.astro'
+import FontSizeControl from '../components/FontSizeControl.astro'
+import SeriesNav from '../components/SeriesNav.astro'
+import PostAISummary from '../components/PostAISummary.astro'
+import { formatWordCount } from '../utils/readingTime'
+import { serializeJsonForScript } from '../utils/safeJson'
+import { getCollection } from 'astro:content'
+
+declare global {
+  interface Window {
+    __initPostPreviews?: () => void
+    __postPreviewController?: AbortController | null
+    __postPreviewPageLoadReady?: boolean
+    __initPostToc?: () => void
+    __postTocObserver?: IntersectionObserver | null
+    __postTocPageLoadReady?: boolean
+  }
+}
+
+interface SeriesItem {
+  title: string
+  slug: string
+  part: number
+}
+
+interface Props {
+  title: string
+  description: string
+  pubDate: Date
+  updatedDate?: Date
+  heroImage?: string
+  tags: string[]
+  category: string
+  readingTime?: number
+  wordCount?: number
+  prev?: { title: string; slug: string } | null
+  next?: { title: string; slug: string } | null
+  slug?: string
+  seriesData?: { name: string; items: SeriesItem[]; currentSlug: string } | null
+  body?: string
+  noindex?: boolean
+}
+
+const {
+  title,
+  description,
+  pubDate,
+  updatedDate,
+  heroImage,
+  tags,
+  category,
+  readingTime,
+  wordCount,
+  prev = null,
+  next = null,
+  slug = '',
+  seriesData = null,
+  body = '',
+  noindex = false,
+} = Astro.props
+const isRiskReport = noindex && category === '风险观察'
+const articleURL = new URL(Astro.url.pathname, Astro.site).toString()
+const articleImageURL = heroImage
+  ? new URL(`${import.meta.env.BASE_URL}${heroImage.replace(/^\//, '')}`, Astro.site).toString()
+  : undefined
+
+// 所有文章数据，用于内链预览
+const allPostsForPreview = isRiskReport
+  ? []
+  : await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const previewPosts = allPostsForPreview.map((p) => ({
+  slug: p.id,
+  title: p.data.title,
+  description: p.data.description,
+}))
+const articleStructuredData = serializeJsonForScript({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description: description,
+  datePublished: pubDate.toISOString(),
+  ...(updatedDate ? { dateModified: updatedDate.toISOString() } : {}),
+  author: { '@type': 'Person', name: '又逢雨季' },
+  url: articleURL,
+  ...(articleImageURL ? { image: articleImageURL } : {}),
+  keywords: tags.join(', '),
+})
+const previewPostsJson = serializeJsonForScript(previewPosts)
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  image={heroImage}
+  robots={noindex ? 'noindex, nofollow' : 'index, follow'}
+  pagefind={!noindex}
+  ogType="article"
+>
+  <Fragment slot="head">
+    <meta property="article:published_time" content={pubDate.toISOString()} />
+    {updatedDate && <meta property="article:modified_time" content={updatedDate.toISOString()} />}
+    <meta property="article:author" content="又逢雨季" />
+    {tags.map((tag) => (
+      <meta property="article:tag" content={tag} />
+    ))}
+    <meta name="keywords" content={tags.join(', ')} />
+    {heroImage && (
+      <meta
+        name="twitter:image"
+        content={new URL(`${import.meta.env.BASE_URL}${heroImage.replace(/^\//, '')}`, Astro.site)}
+      />
+    )}
+    <script is:inline type="application/ld+json" set:html={articleStructuredData}></script>
+  </Fragment>
+  <article class="post-article max-w-[46rem] mx-auto px-6 pt-12 pb-10">
+    <!-- Header: centered typography -->
+    <header class="post-header text-center mb-8">
+      {noindex ? (
+        <span class="reveal-target inline-block text-[11px] tracking-[0.35em] uppercase text-text-muted mb-6 font-sans">
+          {category}
+        </span>
+      ) : (
+        <a
+          href={`${import.meta.env.BASE_URL}category/${encodeURIComponent(category)}/`}
+          class="reveal-target inline-block text-[11px] tracking-[0.35em] uppercase text-text-muted hover:text-accent transition-colors mb-6 font-sans"
+        >
+          {category}
+        </a>
+      )}
+
+      <h1
+        class="post-transition-title text-[2.5rem] md:text-5xl font-bold leading-tight mb-4 text-text"
+        style="font-family: var(--font-display); letter-spacing: 0.04em; view-transition-name: post-title;"
+      >
+        {title}
+      </h1>
+
+      {description && (
+        <p
+          class="reveal-target text-base text-text-secondary mb-5 leading-relaxed"
+          style="font-family: var(--font-serif);"
+        >
+          {description}
+        </p>
+      )}
+
+      <div
+        class="reveal-target flex items-center justify-center gap-3 text-xs text-text-muted flex-wrap"
+        style="letter-spacing: 0.05em;"
+      >
+        <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+        {wordCount && <span>· {formatWordCount(wordCount)} 字</span>}
+        {readingTime && <span>· 约 {readingTime} 分钟阅读</span>}
+        {updatedDate && <span>· 更新于 {formatDate(updatedDate)}</span>}
+      </div>
+
+      <div class="flex items-center justify-center gap-2 mt-4">
+        {!isRiskReport && <CopyLink />}
+        {!isRiskReport && <Bookmarks />}
+        <FontSizeControl />
+      </div>
+    </header>
+
+    <!-- Series Navigation -->
+    {!isRiskReport && seriesData && (
+      <SeriesNav
+        seriesName={seriesData.name}
+        items={seriesData.items}
+        currentSlug={seriesData.currentSlug}
+      />
+    )}
+
+    <!-- Content with TOC -->
+    <div class="flex gap-10">
+      <div class="prose flex-1 min-w-0">
+        <slot />
+      </div>
+
+      <!-- TOC Sidebar -->
+      <aside
+        id="toc-sidebar"
+        class="hidden xl:block w-56 shrink-0 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto"
+      >
+        <div class="post-toc-panel pl-4 relative">
+          <div class="absolute left-0 top-0 bottom-0 w-px bg-white/[0.06]"></div>
+          <div
+            id="toc-indicator"
+            class="absolute left-0 w-px h-5 bg-gradient-to-b from-accent to-accent/40 transition-all duration-300 ease-out"
+            style="top:1.5rem;opacity:0"
+          ></div>
+          <p class="text-xs font-medium text-text-muted mb-4 uppercase tracking-wider">目录</p>
+          <nav id="toc-nav" class="space-y-1.5"></nav>
+        </div>
+      </aside>
+    </div>
+
+    {!isRiskReport ? (
+      <Fragment>
+        {tags.length > 0 && (
+          <div class="mt-14 pt-8 border-t border-white/[0.05]">
+            <TagCloud tags={tags} />
+          </div>
+        )}
+
+        <div class="mt-14 pt-8 border-t border-white/[0.05]">
+          <AuthorCard />
+        </div>
+
+        <ShareLike slug={slug} title={title} />
+
+        {body && body.length > 100 && <PostAISummary content={body} slug={slug} />}
+
+        <RelatedPosts currentSlug={slug} tags={tags} />
+        <PostNav prev={prev} next={next} />
+        <PostStamp />
+
+        <script
+          is:inline
+          id="preview-data"
+          type="application/json"
+          set:html={previewPostsJson}
+        ></script>
+        <div
+          id="link-preview"
+          class="fixed z-[300] pointer-events-none opacity-0 scale-95 -translate-y-1 transition-all duration-200 ease-out"
+          style="transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1)"
+        >
+          <div class="post-link-preview bg-[#0a0f1a]/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden max-w-xs p-3.5">
+            <h4
+              id="link-preview-title"
+              class="font-display text-sm font-bold text-text leading-snug line-clamp-2"
+            ></h4>
+            <p
+              id="link-preview-desc"
+              class="text-xs text-text-muted mt-1.5 line-clamp-2 leading-relaxed font-serif"
+            ></p>
+          </div>
+        </div>
+
+        <div class="mt-10 pt-8 border-t border-white/[0.05]">
+          <Comment />
+        </div>
+      </Fragment>
+    ) : (
+      <nav
+        class="risk-report-nav mt-14 pt-6 border-t border-white/[0.08]"
+        aria-label="风险观察导航"
+      >
+        <a href={import.meta.env.BASE_URL + 'risk-watch/'}>返回风险观察</a>
+        <a href={import.meta.env.BASE_URL + 'disclaimer/'}>查看内容声明</a>
+      </nav>
+    )}
+  </article>
+
+  {!isRiskReport && <ImageLightbox />}
+  {!isRiskReport && <FocusMode />}
+
+  <script is:inline>
+    window.__initPostPreviews = function () {
+      if (window.__postPreviewController) window.__postPreviewController.abort()
+      const controller = new AbortController()
+      window.__postPreviewController = controller
+      const dataEl = document.getElementById('preview-data')
+      const preview = document.getElementById('link-preview')
+      const previewTitle = document.getElementById('link-preview-title')
+      const previewDesc = document.getElementById('link-preview-desc')
+      if (!dataEl || !preview) return
+
+      let posts = []
+      try {
+        posts = JSON.parse(dataEl.textContent || '[]')
+      } catch {
+        return
+      }
+      let hideTimer = null
+
+      controller.signal.addEventListener('abort', () => clearTimeout(hideTimer), { once: true })
+      document.querySelectorAll('.prose a').forEach((link) => {
+        const href = link.getAttribute('href') || ''
+        let slug
+        try {
+          const url = new URL(href, location.href)
+          if (url.origin !== location.origin) return
+          const segments = url.pathname.split('/').filter(Boolean)
+          if (segments.length < 2 || segments.at(-2) !== 'blog') return
+          slug = decodeURIComponent(segments.at(-1))
+        } catch {
+          return
+        }
+        const post = posts.find((p) => p.slug === slug)
+        if (!post) return
+
+        link.addEventListener(
+          'mouseenter',
+          () => {
+            clearTimeout(hideTimer)
+            previewTitle.textContent = post.title
+            previewDesc.textContent = post.description || ''
+
+            const rect = link.getBoundingClientRect()
+            let left = rect.left
+            const pw = 320
+            if (left + pw > window.innerWidth - 16) left = window.innerWidth - pw - 16
+            if (left < 8) left = 8
+
+            preview.style.left = left + 'px'
+            preview.style.top = rect.bottom + 8 + 'px'
+            preview.classList.remove('opacity-0', 'scale-95', '-translate-y-1')
+            preview.classList.add('opacity-100', 'scale-100', 'translate-y-0')
+          },
+          { signal: controller.signal },
+        )
+
+        link.addEventListener(
+          'mouseleave',
+          () => {
+            hideTimer = setTimeout(() => {
+              preview.classList.remove('opacity-100', 'scale-100', 'translate-y-0')
+              preview.classList.add('opacity-0', 'scale-95', '-translate-y-1')
+            }, 150)
+          },
+          { signal: controller.signal },
+        )
+      })
+    }
+    if (!window.__postPreviewPageLoadReady) {
+      window.__postPreviewPageLoadReady = true
+      document.addEventListener('astro:page-load', () => window.__initPostPreviews())
+    }
+    document.addEventListener('astro:before-swap', () => window.__postPreviewController?.abort())
+  </script>
+  <script is:inline>
+    window.__initPostToc = function () {
+      if (window.__postTocObserver) window.__postTocObserver.disconnect()
+      const prose = document.querySelector('.prose')
+      const tocNav = document.getElementById('toc-nav')
+      const tocSidebar = document.getElementById('toc-sidebar')
+      const tocIndicator = document.getElementById('toc-indicator')
+      if (!prose || !tocNav || !tocSidebar) return
+
+      const headings = prose.querySelectorAll('h2, h3')
+      if (headings.length < 3) {
+        tocSidebar.style.display = 'none'
+        return
+      }
+
+      tocSidebar.style.display = ''
+      tocNav.innerHTML = ''
+
+      headings.forEach((h, i) => {
+        if (!h.id) h.id = 'heading-' + i
+        const a = document.createElement('a')
+        a.href = '#' + h.id
+        a.textContent = h.textContent
+        a.className =
+          'block text-xs leading-relaxed transition-colors ' +
+          (h.tagName === 'H3' ? 'pl-3 ' : '') +
+          'text-text-muted hover:text-accent'
+        a.addEventListener('click', (e) => {
+          e.preventDefault()
+          const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth'
+          h.scrollIntoView({ behavior, block: 'start' })
+        })
+        tocNav.appendChild(a)
+      })
+
+      // Highlight active heading on scroll + move indicator
+      const tocLinks = tocNav.querySelectorAll('a')
+      let activeId = ''
+
+      function updateIndicator(id) {
+        if (!tocIndicator) return
+        if (!id) {
+          tocIndicator.style.opacity = '0'
+          return
+        }
+        const link = tocNav.querySelector(`a[href="#${id}"]`)
+        if (link) {
+          tocIndicator.style.top = link.offsetTop + link.offsetHeight / 2 - 10 + 'px'
+          tocIndicator.style.opacity = '1'
+        }
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              activeId = entry.target.id
+              tocLinks.forEach((a) => {
+                const match = a.getAttribute('href') === '#' + activeId
+                a.classList.toggle('text-accent', match)
+                a.classList.toggle('font-medium', match)
+              })
+              updateIndicator(activeId)
+            }
+          })
+        },
+        { rootMargin: '-80px 0px -70% 0px' },
+      )
+
+      headings.forEach((h) => observer.observe(h))
+      window.__postTocObserver = observer
+    }
+    if (!window.__postTocPageLoadReady) {
+      window.__postTocPageLoadReady = true
+      document.addEventListener('astro:page-load', () => window.__initPostToc())
+    }
+  </script>
+  <!-- ===== Code block enhancement: copy + language label + line numbers ===== -->
+  <style>
+    .post-article {
+      position: relative;
+    }
+
+    .post-article::before {
+      content: '';
+      position: absolute;
+      top: 4rem;
+      left: 50%;
+      z-index: -1;
+      width: min(920px, 94vw);
+      height: 420px;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 10%, rgba(226, 238, 248, 0.07), transparent 48%),
+        radial-gradient(ellipse at 52% 72%, rgba(200, 142, 82, 0.045), transparent 58%);
+      filter: blur(18px);
+      transform: translateX(-50%);
+    }
+
+    .post-header {
+      position: relative;
+      padding-bottom: 2.25rem;
+      border-bottom: 1px solid rgba(226, 238, 248, 0.065);
+    }
+
+    .post-header::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -1px;
+      width: min(320px, 70vw);
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-maple-glow),
+        var(--color-ink-blue),
+        transparent
+      );
+      transform: translateX(-50%);
+      opacity: 0.56;
+    }
+
+    .post-toc-panel {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+
+    .risk-report-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+    }
+
+    .risk-report-nav a {
+      display: inline-flex;
+      min-height: 2.75rem;
+      align-items: center;
+      color: var(--color-text-muted);
+      font-size: 0.82rem;
+      text-decoration: underline;
+      text-decoration-color: var(--color-border-strong);
+      text-underline-offset: 0.3rem;
+      transition: color 180ms ease;
+    }
+
+    .risk-report-nav a:hover,
+    .risk-report-nav a:focus-visible {
+      color: var(--color-warm);
+    }
+
+    .post-link-preview {
+      background:
+        linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(6, 10, 18, 0.92)),
+        radial-gradient(ellipse at 50% 0%, rgba(226, 238, 248, 0.06), transparent 58%) !important;
+      border-color: var(--border-glass) !important;
+      box-shadow: var(--shadow-glass) !important;
+    }
+
+    .code-block-wrap {
+      position: relative;
+      margin: 1.5em 0;
+      border-radius: 0.85rem;
+      overflow: hidden;
+      border: 1px solid rgba(226, 238, 248, 0.075);
+      background: linear-gradient(145deg, rgba(6, 10, 18, 0.98), rgba(12, 18, 30, 0.95));
+      box-shadow:
+        0 18px 44px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+    .code-block-wrap::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 15%;
+      right: 15%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(226, 238, 248, 0.18),
+        rgba(200, 142, 82, 0.13),
+        transparent
+      );
+      z-index: 1;
+      pointer-events: none;
+    }
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 1rem;
+      background: rgba(6, 10, 18, 0.42);
+      border-bottom: 1px solid rgba(226, 238, 248, 0.065);
+      font-size: 0.7rem;
+      font-family: var(--font-sans);
+      user-select: none;
+    }
+    .code-block-lang {
+      color: rgba(226, 238, 248, 0.52);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .code-block-copy {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.35rem;
+      border: 1px solid rgba(226, 238, 248, 0.07);
+      background: linear-gradient(135deg, rgba(122, 149, 175, 0.1), rgba(200, 142, 82, 0.045));
+      color: rgba(226, 238, 248, 0.62);
+      font-size: 0.65rem;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .code-block-copy:hover {
+      background: rgba(226, 238, 248, 0.11);
+      color: rgba(255, 255, 255, 0.82);
+    }
+    .code-block-copy.copied {
+      background: rgba(200, 142, 82, 0.18);
+      color: rgba(255, 244, 220, 0.92);
+    }
+    .code-block-wrap pre {
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding: 1rem 1rem 1rem 3.5rem !important;
+    }
+    .code-block-wrap .line {
+      display: block;
+      position: relative;
+      padding-right: 0.5rem;
+    }
+    .code-block-wrap .line::before {
+      content: attr(data-line);
+      position: absolute;
+      left: -2.8rem;
+      width: 2.2rem;
+      text-align: right;
+      color: rgba(255, 255, 255, 0.15);
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      user-select: none;
+    }
+  </style>
+  <script is:inline>
+    document.addEventListener('astro:page-load', () => {
+      // Clean up any stale wrappers first
+      document.querySelectorAll('.code-block-wrap:not(:has(pre))').forEach((el) => el.remove())
+
+      document.querySelectorAll('pre.astro-code').forEach((pre) => {
+        if (pre.closest('.code-block-wrap')) return
+
+        const lang = pre.getAttribute('data-language') || ''
+        const wrap = document.createElement('div')
+        wrap.className = 'code-block-wrap'
+
+        const header = document.createElement('div')
+        header.className = 'code-block-header'
+        header.innerHTML = `<span class="code-block-lang">${lang || 'code'}</span>`
+
+        const btn = document.createElement('button')
+        btn.className = 'code-block-copy'
+        btn.innerHTML =
+          '<svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>复制</span>'
+        btn.addEventListener('click', async () => {
+          const code = pre.querySelector('code')
+          const text = code ? code.textContent || '' : ''
+          try {
+            await navigator.clipboard.writeText(text)
+            btn.querySelector('span').textContent = '已复制'
+            btn.classList.add('copied')
+            setTimeout(() => {
+              btn.querySelector('span').textContent = '复制'
+              btn.classList.remove('copied')
+            }, 2000)
+          } catch {
+            btn.querySelector('span').textContent = '失败'
+          }
+        })
+        header.appendChild(btn)
+
+        // Line numbers
+        pre.querySelectorAll('code .line').forEach((line, i) => {
+          line.setAttribute('data-line', String(i + 1))
+        })
+
+        // Insert wrap before pre, move pre + header inside
+        pre.parentNode?.insertBefore(wrap, pre)
+        wrap.appendChild(header)
+        wrap.appendChild(pre)
+      })
+    })
+  </script>
+</BaseLayout>

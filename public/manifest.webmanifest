@@ -1,0 +1,24 @@
+{
+  "name": "盘腿修仙",
+  "short_name": "盘腿修仙",
+  "description": "AI 工具 · 在线工具 · 成长记录",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#070A13",
+  "theme_color": "#070A13",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "apple-touch-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

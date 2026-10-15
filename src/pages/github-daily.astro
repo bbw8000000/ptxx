@@ -1,0 +1,108 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import PostCard from '../components/PostCard.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const dailyPosts = allPosts
+  .filter((post) => post.data.category === '技术日报')
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+
+const latest = dailyPosts[0]
+const earlier = dailyPosts.slice(1)
+---
+
+<BaseLayout title="GitHub 每日精选" description="每天精选 GitHub 上最火的开源项目和技术动态。">
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-20 text-white">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.15),transparent)]"></div>
+    <div class="max-w-5xl mx-auto px-6 relative">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="inline-block w-8 h-0.5 bg-indigo-400"></span>
+        <span class="text-sm font-sans tracking-widest text-indigo-400 uppercase">
+          GitHub Daily
+        </span>
+      </div>
+      <h1 class="font-display text-5xl font-bold mb-4">GitHub 每日精选</h1>
+      <p class="text-xl text-gray-300 max-w-2xl">
+        每天从 GitHub Trending 挑最值得关注的项目，AI 工具、系统编程、开源前沿，一篇看完。
+      </p>
+      <div class="flex gap-6 mt-8 text-sm text-gray-400">
+        <span>{dailyPosts.length} 期精选</span>
+        <span>·</span>
+        <span>持续更新中</span>
+      </div>
+      <a
+        href={import.meta.env.BASE_URL + 'projects/'}
+        class="mt-6 inline-flex min-h-11 items-center border-l-2 border-accent/70 pl-3 text-sm text-text-secondary transition-colors hover:text-text focus-visible:text-text"
+      >
+        进入站内项目资料库
+        <span class="ml-2" aria-hidden="true">
+          →
+        </span>
+      </a>
+      <a
+        href={import.meta.env.BASE_URL + 'risk-watch/'}
+        class="mt-6 inline-flex min-h-11 items-center border-l-2 border-amber-300/70 pl-3 text-sm text-amber-100/80 transition-colors hover:text-amber-100 focus-visible:text-amber-100"
+      >
+        外挂与高风险项目已移至独立观察区
+        <span class="ml-2" aria-hidden="true">
+          →
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 最新一期（置顶） -->
+  {latest && (
+    <section class="max-w-5xl mx-auto px-6 py-12">
+      <h2 class="text-sm font-sans tracking-widest text-indigo-600 dark:text-indigo-400 mb-6 uppercase">
+        最新一期
+      </h2>
+      <a href={`${import.meta.env.BASE_URL}blog/${latest.id}/`} class="group block">
+        <div class="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/20">
+          <time class="text-sm text-text-muted dark:text-dark-text-muted">
+            {latest.data.pubDate.toLocaleDateString('zh-CN')}
+          </time>
+          <h3 class="font-display text-2xl font-bold text-text dark:text-dark-text mt-2 mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            {latest.data.title}
+          </h3>
+          <p class="text-text-muted dark:text-dark-text-muted leading-relaxed">
+            {latest.data.description}
+          </p>
+          {latest.data.tags && (
+            <div class="flex flex-wrap gap-2 mt-4">
+              {latest.data.tags.map((tag) => (
+                <span class="px-2 py-0.5 text-xs rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </a>
+    </section>
+  )}
+
+  <!-- 往期精选 -->
+  {earlier.length > 0 && (
+    <section class="max-w-5xl mx-auto px-6 pb-20">
+      <h2 class="text-sm font-sans tracking-widest text-indigo-600 dark:text-indigo-400 mb-6 uppercase">
+        往期精选
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {earlier.map((post) => (
+          <PostCard
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            heroImage={post.data.heroImage}
+            tags={post.data.tags}
+            category={post.data.category}
+            slug={post.id}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+</BaseLayout>

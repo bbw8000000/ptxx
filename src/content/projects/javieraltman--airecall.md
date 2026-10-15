@@ -1,0 +1,139 @@
+---
+title: "javieraltman/AIrecall"
+owner: "javieraltman"
+name: "AIrecall"
+fullName: "javieraltman/AIrecall"
+description: "Drop-in long-term memory layer for AI agents - episodic + semantic memory, hybrid retrieval, and auto-summarization. Python SDK + Go memory server."
+sourceUrl: "https://github.com/javieraltman/AIrecall"
+stars: 38
+forks: 6
+language: "Go"
+topics: []
+license: "MIT"
+defaultBranch: "main"
+snapshotDate: "2026-08-28"
+pushedAt: "2026-08-27T16:22:21Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# AIrecall
+
+**A drop-in long-term memory layer for AI agents.**
+Episodic + semantic memory, hybrid retrieval, and auto-summarization — so
+your agent remembers what matters across sessions.
+
+```
+pip install airecall-sdk
+airecall init
+```
+
+| | |
+|---|---|
+| Languages | Python SDK + Go memory server |
+| Storage | SQLite + in-process vector index |
+| License | MIT |
+| Dependencies | SDK stdlib-only · server one pure-Go dep |
+
+---
+
+## Why This Exists
+
+Most agent frameworks give you a context window, not a memory. Close the
+session and everything the agent learned — user preferences, past
+decisions, corrections it was given — is gone. Stuff it all into the
+prompt instead, and you're paying for and diluting your context with old
+information, most of which is irrelevant to the current turn.
+
+AIrecall sits between your agent and a persistent store, and gives it an
+actual memory:
+
+| | | |
+|---|---|---|
+| 🧠 **Episodic memory** | What happened, in order (conversations, actions, outcomes) |
+| 📌 **Semantic memory** | Durable facts and preferences distilled out of those episodes |
+| 🔎 **Hybrid retrieval** | Keyword + vector search pulls back what matters for *this* turn |
+| 🗜️ **Auto-summarization** | Old episodes are compressed, not deleted — long-term memory stays cheap |
+
+The goal is a memory layer that's boring to integrate and hard to notice —
+until you turn it off and the agent forgets your name.
+
+---
+
+## How It Works
+
+```
+        +---------------------+        local call / gRPC        +----------------------+
+        |      Agent code      | -------------------------------> |     AIrecall Core     |
+        |    (Python SDK)      | <------------------------------- |   (memory server)     |
+        +---------------------+                                  +-----------+----------+
+                                                                             |
+                                                                 +-----------v----------+
+                                                                 |    Storage Engine      |
+                                                                 |  SQLite + vector idx   |
+                                                                 +-----------+----------+
+                                                                             |
+                                                                 +-----------v----------+
+                                                                 |   Optional MCP         |
+                                                                 |   adapter              |
+                                                                 +-----------------------+
+```
+
+On every turn, the SDK sends the current query to the core, which does a
+**hybrid retrieval** pass — keyword + vector similarity — over both
+episodic and semantic memory, and returns the top-k relevant memories to
+inject into your prompt. In the background, a summarizer periodically
+walks older episodes, extracts durable facts into semantic memory, and
+compacts the rest.
+
+---
+
+## Install
+
+```bash
+# Python SDK - what your agent code imports
+pip install airecall-sdk
+
+# Core memory server - runs locally or as a sidecar
+pip install airecall-sdk[server]
+# or run it standalone:
+airecall serve
+```
+
+`airecall init` scaffolds a local SQLite-backed store so you can start
+storing and recalling memories immediately, no separate service required.
+
+---
+
+## Quickstart
+
+```python
+from airecall import Memory
+
+memory = Memory(agent_id="support-bot")
+
+# Store an episode
+memory.remember(
+    "User asked about refund policy for order ORD-9921, told 30-day window applies."
+)
+
+# Later, in a new session
+context = memory.recall("what did we tell this user about refunds?")
+# -> returns the relevant episodic memory, ranked by relevance
+
+# Promote a durable fact explicitly
+memory.remember_fact(key="preferred_contact", value="email, not phone")
+```
+
+Framework adapters:
+
+```python
+from airecall.adapters.langchain import MemoryRetriever
+
+retriever = MemoryRetriever(memory)
+
+## Troubleshooting
+
+- **`RecallTimeout` on first query** - the index is still warming. Retry after the health endpoint reports `status: ready`.
+- **Missing memories after restart** - check the `storage.backend` path; a relative path resolves against the working directory of the server process.
+```

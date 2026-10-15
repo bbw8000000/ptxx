@@ -1,0 +1,301 @@
+---
+// 项目页的「翻译成中文」入口。
+//
+// 背景：项目页正文是各项目自己的 README，实测 675 个有正文的快照里 616 个（91%）以英文
+// 为主。站内原有的「设备端翻译」依赖 Chrome 内置 Translator API，QQ/360/UC/Firefox/
+// Safari 都没有 —— 目标读者（不会翻墙、也不会用浏览器翻译的人）在英文正文前没有出路。
+//
+// 关键设计：**翻译由读者主动触发**，页面不自动把中文推上去。
+// 默认只显示一个按钮，点一下才请求译文；译完缓存到 localStorage，二次访问直接出结果。
+// 服务端另有按源文本 sha256 的缓存，所以同一段文字全站只付费翻译一次。
+import { buildSummaryPayload, isMostlyNonChinese } from '../lib/textLanguage'
+
+interface Props {
+  /** 项目标识，用于本地缓存键 */
+  slug: string
+  /** 正文原文（Markdown） */
+  body: string
+}
+
+const { slug, body } = Astro.props
+
+// 只发给模型够读懂项目的开头部分；服务端还会再截断一次（MAX_SOURCE_CHARS）。
+// 这里先截断是因为请求体有 8KB 上限，而 README 动辄上万字。
+const payload = buildSummaryPayload(body)
+
+// 中文正文不需要翻译；正文太短也不值得调用模型
+const eligible = isMostlyNonChinese(body) && payload.length >= 200
+---
+
+{eligible && (
+  <section class="project-translate" data-translate-slug={slug} data-translate-text={payload}>
+    <div class="project-translate-bar">
+      <span class="project-translate-badge" aria-hidden="true">
+        译
+      </span>
+      <span class="project-translate-label">这篇是英文原文</span>
+      <button type="button" class="project-translate-btn" data-translate-run>
+        翻译成中文
+      </button>
+      <span class="project-translate-state" data-translate-state></span>
+      <button type="button" class="project-translate-clear" data-translate-clear hidden>
+        收起译文
+      </button>
+    </div>
+
+    <div class="project-translate-panel" data-translate-panel hidden>
+      <p class="project-translate-text" data-translate-summary></p>
+      <p class="project-translate-fallback" data-translate-fallback hidden>
+        <span data-translate-error>翻译暂时拿不到。</span>
+        <button type="button" class="project-translate-retry" data-translate-retry>
+          重试
+        </button>
+      </p>
+      <p class="project-translate-note">
+        机器翻译的项目简介，仅供参考。原文在下方，也可以直接用浏览器自带的整页翻译 （Chrome / Edge
+        点地址栏右侧的翻译图标，或用右键菜单里的「翻译成中文」）。
+      </p>
+    </div>
+  </section>
+)}
+
+<script>
+  import { isFirebaseConfigured, translateText } from '../lib/api'
+
+  // 译文按项目缓存：同一台设备再看同一页，直接出结果、不再请求。
+  // 服务端还有一层按源文本的缓存，两层加起来同一段文字全站只付费翻译一次。
+  const CACHE_PREFIX = 'project-translate-v1:'
+
+  function readCache(slug: string): string | null {
+    try {
+      return localStorage.getItem(`${CACHE_PREFIX}${slug}`)
+    } catch {
+      return null
+    }
+  }
+
+  function writeCache(slug: string, summary: string) {
+    try {
+      localStorage.setItem(`${CACHE_PREFIX}${slug}`, summary)
+    } catch {
+      // 隐私模式或存储写满：不影响本次显示
+    }
+  }
+
+  function initProjectTranslate() {
+    const root = document.querySelector<HTMLElement>('.project-translate[data-translate-slug]')
+    if (!root || root.dataset.translateReady === 'true') return
+    root.dataset.translateReady = 'true'
+
+    const slug = root.dataset.translateSlug || ''
+    const text = root.dataset.translateText || ''
+    const runBtn = root.querySelector<HTMLButtonElement>('[data-translate-run]')
+    const stateEl = root.querySelector<HTMLElement>('[data-translate-state]')
+    const panel = root.querySelector<HTMLElement>('[data-translate-panel]')
+    const summaryEl = root.querySelector<HTMLElement>('[data-translate-summary]')
+    const fallbackEl = root.querySelector<HTMLElement>('[data-translate-fallback]')
+    const errorEl = root.querySelector<HTMLElement>('[data-translate-error]')
+    const retryBtn = root.querySelector<HTMLButtonElement>('[data-translate-retry]')
+    const clearBtn = root.querySelector<HTMLButtonElement>('[data-translate-clear]')
+
+    if (!isFirebaseConfigured) {
+      // 没配 API 就整个不显示，别留一个点了没反应的按钮
+      root.hidden = true
+      return
+    }
+
+    let inFlight = false
+
+    function showSummary(summary: string, fromCache: boolean) {
+      if (summaryEl) summaryEl.textContent = summary
+      if (panel) panel.hidden = false
+      if (fallbackEl) fallbackEl.hidden = true
+      if (runBtn) runBtn.hidden = true
+      if (clearBtn) clearBtn.hidden = false
+      if (stateEl) stateEl.textContent = fromCache ? '已缓存' : ''
+    }
+
+    function showFailure(message: string) {
+      if (panel) panel.hidden = false
+      if (fallbackEl) fallbackEl.hidden = false
+      if (errorEl) errorEl.textContent = message
+      if (stateEl) stateEl.textContent = '失败'
+      if (runBtn) runBtn.hidden = true
+    }
+
+    async function run(force = false) {
+      if (inFlight) return
+      const cached = force ? null : readCache(slug)
+      if (cached) {
+        showSummary(cached, true)
+        return
+      }
+      if (!text) {
+        showFailure('这段内容太短，无法翻译。')
+        return
+      }
+      inFlight = true
+      if (runBtn) runBtn.disabled = true
+      if (stateEl) stateEl.textContent = '正在翻译…'
+      try {
+        const result = await translateText(text, 'zh')
+        writeCache(slug, result.summary)
+        showSummary(result.summary, result.cached)
+      } catch (error) {
+        showFailure((error as Error).message || '翻译暂时拿不到。')
+      } finally {
+        inFlight = false
+        if (runBtn) runBtn.disabled = false
+      }
+    }
+
+    runBtn?.addEventListener('click', () => {
+      void run()
+    })
+    retryBtn?.addEventListener('click', () => {
+      void run(true)
+    })
+    clearBtn?.addEventListener('click', () => {
+      // 「收起译文」只收起不删缓存：再点翻译立刻出来，不再花钱
+      if (panel) panel.hidden = true
+      if (clearBtn) clearBtn.hidden = true
+      if (runBtn) runBtn.hidden = false
+      if (stateEl) stateEl.textContent = ''
+    })
+
+    // 只有读者自己点过、且译文还在缓存里时，才自动展开 —— 页面绝不主动请求模型。
+    const cached = readCache(slug)
+    if (cached) showSummary(cached, true)
+  }
+
+  initProjectTranslate()
+  document.addEventListener('astro:page-load', initProjectTranslate)
+</script>
+
+<style>
+  .project-translate {
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(122, 149, 175, 0.2);
+    border-radius: 0.85rem;
+    background: linear-gradient(150deg, rgba(122, 149, 175, 0.08), rgba(6, 10, 18, 0.14));
+  }
+
+  .project-translate[hidden] {
+    display: none;
+  }
+
+  .project-translate-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 1rem;
+  }
+
+  .project-translate-badge {
+    display: inline-flex;
+    width: 1.55rem;
+    height: 1.55rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(122, 149, 175, 0.2);
+    color: var(--color-accent-hover);
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .project-translate-label {
+    font-family: var(--font-serif);
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+  }
+
+  .project-translate-btn,
+  .project-translate-retry {
+    min-height: 1.9rem;
+    border: 1px solid rgba(122, 149, 175, 0.4);
+    border-radius: 0.5rem;
+    padding: 0.2rem 0.75rem;
+    color: var(--color-accent-hover);
+    background: rgba(122, 149, 175, 0.1);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard);
+  }
+
+  .project-translate-btn:hover,
+  .project-translate-retry:hover {
+    border-color: rgba(122, 149, 175, 0.7);
+    background: rgba(122, 149, 175, 0.18);
+  }
+
+  .project-translate-btn:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+
+  .project-translate-state {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: rgba(168, 175, 186, 0.7);
+  }
+
+  .project-translate-clear {
+    margin-left: auto;
+    font-size: 0.74rem;
+    color: rgba(168, 175, 186, 0.75);
+    cursor: pointer;
+  }
+
+  .project-translate-clear:hover {
+    color: var(--color-text);
+  }
+
+  .project-translate-panel {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .project-translate-panel[hidden] {
+    display: none;
+  }
+
+  .project-translate-text {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 0.92rem;
+    line-height: 1.95;
+    color: rgba(226, 229, 234, 0.92);
+  }
+
+  .project-translate-fallback {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 0.85rem;
+    line-height: 1.8;
+    color: rgba(214, 218, 225, 0.78);
+  }
+
+  .project-translate-note {
+    margin: 0.75rem 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 0.55rem;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: rgba(168, 175, 186, 0.6);
+  }
+
+  @media (max-width: 768px) {
+    .project-translate-state {
+      display: none;
+    }
+    .project-translate-clear {
+      margin-left: 0;
+    }
+  }
+</style>

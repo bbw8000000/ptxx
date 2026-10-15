@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="文本加密" description="用密码对文本进行 AES 加密/解密，全程在浏览器本地完成">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">文本加密</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        用密码加密一段文字（AES-256-GCM），密文可以安全地发给对方，对方用同一密码解密。全程本地运算，不联网。
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-border/40 dark:border-dark-border/40 bg-surface-alt/50 dark:bg-dark-surface-alt/50 p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">密码</label>
+        <input
+          id="pass"
+          type="password"
+          class="w-full bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent"
+          placeholder="输入密码（加密和解密用同一个）"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">
+          原文 / 密文
+        </label>
+        <textarea
+          id="input"
+          class="w-full h-36 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent"
+          placeholder="要加密的文本，或粘贴要解密的密文"
+        ></textarea>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button
+          id="enc"
+          class="px-4 py-1.5 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light transition-all"
+        >
+          加密
+        </button>
+        <button
+          id="dec"
+          class="px-4 py-1.5 text-sm font-medium bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 text-text dark:text-dark-text rounded-lg hover:border-accent transition-all"
+        >
+          解密
+        </button>
+        <button
+          id="copy"
+          class="ml-auto px-4 py-1.5 text-sm font-medium bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 text-text dark:text-dark-text rounded-lg hover:border-accent transition-all"
+        >
+          复制结果
+        </button>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">结果</label>
+        <textarea
+          id="output"
+          readonly
+          class="w-full h-36 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-sm text-text dark:text-dark-text resize-y focus:outline-none"
+          placeholder="结果会显示在这里"
+        ></textarea>
+      </div>
+      <p id="msg" class="text-xs text-text-muted dark:text-dark-text-muted font-serif"></p>
+    </div>
+  </div>
+
+  <script>
+    const passEl = document.getElementById('pass') as HTMLInputElement
+    const inputEl = document.getElementById('input') as HTMLTextAreaElement
+    const outputEl = document.getElementById('output') as HTMLTextAreaElement
+    const msgEl = document.getElementById('msg') as HTMLElement
+    const encBtn = document.getElementById('enc') as HTMLButtonElement
+    const decBtn = document.getElementById('dec') as HTMLButtonElement
+    const copyBtn = document.getElementById('copy') as HTMLButtonElement
+
+    const enc = new TextEncoder()
+    const dec = new TextDecoder()
+
+    async function getKey(password: string) {
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey'],
+      )
+      return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: enc.encode('blog-cipher-v1'), iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt'],
+      )
+    }
+
+    function toBase64(buf: ArrayBuffer): string {
+      const bytes = new Uint8Array(buf)
+      let bin = ''
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
+      return btoa(bin)
+    }
+
+    function fromBase64(b64: string): Uint8Array {
+      const bin = atob(b64.trim())
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      return bytes
+    }
+
+    async function encrypt() {
+      const pass = passEl.value
+      const text = inputEl.value
+      if (!pass || !text) {
+        msgEl.textContent = '请先输入密码和内容'
+        return
+      }
+      try {
+        const key = await getKey(pass)
+        const iv = crypto.getRandomValues(new Uint8Array(12))
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text))
+        const combined = new Uint8Array(iv.length + cipher.byteLength)
+        combined.set(iv, 0)
+        combined.set(new Uint8Array(cipher), iv.length)
+        outputEl.value = toBase64(combined.buffer)
+        msgEl.textContent = '✓ 加密完成，把结果和密码一起发给对方'
+      } catch {
+        msgEl.textContent = '加密失败'
+      }
+    }
+
+    async function decrypt() {
+      const pass = passEl.value
+      const b64 = inputEl.value.trim()
+      if (!pass || !b64) {
+        msgEl.textContent = '请先输入密码和密文'
+        return
+      }
+      try {
+        const data = fromBase64(b64)
+        const iv = data.slice(0, 12)
+        const cipher = data.slice(12)
+        const key = await getKey(pass)
+        const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher)
+        outputEl.value = dec.decode(plain)
+        msgEl.textContent = '✓ 解密成功'
+      } catch {
+        msgEl.textContent = '解密失败：密码不对或密文已损坏'
+      }
+    }
+
+    encBtn.addEventListener('click', encrypt)
+    decBtn.addEventListener('click', decrypt)
+    copyBtn.addEventListener('click', async () => {
+      if (!outputEl.value) return
+      try {
+        await navigator.clipboard.writeText(outputEl.value)
+        const old = copyBtn.textContent
+        copyBtn.textContent = '已复制 ✓'
+        setTimeout(() => {
+          copyBtn.textContent = old
+        }, 1500)
+      } catch {
+        outputEl.select()
+        document.execCommand('copy')
+      }
+    })
+  </script>
+</BaseLayout>

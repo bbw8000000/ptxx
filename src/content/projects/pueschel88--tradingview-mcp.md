@@ -1,0 +1,301 @@
+---
+title: "pueschel88/Tradingview-MCP"
+owner: "pueschel88"
+name: "Tradingview-MCP"
+fullName: "pueschel88/Tradingview-MCP"
+description: "Tradingview MCP server for controlling Tradingview Desktop from Claude Code via Chrome DevTools Protocol"
+sourceUrl: "https://github.com/pueschel88/Tradingview-MCP"
+stars: 132
+forks: 312
+language: "TypeScript"
+topics: ["chrome-devtools", "claude", "mcp", "tradingview", "tradingview-agent", "tradingview-mcp"]
+license: "MIT"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-09-14T07:59:17Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+﻿# tradingview-mcp
+
+```
+tradingview-mcp/  v0.1   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+```
+
+A focused, type-safe **MCP server** that lets [Claude Code](https://claude.ai/code) (or any MCP-compatible client) drive a locally-running **TradingView Desktop** application â€” read chart state, change symbols and timeframes, fetch OHLCV bars, capture screenshots.
+
+> [!IMPORTANT]
+> **This project is not affiliated with, endorsed by, or associated with TradingView Inc.** It is a personal-use bridge that interacts with your locally running TradingView Desktop application via the Chrome DevTools Protocol â€” the same standard debug interface built into Slack, VS Code, Discord, and every other Electron app.
+
+> [!IMPORTANT]
+> **Requires a valid TradingView subscription.** This tool does not bypass, scrape, or circumvent any TradingView paywall or access control. Everything happens on your machine, against the TradingView Desktop instance you have already logged into and paid for.
+
+> [!NOTE]
+> **All processing is local.** No TradingView data is transmitted, stored, or redistributed by this tool. Your charts, your data, your machine.
+
+> [!CAUTION]
+> TradingView's internal page API is undocumented. It can change between Desktop releases. Pin a working TradingView Desktop version if you want stability, and check the version compatibility note before upgrading.
+
+---
+
+## What it does
+
+Wraps the TradingView Desktop chart in a small set of well-defined MCP tools. Tools are typed end-to-end with [Zod](https://zod.dev) schemas, validated at the boundary, and surface useful error messages when something goes wrong.
+
+```
+                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                  â”‚ Claude Code   â”‚
+                  â”‚ (or any MCP   â”‚
+                  â”‚  client)      â”‚
+                  â””â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚ stdio (MCP)
+                          â–¼
+                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                  â”‚tradingview-mcpâ”‚
+                  â””â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚ Chrome DevTools Protocol
+                          â–¼
+                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                  â”‚ TradingView   â”‚
+                  â”‚ Desktop       â”‚
+                  â”‚ (--remote-    â”‚
+                  â”‚  debugging-   â”‚
+                  â”‚  port=9222)   â”‚
+                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```
+
+---
+
+## Why another TradingView integration?
+
+Existing TradingView automation projects exist. This one is deliberately scoped down:
+
+- **12 tools, not 78.** Every tool is documented, typed, and tested.
+- **Strict TypeScript.** No `any`, no implicit returns, `noUncheckedIndexedAccess` on.
+- **One responsibility per file.** Connection, page, tools, and server are separate layers â€” version drift only requires fixing one spot.
+- **Typed errors.** `ConnectionError`, `ToolExecutionError`, `ChartStateError` etc. with actionable messages.
+- **`tradingview-mcp doctor`.** A diagnostic command that tells you exactly what's wrong with your setup.
+
+Use this if you want a small, predictable surface you can read in an afternoon. Use the kitchen-sink alternatives if you want every TradingView feature wrapped.
+
+---
+
+## Install
+For development:
+
+```bash
+git clone https://github.com/pueschel88/Tradingview-MCP.git
+cd Tradingview-MCP
+npm install
+npm run build
+```
+
+### Redis (optional, recommended)
+
+Read tools (`chart_get_state`, `quote_get`, `chart_get_ohlcv`) are cached in a local Redis instance to reduce CDP round-trips. Redis is enabled by default and connects to `127.0.0.1:6379`.
+
+**Windows (Docker):**
+
+```powershell
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install redis
+brew services start redis
+```
+
+If Redis is not running, the server still works â€” it logs a warning and skips caching. Set `TV_MCP_REDIS_ENABLED=false` to disable Redis entirely.
+
+---
+
+## Setup â€” three steps
+
+### 1. Quit any running TradingView Desktop
+
+Otherwise the debug port can't be enabled.
+
+### 2. Launch TradingView Desktop with the debug port enabled
+
+**macOS:**
+
+```bash
+open -a "TradingView" --args --remote-debugging-port=9222
+```
+
+**Windows:**
+
+```powershell
+& "C:\Users\\AppData\Local\Programs\TradingView\TradingView.exe" --remote-debugging-port=9222
+```
+
+**Linux:**
+
+```bash
+tradingview --remote-debugging-port=9222
+```
+
+> [!NOTE]
+> The `--remote-debugging-port` flag is a standard Chromium debug flag. It is opt-in and disabled by default. Nothing happens without you explicitly passing it.
+
+### 3. Verify the connection
+
+```bash
+tradingview-mcp doctor
+```
+
+If everything is wired up, you'll see something like:
+
+```
+tradingview-mcp Â· doctor
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[ok]  CDP endpoint reachable on localhost:9222
+[ok]  TradingView page found (NASDAQ:AAPL Â· 1h)
+[ok]  tvWidget detected â€” chart state readable
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ready.
+```
+
+---
+
+## Use with Claude Code
+
+Add this to your Claude Code MCP config (`~/.claude/mcp.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "tradingview": {
+      "command": "tradingview-mcp",
+      "env": {
+        "TV_MCP_PORT": "9222",
+        "TV_MCP_REDIS_HOST": "127.0.0.1",
+        "TV_MCP_REDIS_PORT": "6379"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Code. The tools below will be available.
+
+---
+
+## Tools
+
+| Tool | Description |
+|---|---|
+| `chart_get_state` | Read current symbol, timeframe, visible studies, last price |
+| `chart_set_symbol` | Change the active symbol (e.g. `NASDAQ:AAPL`, `NSE:RELIANCE`) |
+| `chart_set_timeframe` | Change resolution (`1m`, `5m`, `1h`, `1d`, etc.) |
+| `chart_get_ohlcv` | Fetch up to 5,000 most-recent OHLCV bars from the active chart |
+
+More tools coming â€” see `docs/roadmap.md`.
+
+### Example session
+
+```
+You:    What's the chart showing?
+Claude: [calls chart_get_state]
+        Showing NASDAQ:AAPL on 1h timeframe with EMA20, EMA50.
+        Last price 187.42.
+
+You:    Switch to BTCUSDT 4h and pull the last 200 bars.
+Claude: [calls chart_set_symbol, chart_set_timeframe, chart_get_ohlcv]
+        Done. Range: 187 days. Open at start: 62,440.
+        Close at end: 67,830. +8.6%.
+```
+
+---
+
+## Configuration
+
+| Env var | Default | Description |
+|---|---|---|
+| `TV_MCP_HOST` | `localhost` | CDP host |
+| `TV_MCP_PORT` | `9222` | CDP debug port |
+| `TV_MCP_TARGET` | (auto-detect) | Explicit CDP target ID â€” only needed if you have multiple TradingView windows open |
+| `TV_MCP_REDIS_ENABLED` | `true` | Enable local Redis caching for read tools |
+| `TV_MCP_REDIS_HOST` | `127.0.0.1` | Redis host |
+| `TV_MCP_REDIS_PORT` | `6379` | Redis port |
+| `TV_MCP_REDIS_PASSWORD` | (none) | Redis password, if required |
+| `TV_MCP_REDIS_DB` | `0` | Redis database index |
+| `TV_MCP_REDIS_KEY_PREFIX` | `tradingview-mcp:` | Key prefix for cached entries |
+| `TV_MCP_REDIS_TTL_QUOTE` | `5` | Quote cache TTL in seconds |
+| `TV_MCP_REDIS_TTL_STATE` | `5` | Chart state cache TTL in seconds |
+| `TV_MCP_REDIS_TTL_OHLCV` | `60` | OHLCV cache TTL in seconds |
+
+---
+
+## Development
+
+```bash
+npm install
+npm run build         # tsc to dist/
+npm run dev           # tsc --watch
+npm test              # vitest run
+npm run test:coverage # with v8 coverage report
+npm run typecheck     # tsc --noEmit
+```
+
+The codebase has four layers:
+
+```
+src/
+â”œâ”€â”€ index.ts              entry â€” reads env, starts stdio server
+â”œâ”€â”€ server.ts             MCP server, tool registration, request handlers
+â”œâ”€â”€ errors.ts             typed error classes
+â”œâ”€â”€ types.ts              shared types + Zod schemas
+â”œâ”€â”€ connection/
+â”‚   â”œâ”€â”€ cdp.ts            CDP client wrapper (chrome-remote-interface)
+â”‚   â”œâ”€â”€ redis.ts          local Redis cache via oscar-redis
+â”‚   â””â”€â”€ tradingview.ts    TradingView-page interactions (all evaluated JS lives here)
+â””â”€â”€ tools/
+    â”œâ”€â”€ index.ts          tool registry
+    â””â”€â”€ chart.ts          chart_* tools
+```
+
+To add a tool:
+
+1. Create a new file under `src/tools/` (or extend an existing one).
+2. Export `Input` and `Output` Zod schemas plus the handler function.
+3. Add the entry to `TOOLS` in `src/tools/index.ts`.
+4. Add a test under `tests/`.
+
+That's it â€” auto-registered, auto-validated, auto-introspectable.
+
+---
+
+## Version compatibility
+
+| TradingView Desktop | tradingview-mcp | Status |
+|---|---|---|
+| 2026.x.x | 0.1.x | Tested |
+
+If TradingView updates and tools start failing, check `connection/tradingview.ts` first â€” that's the single file that knows about TradingView's internal API.
+
+---
+
+## Disclaimer
+
+This software is provided "as is" without warranty of any kind. By running it, you acknowledge:
+
+- You are using your own paid TradingView Desktop instance, against your own data.
+- You enabled the Chrome DevTools debug port yourself.
+- TradingView's internal API is undocumented and may break.
+- Nothing in this software guarantees correctness of trading decisions made by an AI agent on top of it. **Use it on a paper account before letting it touch real capital.**
+
+---
+
+## License
+
+MIT Â© 2026 Harshil Patel
+
+---
+
+## Acknowledgments
+
+This is a fresh implementation â€” built from scratch with the goal of being small, well-typed, and easy to read. If you've worked on similar tools in this space, thanks for paving the way.

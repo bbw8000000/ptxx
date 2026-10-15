@@ -1,0 +1,335 @@
+---
+title: "thruwire/foreman"
+owner: "thruwire"
+name: "foreman"
+fullName: "thruwire/foreman"
+description: "Software Factory Foreman based on TypeSafe Jev model"
+sourceUrl: "https://github.com/thruwire/foreman"
+stars: 212
+forks: 14
+language: "Python"
+topics: []
+license: "MIT"
+defaultBranch: "main"
+snapshotDate: "2026-09-18"
+pushedAt: "2026-09-17T12:32:51Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# Foreman
+
+Foreman watches the software factory floor with [TypeSafe AI's Jev](https://docs.typesafe.ai/introduction),
+placing a fast decision model above slower coding agents.
+
+Give it a ticket, specification, bug report, or any free-form software job. A
+[Codex](https://learn.chatgpt.com/docs/developer-commands?surface=cli) worker does the software
+engineering while Foreman independently assesses whether the implementation is complete,
+requirements are satisfied, tests are sufficient, verification is needed, or human input is
+required.
+
+```text
+                         SOFTWARE FACTORY
+             Codex             Codex             Tests
+            worker             worker               │
+               │                  │                  │
+               └──────────────────┼──────────────────┘
+                                  │ factory evidence
+                                  ▼
+                              FOREMAN
+                                Jev
+                                  │
+                                  ▼
+                    implementation_complete  .91
+                    tests_sufficient         .34
+                    requirements_satisfied   .79
+                    worker_stuck             .02
+                    needs_verification       .82
+                    work_off_track           .06
+                    meaningful_progress      .94
+                    ready_to_finish          .21
+                                  │
+                                  ▼
+                       continue / stop / retry
+                         verify / finish
+```
+
+**Generative models work. Foreman watches the work.**
+
+Foreman is an architectural experiment, not a claim that this design is already better than a
+conventional coding-agent harness.
+
+## Documentation
+
+- Theory: semantic supervision
+- Why Jev fits the experiment
+- What Foreman is proving
+- Runtime and event flow
+
+## What is Foreman?
+
+Foreman is a native Python `asyncio` runtime with two concurrent loops:
+
+```text
+CODING AGENT LOOP                         FOREMAN LOOP
+reason                                    watch
+  │                                         │
+  ▼                                         ▼
+tool                                      assess
+  │                                         │
+  ▼                                         ▼
+observe ───────── factory events ────────► Jev
+  │                                         │
+  ▼                                         ▼
+edit                                      decide (Python policy)
+  │                                         │
+  ▼                                         ▼
+test ◄──────────── intervention ────────── intervene
+  │
+  └── continue
+```
+
+Foreman does not replace Codex's reason/tool/observe loop and does not choose individual tools or
+files for Codex. Missions stay broad. The important property is that the worker does not have to
+stop working for the factory to think: worker output and lifecycle events flow into an independent,
+debounced observation loop while the subprocess remains active.
+
+## Why build this?
+
+Coding agents are relatively slow, stateful generative systems. Supervisory questions such as
+“is this worker stuck?” or “does this now need independent verification?” are narrower. Jev is
+interesting here because TypeSafe describes it as accepting structured state and typed questions,
+returning probabilistic decisions, and evaluating multiple questions independently in one parallel
+request. Foreman explores whether that shape supports frequent semantic supervision without
+rebuilding the coding agent itself.
+
+## The factory floor
+
+V1 runs one coding worker at a time. A real worker is an installed Codex CLI process launched with:
+
+```text
+codex exec --cd  --sandbox workspace-write --color never --json 
+```
+
+This follows the official Codex CLI's stable, non-interactive `exec` interface. JSONL stdout and
+stderr are streamed concurrently, bounded in memory, persisted as factory events, and made visible
+to Foreman before the worker exits. A verifier is another Codex worker with an independent,
+deterministic verification mission.
+
+The worker implementation is replaceable; the runtime depends on a small worker protocol rather
+than Codex-specific types.
+
+## What Foreman watches
+
+Each observation is compact and bounded. It contains:
+
+- the original job and current factory status;
+- active worker summaries, recent worker history, output tails, exit status, and elapsed time;
+- `git status`, a bounded diff, and changed file names;
+- verification results and recent persisted events;
+- the prior assessment and intervention;
+- attempt/failure counts and elapsed factory time.
+
+Foreman never dumps the repository into Jev. Defaults are a 20,000-character diff, 12,000
+characters per captured output tail, 30 recent events, and 10 workers of history. The limits live in
+`FactoryConfig` and can be changed for experiments.
+
+## What Foreman assesses
+
+The first five dimensions describe the **overall job**:
+
+- `implementation_complete`: probability that required implementation work is complete.
+- `tests_sufficient`: probability that relevant coverage and passing verification are sufficient.
+- `requirements_satisfied`: probability that the repository satisfies the free-form request as a
+  whole, which is broader than code completion.
+- `needs_verification`: probability that an independent verification pass is warranted.
+- `ready_to_finish`: probability that the factory should consider the job complete.
+
+The remaining four describe the **factory floor now**:
+
+- `meaningful_progress`: probability that the current or latest worker is advancing the job.
+- `worker_stuck`: probability that the worker is looping, repeatedly failing, or unable to advance.
+- `work_off_track`: probability that work is drifting from the original job or is unrelated.
+- `needs_human`: probability that judgment, credentials, clarification, or permission is needed.
+
+Every dimension is one Jev `Noul` question, whose result is the probability of “yes.” All nine are
+sent in one request. Values are validated, normalized to `[0, 1]`, stored in `state.json`, and
+recorded in the event timeline.
+
+## What Foreman can do
+
+Jev only assesses. A deterministic Python policy decides which action is permitted:
+
+- `CONTINUE`: let an active worker keep working.
+- `START_WORKER`: begin a coding pass because work remains.
+- `START_VERIFIER`: launch one independent verification pass.
+- `STOP_WORKER`: gracefully terminate a stuck or off-track process.
+- `RETRY_WORKER`: launch a fresh coding worker after a stopped attempt.
+- `FINISH`: declare the job complete.
+- `ESCALATE`: stop autonomous work and request human attention.
+
+The ordering is safety-first: human need, iteration bounds, off-track/stuck workers, retry handling,
+completion, verification, then continued work. State tracks whether verification already started and
+completed so the policy cannot oscillate into repeated verifier loops.
+
+Default policy thresholds are:
+
+| Decision input | Threshold |
+| --- | ---: |
+| needs human | 0.80 |
+| off track | 0.80 |
+| worker stuck | 0.80 |
+| needs verification | 0.65 |
+| implementation before verification | 0.75 |
+| ready to finish | 0.85 |
+| requirements satisfied | 0.80 |
+| tests sufficient | 0.75 |
+
+## Why Jev?
+
+The integration follows TypeSafe's current official Python SDK:
+
+- package: [`typesafe-sdk`](https://docs.typesafe.ai/sdk/python);
+- async client: `AsyncTypeSafeClient`;
+- authentication: `TYPESAFE_API_KEY`;
+- model: `jev-latest`;
+- call: `await client.system_one(state=..., questions=...)`;
+- question types: `Noul`, `Choice`, and `Score`;
+- timeout: configurable per client/call (the SDK default is 10 seconds);
+- errors: typed API, authentication, rate-limit, connection, timeout, and response-validation
+  exceptions;
+- retries: the SDK supports status-aware backoff and `Retry-After`; Foreman retries 429 and
+  transient 5xx failures within its assessment timeout.
+
+[TypeSafe's primitives documentation](https://docs.typesafe.ai/primitives) says questions in a
+single call are evaluated independently and in parallel. Noul is the right primitive for these nine
+yes/no probabilities; Choice and Score remain available for future experiments. The public docs
+describe HTTP 429 handling but do not publish a single numeric rate limit, so Foreman does not
+invent one. Its minimum assessment interval defaults to five seconds and is configurable.
+
+## Requirements
+
+- Python 3.11 or newer.
+- The [Codex CLI](https://learn.chatgpt.com/docs/developer-commands?surface=cli) on `PATH`.
+- Codex authentication (`codex login`, then verify with `codex login status`).
+- A TypeSafe API key for real runs. The deterministic demo and tests need neither service.
+
+## Installation
+
+From a fresh checkout:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install '.[dev]'
+cp .env.example .env
+```
+
+Put the key in `.env`:
+
+```dotenv
+TYPESAFE_API_KEY=your-key-here
+```
+
+`.env` is ignored by Git. Foreman never writes the key into logs, observations, state, or events.
+
+## Running Foreman
+
+```bash
+foreman run \
+  --repo ./my-project \
+  --job "Add rate limiting to the API and make sure it is properly tested."
+```
+
+The terminal shows worker lifecycle messages and grouped job/factory-floor assessments. It makes
+explicit when Codex is working and Foreman is independently watching, without animated noise.
+
+## Deterministic demo
+
+The simulation exercises the same runtime, policy, persistence, event stream, and UI with
+deterministic model and worker implementations:
+
+```bash
+foreman demo --repo .
+```
+
+It needs no API key, network, Codex installation, or external repository. The sequence progresses
+from continued implementation, through independent verification, to `FINISH`.
+
+## Persistence and inspection
+
+Each repository gets local, ignored state:
+
+```text
+.foreman/runs//
+├── state.json
+└── events.jsonl
+```
+
+`state.json` is atomically replaced and contains enough typed state to recover a run.
+`events.jsonl` is an append-only timeline. Inspect either through the CLI:
+
+```bash
+foreman runs --repo ./my-project
+foreman inspect  --repo ./my-project
+```
+
+## Runtime configuration
+
+The most useful environment overrides are:
+
+| Variable | Default | Meaning |
+| --- | ---: | --- |
+| `FOREMAN_ASSESSMENT_MIN_INTERVAL_SECONDS` | `5` | Debounce/coalescing floor |
+| `FOREMAN_PERIODIC_ASSESSMENT_SECONDS` | `30` | Assessment during quiet work |
+| `FOREMAN_JEV_TIMEOUT_SECONDS` | `10` | Semantic assessment timeout |
+| `FOREMAN_WORKER_TIMEOUT_SECONDS` | `3600` | Per-worker timeout |
+| `FOREMAN_OVERALL_TIMEOUT_SECONDS` | `7200` | Whole-run timeout |
+| `FOREMAN_MAX_WORKERS` | `3` | Total workers, including verifier |
+| `FOREMAN_MAX_RETRIES` | `1` | Fresh attempts after a stop |
+| `FOREMAN_MAX_ITERATIONS` | `20` | Semantic decision ceiling |
+
+Policy thresholds and observation bounds are typed `FactoryConfig` fields and can be configured by
+applications embedding Foreman.
+
+## Tests
+
+```bash
+python -m pytest
+```
+
+The suite is offline: no credentials, network, Codex process, or external repository is required.
+It covers models, serialization, persistence/recovery, Jev translation and failure handling, every
+policy branch, subprocess streaming/termination, concurrent assessments, intervention delivery,
+the complete simulated factory, and a stuck-worker recovery scenario.
+
+## Process safety and security
+
+Foreman enforces worker, retry, iteration, worker-timeout, overall-timeout, and concurrency limits.
+Workers receive only the supplied repository as their working root. Stop requests first terminate
+the subprocess group gracefully, then kill it after a bounded grace period. Ctrl-C cancels the run,
+terminates active workers, and persists a final cancelled state.
+
+Codex still runs with the permissions of the local environment. `workspace-write` is requested, but
+Foreman is not a security sandbox and does not make untrusted repositories safe. Review Codex's
+configuration and the repository before running it.
+
+## Limitations
+
+- Jev assessment accuracy is unproven for this use case and the semantic scores need calibration.
+- False positives can stop useful workers; false negatives can allow bad work to continue.
+- Repository observations are necessarily incomplete and bounded.
+- Codex remains responsible for software-engineering reasoning and tool use.
+- V1 runs one coding worker at a time.
+- Local execution is not isolated.
+- Persistence is useful for inspection, not production-grade durable execution.
+- A verifier reports evidence through the same observation channel; there is no formal proof of
+  correctness.
+- This is an architectural experiment, not a production software factory.
+
+## Future experiments
+
+Natural next steps include simultaneous workers, per-worker and factory-wide assessments, alternate
+coding agents or fast decision models, dynamic assessment frequency, calibrated policies, durable
+execution, and isolated worker environments. They are intentionally outside this small V1.

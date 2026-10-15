@@ -1,0 +1,832 @@
+---
+const languages = [
+  ['zh', '中文'],
+  ['en', 'English'],
+  ['ja', '日本語'],
+  ['ko', '한국어'],
+  ['fr', 'Français'],
+  ['de', 'Deutsch'],
+  ['es', 'Español'],
+  ['pt', 'Português'],
+  ['it', 'Italiano'],
+  ['ru', 'Русский'],
+  ['ar', 'العربية'],
+  ['hi', 'हिन्दी'],
+]
+---
+
+<div id="translation-control" class="translation-control" data-translate-exclude>
+  <button
+    id="translation-toggle"
+    class="header-action translation-toggle"
+    type="button"
+    aria-label="打开翻译设置"
+    aria-expanded="false"
+    aria-controls="translation-panel"
+    title="翻译页面内容"
+  >
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M4 5h7m-3.5-2v2m1.8 0c-.7 3.3-2.6 5.9-5.3 7.5m2-4c1.2 1.8 2.7 3.2 4.7 4.2M13 19l4-10 4 10m-6.6-3h5.2"
+      />
+    </svg>
+    <span class="translation-toggle-label">翻译</span>
+  </button>
+
+  <section id="translation-panel" class="translation-panel" aria-label="翻译设置" hidden>
+    <div class="translation-heading">
+      <div>
+        <strong>页面翻译</strong>
+        <p>翻译在设备上完成，不会上传页面内容。</p>
+      </div>
+      <button
+        id="translation-close"
+        class="translation-close"
+        type="button"
+        aria-label="关闭翻译设置"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="translation-fields">
+      <label>
+        <span>源语言</span>
+        <select id="translation-source">
+          <!-- 别写「自动识别英文」：这个 API 没有自动检测能力，auto 在本组件里就是
+               按英文处理（matchesSource 的 auto 分支只认拉丁字母）。写清楚更诚实。 -->
+          <option value="auto">自动（按英文处理）</option>
+          {languages.map(([value, label]) => (
+            <option value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <span class="translation-arrow" aria-hidden="true">
+        →
+      </span>
+      <label>
+        <span>目标语言</span>
+        <select id="translation-target">
+          {languages.map(([value, label]) => (
+            <option value={value} selected={value === 'zh'}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+
+    <div class="translation-actions">
+      <button id="translation-apply" class="translation-primary" type="button">
+        一键翻译
+      </button>
+      <button id="translation-restore" class="translation-secondary" type="button" disabled>
+        显示原文
+      </button>
+    </div>
+
+    <label class="translation-switch">
+      <input id="translation-auto" type="checkbox" />
+      <span>记住设置，并在浏览页面时自动翻译</span>
+    </label>
+
+    <p id="translation-status" class="translation-status" role="status" aria-live="polite">
+      默认关闭，仅在你点击后启用。
+    </p>
+
+    <!-- 浏览器没有设备端翻译能力时显示：光写「不支持」等于把用户堵死在这里，
+         要给出去哪点、怎么点。这一块只做说明，不依赖任何 API。 -->
+    <div id="translation-fallback" class="translation-fallback" hidden>
+      <strong>这个浏览器用不了本站的翻译</strong>
+      <p>
+        本站的设备端翻译需要 Chrome 138 以上（模型还要单独下载）。QQ 浏览器、360 浏览器、
+        UC、Firefox、Safari 等都用不了 —— 这不是网络问题。
+      </p>
+      <p>
+        <b>换这几种办法，立刻能看：</b>
+      </p>
+      <ul>
+        <li>
+          <b>用 Chrome 或 Edge 打开本页</b>：地址栏右侧会出现翻译图标，点它即可整页翻译。
+        </li>
+        <li>
+          <b>在本页右键</b>：若有「翻译成中文」/「翻译此页」直接选。
+        </li>
+        <li>
+          <b>手机浏览器</b>：多数自带整页翻译，在菜单里找「翻译」。
+        </li>
+      </ul>
+      <p class="translation-fallback-note">
+        提示：本站项目页的正文是各项目自己的英文 README，本身就是外文原文，不是本站没写中文。
+      </p>
+    </div>
+  </section>
+</div>
+
+<script>
+  type TranslatorInstance = {
+    translate: (text: string, options?: { signal?: AbortSignal }) => Promise<string>
+    destroy?: () => void
+  }
+
+  type TranslatorConstructor = {
+    availability?: (options: { sourceLanguage: string; targetLanguage: string }) => Promise<string>
+    create: (options: {
+      sourceLanguage: string
+      targetLanguage: string
+      monitor?: (monitor: EventTarget) => void
+    }) => Promise<TranslatorInstance>
+  }
+
+  declare global {
+    interface Window {
+      Translator?: TranslatorConstructor
+      __translationCleanup?: () => void
+    }
+  }
+
+  const STORAGE_KEY = 'blog_translation_preferences'
+  const EXCLUDED_SELECTOR =
+    'code, pre, script, style, svg, input, textarea, select, option, [contenteditable], [translate="no"], [data-translate-exclude]'
+  const LATIN_PATTERN = /[A-Za-z]{2,}/
+  const HAN_PATTERN = /[㐀-鿿]/
+  const KANA_PATTERN = /[぀-ヿ]/
+  const HANGUL_PATTERN = /[가-힯]/
+  const CYRILLIC_PATTERN = /[Ѐ-ӿ]/
+  const ARABIC_PATTERN = /[؀-ۿ]/
+  const DEVANAGARI_PATTERN = /[ऀ-ॿ]/
+
+  let translator: TranslatorInstance | null = null
+  let observer: MutationObserver | null = null
+  let abortController: AbortController | null = null
+  let isTranslating = false
+  let activeSource = ''
+  let activeTarget = ''
+  let translationSession = 0
+  let dynamicQueue = Promise.resolve()
+  let originalLanguage = 'zh-CN'
+  let initializedControl: HTMLElement | null = null
+  const MAX_CACHE_ENTRIES = 200
+  const originalText = new Map<Text, string>()
+  const internalWrites = new WeakSet<Text>()
+  const translationCache = new Map<string, string>()
+
+  function readPreferences() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+      return {
+        source: typeof value.source === 'string' ? value.source : 'auto',
+        target: typeof value.target === 'string' ? value.target : 'zh',
+        auto: value.auto === true,
+      }
+    } catch {
+      return { source: 'auto', target: 'zh', auto: false }
+    }
+  }
+
+  function savePreferences(source: string, target: string, auto: boolean) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ source, target, auto }))
+    } catch {
+      // Storage may be unavailable in privacy mode.
+    }
+  }
+
+  function matchesSource(text: string, source: string) {
+    if (source === 'auto' || source === 'en') {
+      const latinCharacters = text.match(/[A-Za-z]/g)?.length || 0
+      const letters = text.match(/\p{L}/gu)?.length || 0
+      return (
+        LATIN_PATTERN.test(text) &&
+        latinCharacters >= 4 &&
+        latinCharacters / Math.max(letters, 1) >= 0.6
+      )
+    }
+    if (source === 'zh') return HAN_PATTERN.test(text)
+    if (source === 'ja') return KANA_PATTERN.test(text) || HAN_PATTERN.test(text)
+    if (source === 'ko') return HANGUL_PATTERN.test(text)
+    if (source === 'ru') return CYRILLIC_PATTERN.test(text)
+    if (source === 'ar') return ARABIC_PATTERN.test(text)
+    if (source === 'hi') return DEVANAGARI_PATTERN.test(text)
+    return LATIN_PATTERN.test(text)
+  }
+
+  function collectTextNodes(root: Node, source: string) {
+    const nodes: Text[] = []
+    const acceptNode = (node: Text) => {
+      const text = node.textContent?.trim() || ''
+      const parent = node.parentElement
+      return (
+        parent &&
+        text.length >= 2 &&
+        !parent.closest(EXCLUDED_SELECTOR) &&
+        matchesSource(text, source)
+      )
+    }
+    if (root.nodeType === Node.TEXT_NODE && acceptNode(root as Text)) nodes.push(root as Text)
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        return acceptNode(node as Text) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+      },
+    })
+    while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+    return nodes
+  }
+
+  function setStatus(message: string, isError = false) {
+    const status = document.getElementById('translation-status')
+    if (!status) return
+    status.textContent = message
+    status.classList.toggle('is-error', isError)
+  }
+
+  function setBusy(busy: boolean) {
+    isTranslating = busy
+    const apply = document.getElementById('translation-apply') as HTMLButtonElement | null
+    const source = document.getElementById('translation-source') as HTMLSelectElement | null
+    const target = document.getElementById('translation-target') as HTMLSelectElement | null
+    if (apply) {
+      // 不支持设备端翻译时按钮要一直禁用：否则 setBusy(false) 会在 finally 里
+      // 把它重新点亮，用户点了又只得到一句失败提示。
+      apply.disabled = busy || !window.Translator
+      apply.textContent = busy ? '正在翻译…' : '一键翻译'
+    }
+    if (source) source.disabled = busy
+    if (target) target.disabled = busy
+  }
+
+  function restoreOriginal(showStatus = true) {
+    translationSession += 1
+    abortController?.abort()
+    observer?.disconnect()
+    observer = null
+    for (const [node, text] of originalText) {
+      if (node.isConnected) node.textContent = text
+    }
+    originalText.clear()
+    translator?.destroy?.()
+    translator = null
+    activeSource = ''
+    activeTarget = ''
+    abortController = null
+    document.documentElement.lang = originalLanguage
+    const restore = document.getElementById('translation-restore') as HTMLButtonElement | null
+    if (restore) restore.disabled = true
+    setBusy(false)
+    if (showStatus) setStatus('已恢复页面原文。')
+  }
+
+  async function getTranslator(source: string, target: string, session: number) {
+    if (!window.Translator) throw new Error('unsupported')
+    if (translator && activeSource === source && activeTarget === target) return translator
+
+    translator?.destroy?.()
+    const options = { sourceLanguage: source, targetLanguage: target }
+    const availability = await window.Translator.availability?.(options)
+    if (session !== translationSession)
+      throw new DOMException('Translation cancelled', 'AbortError')
+    if (availability === 'unavailable' || availability === 'no') throw new Error('unavailable')
+    if (availability === 'downloadable' || availability === 'after-download') {
+      setStatus('首次使用需下载语言模型，正在准备…')
+    }
+
+    const createdTranslator = await window.Translator.create({
+      ...options,
+      monitor(monitor) {
+        monitor.addEventListener('downloadprogress', (event) => {
+          if (session !== translationSession) return
+          const progress = Math.round(((event as Event & { loaded?: number }).loaded || 0) * 100)
+          setStatus(`正在下载语言模型… ${progress}%`)
+        })
+      },
+    })
+    if (session !== translationSession) {
+      createdTranslator.destroy?.()
+      throw new DOMException('Translation cancelled', 'AbortError')
+    }
+    translator = createdTranslator
+    activeSource = source
+    activeTarget = target
+    return createdTranslator
+  }
+
+  async function translateNodes(
+    nodes: Text[],
+    source: string,
+    target: string,
+    session: number,
+    signal: AbortSignal,
+  ) {
+    if (!nodes.length) return 0
+    const currentTranslator = await getTranslator(source, target, session)
+    let translatedCount = 0
+
+    for (const node of nodes) {
+      if (session !== translationSession || signal.aborted || !node.isConnected) break
+      const text = node.textContent || ''
+      const leading = text.match(/^\s*/)?.[0] || ''
+      const trailing = text.match(/\s*$/)?.[0] || ''
+      const content = text.trim()
+      if (!content) continue
+
+      const cacheKey = `${source}:${target}:${content}`
+      let translated = translationCache.get(cacheKey)
+      if (!translated) {
+        translated = await currentTranslator.translate(content, { signal })
+        if (session !== translationSession || signal.aborted) break
+        translationCache.set(cacheKey, translated)
+        if (translationCache.size > MAX_CACHE_ENTRIES) {
+          const oldestKey = translationCache.keys().next().value
+          if (oldestKey) translationCache.delete(oldestKey)
+        }
+      }
+      if (!originalText.has(node)) originalText.set(node, text)
+      const nextText = `${leading}${translated}${trailing}`
+      if (node.textContent !== nextText) {
+        internalWrites.add(node)
+        node.textContent = nextText
+      }
+      translatedCount += 1
+    }
+    return translatedCount
+  }
+
+  function observeNewContent(source: string, target: string, session: number, signal: AbortSignal) {
+    observer?.disconnect()
+    const root = document.querySelector('main')
+    if (!root) return
+    observer = new MutationObserver((mutations) => {
+      if (isTranslating || session !== translationSession) return
+      const nodes = new Set<Text>()
+      for (const mutation of mutations) {
+        if (mutation.type === 'characterData') {
+          const changedNode = mutation.target as Text
+          if (internalWrites.delete(changedNode)) continue
+          collectTextNodes(changedNode, source).forEach((node) => nodes.add(node))
+        } else {
+          Array.from(mutation.addedNodes).forEach((addedNode) => {
+            collectTextNodes(addedNode, source).forEach((node) => nodes.add(node))
+          })
+        }
+      }
+      if (!nodes.size) return
+      dynamicQueue = dynamicQueue
+        .then(async () => {
+          if (session !== translationSession || signal.aborted) return
+          const count = await translateNodes(Array.from(nodes), source, target, session, signal)
+          const restore = document.getElementById('translation-restore') as HTMLButtonElement | null
+          if (restore && count > 0) restore.disabled = false
+        })
+        .catch(() => {
+          if (session === translationSession) setStatus('新增内容翻译失败，可稍后重试。', true)
+        })
+    })
+    observer.observe(root, { childList: true, characterData: true, subtree: true })
+  }
+
+  async function applyTranslation() {
+    if (isTranslating) return
+    const sourceSelect = document.getElementById('translation-source') as HTMLSelectElement | null
+    const targetSelect = document.getElementById('translation-target') as HTMLSelectElement | null
+    const autoToggle = document.getElementById('translation-auto') as HTMLInputElement | null
+    if (!sourceSelect || !targetSelect || !autoToggle) return
+
+    const selectedSource = sourceSelect.value
+    const source = selectedSource === 'auto' ? 'en' : selectedSource
+    const target = targetSelect.value
+    if (source === target) {
+      setStatus('源语言和目标语言不能相同。', true)
+      return
+    }
+    if (!window.Translator) {
+      setStatus('当前浏览器不支持设备端翻译，请使用浏览器菜单中的“翻译此页”。', true)
+      return
+    }
+
+    restoreOriginal(false)
+    const session = translationSession
+    const controller = new AbortController()
+    abortController = controller
+    setBusy(true)
+    setStatus('正在识别并翻译页面内容…')
+    savePreferences(selectedSource, target, autoToggle.checked)
+
+    try {
+      const root = document.querySelector('main')
+      const nodes = root ? collectTextNodes(root, selectedSource) : []
+      const count = await translateNodes(nodes, source, target, session, controller.signal)
+      if (session !== translationSession) return
+      document.documentElement.lang = target
+      const restore = document.getElementById('translation-restore') as HTMLButtonElement | null
+      if (restore) restore.disabled = count === 0
+      setStatus(
+        count > 0 ? `已翻译 ${count} 处内容，新出现的内容也会自动翻译。` : '没有发现可翻译的内容。',
+      )
+      observeNewContent(source, target, session, controller.signal)
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        restoreOriginal(false)
+        setStatus(
+          (error as Error).message === 'unavailable'
+            ? '所选语言组合暂不可用，请更换语言或使用浏览器整页翻译。'
+            : '翻译启动失败，请确认浏览器支持设备端翻译并重试。',
+          true,
+        )
+      }
+    } finally {
+      if (session === translationSession) setBusy(false)
+    }
+  }
+
+  function initTranslationControl() {
+    const control = document.getElementById('translation-control')
+    if (control === initializedControl) return
+    window.__translationCleanup?.()
+    const toggle = document.getElementById('translation-toggle') as HTMLButtonElement | null
+    const panel = document.getElementById('translation-panel')
+    const close = document.getElementById('translation-close')
+    const apply = document.getElementById('translation-apply')
+    const restore = document.getElementById('translation-restore')
+    const source = document.getElementById('translation-source') as HTMLSelectElement | null
+    const target = document.getElementById('translation-target') as HTMLSelectElement | null
+    const auto = document.getElementById('translation-auto') as HTMLInputElement | null
+    if (!control || !toggle || !panel || !source || !target || !auto) return
+    initializedControl = control
+
+    originalLanguage = document.documentElement.lang || 'zh-CN'
+    const preferences = readPreferences()
+    const sourceValues = Array.from(source.options, (option) => option.value)
+    const targetValues = Array.from(target.options, (option) => option.value)
+    if (sourceValues.includes(preferences.source)) source.value = preferences.source
+    if (targetValues.includes(preferences.target)) target.value = preferences.target
+    auto.checked = preferences.auto
+
+    let panelCloseTimer = 0
+    const setOpen = (open: boolean) => {
+      window.clearTimeout(panelCloseTimer)
+      if (open) {
+        panel.removeAttribute('hidden')
+        requestAnimationFrame(() => {
+          panel.classList.add('is-translation-open')
+          source.focus()
+        })
+      } else {
+        panel.classList.remove('is-translation-open')
+        panelCloseTimer = window.setTimeout(() => panel.setAttribute('hidden', ''), 340)
+      }
+      toggle.setAttribute('aria-expanded', String(open))
+    }
+    const onToggle = () => setOpen(!panel.classList.contains('is-translation-open'))
+    const onClose = () => {
+      setOpen(false)
+      toggle.focus()
+    }
+    const onApply = () => {
+      void applyTranslation()
+    }
+    const onRestore = () => restoreOriginal()
+    const onPreferenceChange = () => savePreferences(source.value, target.value, auto.checked)
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && panel.classList.contains('is-translation-open')) {
+        setOpen(false)
+        toggle.focus()
+      }
+    }
+    const onDocumentClick = (event: MouseEvent) => {
+      if (
+        panel.classList.contains('is-translation-open') &&
+        event.target instanceof Node &&
+        !control.contains(event.target)
+      )
+        setOpen(false)
+    }
+
+    toggle.addEventListener('click', onToggle)
+    close?.addEventListener('click', onClose)
+    apply?.addEventListener('click', onApply)
+    restore?.addEventListener('click', onRestore)
+    source.addEventListener('change', onPreferenceChange)
+    target.addEventListener('change', onPreferenceChange)
+    auto.addEventListener('change', onPreferenceChange)
+    document.addEventListener('keydown', onKeydown)
+    document.addEventListener('click', onDocumentClick)
+
+    window.__translationCleanup = () => {
+      window.clearTimeout(panelCloseTimer)
+      panel.classList.remove('is-translation-open')
+      panel.setAttribute('hidden', '')
+      translationSession += 1
+      abortController?.abort()
+      abortController = null
+      observer?.disconnect()
+      observer = null
+      translator?.destroy?.()
+      translator = null
+      activeSource = ''
+      activeTarget = ''
+      isTranslating = false
+      originalText.clear()
+      translationCache.clear()
+      dynamicQueue = Promise.resolve()
+      document.documentElement.lang = originalLanguage
+      initializedControl = null
+      toggle.removeEventListener('click', onToggle)
+      close?.removeEventListener('click', onClose)
+      apply?.removeEventListener('click', onApply)
+      restore?.removeEventListener('click', onRestore)
+      source.removeEventListener('change', onPreferenceChange)
+      target.removeEventListener('change', onPreferenceChange)
+      auto.removeEventListener('change', onPreferenceChange)
+      document.removeEventListener('keydown', onKeydown)
+      document.removeEventListener('click', onDocumentClick)
+    }
+
+    if (!window.Translator) {
+      // 把可用办法摊开给用户看，而不是只留一句「不支持」
+      const fallback = document.getElementById('translation-fallback')
+      if (fallback) fallback.removeAttribute('hidden')
+      const apply = document.getElementById('translation-apply') as HTMLButtonElement | null
+      if (apply) apply.disabled = true
+      setStatus('当前浏览器不支持设备端翻译，请按上面的办法用浏览器自带的整页翻译。', true)
+    } else if (preferences.auto) {
+      void applyTranslation()
+    }
+  }
+  document.addEventListener('astro:page-load', initTranslationControl)
+  document.addEventListener('astro:before-swap', () => window.__translationCleanup?.())
+  if (document.readyState !== 'loading') initTranslationControl()
+</script>
+
+<style>
+  .translation-control {
+    position: relative;
+  }
+
+  .translation-toggle {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.65rem;
+    color: var(--color-text-secondary);
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard),
+      transform var(--motion-base) var(--ease-emphasized);
+  }
+
+  .translation-toggle:hover,
+  .translation-toggle[aria-expanded='true'] {
+    color: var(--color-accent-hover);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .translation-toggle svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .translation-toggle-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .translation-panel {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.55rem) scale(0.97);
+    transform-origin: top right;
+    transition:
+      opacity var(--motion-fast) var(--ease-standard),
+      transform var(--motion-base) var(--ease-spring);
+    top: calc(100% + 0.75rem);
+    right: 0;
+    z-index: 150;
+    width: min(23rem, calc(100vw - 2rem));
+    border: 1px solid var(--border-glass);
+    border-radius: 1rem;
+    padding: 1rem;
+    background: rgba(7, 12, 20, 0.97);
+    box-shadow: var(--shadow-glass-floating);
+  }
+
+  .translation-panel.is-translation-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+
+  .translation-panel[hidden] {
+    display: none;
+  }
+
+  .translation-heading,
+  .translation-actions,
+  .translation-fields,
+  .translation-switch {
+    display: flex;
+    align-items: center;
+  }
+
+  .translation-heading {
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .translation-heading strong {
+    color: var(--color-text);
+    font-size: 0.95rem;
+  }
+
+  .translation-heading p {
+    margin-top: 0.2rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  .translation-close {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: var(--color-text-muted);
+    font-size: 1.3rem;
+  }
+
+  .translation-close:hover {
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .translation-fields {
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .translation-fields label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .translation-fields label > span {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+  }
+
+  .translation-fields select {
+    width: 100%;
+    height: 2.5rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.6rem;
+    padding: 0 0.65rem;
+    color: var(--color-text);
+    background: #101827;
+    font-size: 0.78rem;
+  }
+
+  .translation-arrow {
+    margin-top: 1rem;
+    color: var(--color-text-muted);
+  }
+
+  .translation-actions {
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+  }
+
+  .translation-primary,
+  .translation-secondary {
+    flex: 1;
+    min-height: 2.5rem;
+    border-radius: 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .translation-primary {
+    color: #070c12;
+    background: var(--color-accent-hover);
+  }
+
+  .translation-secondary {
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .translation-primary:disabled,
+  .translation-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .translation-switch {
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  .translation-switch input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-accent);
+  }
+
+  .translation-status {
+    min-height: 2.2rem;
+    margin-top: 0.8rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.65rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    line-height: 1.55;
+  }
+
+  .translation-status.is-error {
+    color: #f2b8b5;
+  }
+
+  /* 不支持设备端翻译时的说明块：要把「去哪点、怎么点」讲清楚 */
+  .translation-fallback {
+    margin-top: 0.8rem;
+    border: 1px dashed rgba(242, 184, 181, 0.35);
+    border-radius: 0.6rem;
+    padding: 0.75rem 0.85rem;
+    background: rgba(242, 184, 181, 0.06);
+    color: var(--color-text-secondary);
+    font-size: 0.72rem;
+    line-height: 1.7;
+  }
+
+  .translation-fallback[hidden] {
+    display: none;
+  }
+
+  .translation-fallback strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #f2b8b5;
+    font-size: 0.78rem;
+  }
+
+  .translation-fallback p {
+    margin: 0.35rem 0;
+  }
+
+  .translation-fallback ul {
+    margin: 0.35rem 0 0.35rem 1.05rem;
+    padding: 0;
+    list-style: disc;
+  }
+
+  .translation-fallback li {
+    margin-bottom: 0.28rem;
+  }
+
+  .translation-fallback b {
+    color: var(--color-text);
+  }
+
+  .translation-fallback-note {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 0.45rem;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 767px) {
+    .translation-toggle-label {
+      display: none;
+    }
+
+    .translation-panel {
+      position: fixed;
+      top: 4.5rem;
+      right: max(1rem, env(safe-area-inset-right));
+      left: max(1rem, env(safe-area-inset-left));
+      box-sizing: border-box;
+      width: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .translation-toggle,
+    .translation-panel {
+      transition: none;
+    }
+  }
+</style>

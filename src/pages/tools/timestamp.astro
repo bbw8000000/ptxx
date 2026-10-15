@@ -1,0 +1,199 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="时间戳转换" description="Unix 时间戳与日期互转">
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">时间戳转换</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        Unix 时间戳与日期时间互转
+      </p>
+    </div>
+
+    <!-- Current timestamp -->
+    <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-6 mb-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">当前时间戳（秒）</p>
+          <p id="now-sec" class="font-mono text-2xl text-text dark:text-dark-text">
+            -
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">当前时间戳（毫秒）</p>
+          <p id="now-ms" class="font-mono text-2xl text-text dark:text-dark-text">
+            -
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-text-muted dark:text-dark-text-muted mb-1">当前时间</p>
+          <p id="now-str" class="font-mono text-sm text-text dark:text-dark-text">
+            -
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timestamp to Date -->
+    <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-6 mb-6 shadow-sm">
+      <h3 class="text-sm font-medium text-text dark:text-dark-text mb-4">时间戳 → 日期</h3>
+      <div class="flex gap-3 mb-4">
+        <input
+          type="text"
+          id="ts-input"
+          class="flex-1 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 font-mono text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入时间戳（秒或毫秒）"
+        />
+        <button
+          id="btn-convert-ts"
+          class="px-4 py-2.5 bg-accent dark:bg-dark-accent text-white rounded-xl hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all text-sm font-medium"
+        >
+          转换
+        </button>
+      </div>
+      <div id="ts-result" class="space-y-1 text-sm"></div>
+    </div>
+
+    <!-- Date to Timestamp -->
+    <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-6 mb-6 shadow-sm">
+      <h3 class="text-sm font-medium text-text dark:text-dark-text mb-4">日期 → 时间戳</h3>
+      <div class="flex gap-3 mb-4">
+        <input
+          type="datetime-local"
+          id="date-input"
+          class="flex-1 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-2.5 text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+        />
+        <button
+          id="btn-convert-date"
+          class="px-4 py-2.5 bg-accent dark:bg-dark-accent text-white rounded-xl hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all text-sm font-medium"
+        >
+          转换
+        </button>
+      </div>
+      <div id="date-result" class="space-y-1 text-sm"></div>
+    </div>
+
+    <!-- Common formats -->
+    <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-6 shadow-sm">
+      <h3 class="text-sm font-medium text-text dark:text-dark-text mb-4">常用时间格式</h3>
+      <div id="formats" class="space-y-2 text-sm font-mono"></div>
+    </div>
+  </div>
+
+  <script is:inline>
+    ;(() => {
+      function updateNow() {
+        const now = Date.now()
+        document.getElementById('now-sec').textContent = Math.floor(now / 1000)
+        document.getElementById('now-ms').textContent = now
+        document.getElementById('now-str').textContent = formatDate(now)
+      }
+
+      function formatDate(ts) {
+        const d = new Date(ts)
+        return (
+          d.getFullYear() +
+          '-' +
+          String(d.getMonth() + 1).padStart(2, '0') +
+          '-' +
+          String(d.getDate()).padStart(2, '0') +
+          ' ' +
+          String(d.getHours()).padStart(2, '0') +
+          ':' +
+          String(d.getMinutes()).padStart(2, '0') +
+          ':' +
+          String(d.getSeconds()).padStart(2, '0')
+        )
+      }
+
+      function row(label, value) {
+        return `<div class="flex justify-between items-center"><span class="text-text-muted dark:text-dark-text-muted">${label}</span><span class="font-mono text-text dark:text-dark-text select-all">${value}</span></div>`
+      }
+
+      // Timestamp to Date
+      document.getElementById('btn-convert-ts').addEventListener('click', () => {
+        const input = document.getElementById('ts-input').value.trim()
+        if (!input) return
+        let ts = parseInt(input)
+        if (isNaN(ts)) {
+          document.getElementById('ts-result').innerHTML =
+            '<span class="text-red-500">无效时间戳</span>'
+          return
+        }
+        // Auto-detect seconds vs milliseconds
+        if (ts > 9999999999) {
+          ts = ts
+        } // already ms
+        else {
+          ts = ts * 1000
+        }
+
+        const d = new Date(ts)
+        if (Number.isNaN(d.getTime())) {
+          document.getElementById('ts-result').innerHTML =
+            '<span class="text-red-500">无效时间戳</span>'
+          return
+        }
+        document.getElementById('ts-result').innerHTML =
+          row('本地时间', formatDate(ts)) +
+          row('UTC 时间', d.toUTCString()) +
+          row('ISO 8601', d.toISOString()) +
+          row('相对时间', getRelativeTime(ts))
+      })
+
+      // Date to Timestamp
+      document.getElementById('btn-convert-date').addEventListener('click', () => {
+        const input = document.getElementById('date-input').value
+        if (!input) return
+        const d = new Date(input)
+        const ts = d.getTime()
+        document.getElementById('date-result').innerHTML =
+          row('秒', Math.floor(ts / 1000)) + row('毫秒', ts) + row('UTC', d.toUTCString())
+      })
+
+      function getRelativeTime(ts) {
+        const diff = Date.now() - ts
+        const abs = Math.abs(diff)
+        const future = diff < 0
+        const suffix = future ? '后' : '前'
+
+        if (abs < 60000) return Math.floor(abs / 1000) + ' 秒' + suffix
+        if (abs < 3600000) return Math.floor(abs / 60000) + ' 分钟' + suffix
+        if (abs < 86400000) return Math.floor(abs / 3600000) + ' 小时' + suffix
+        if (abs < 2592000000) return Math.floor(abs / 86400000) + ' 天' + suffix
+        if (abs < 31536000000) return Math.floor(abs / 2592000000) + ' 个月' + suffix
+        return Math.floor(abs / 31536000000) + ' 年' + suffix
+      }
+
+      // Common formats
+      function updateFormats() {
+        const now = new Date()
+        document.getElementById('formats').innerHTML =
+          row('ISO 8601', now.toISOString()) +
+          row('本地', formatDate(now.getTime())) +
+          row('UTC', now.toUTCString()) +
+          row('日期', now.toLocaleDateString('zh-CN')) +
+          row('时间', now.toLocaleTimeString('zh-CN'))
+      }
+
+      // Set default datetime input
+      const now = new Date()
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      document.getElementById('date-input').value = local.toISOString().slice(0, 16)
+
+      updateNow()
+      updateFormats()
+      setInterval(updateNow, 1000)
+    })()
+  </script>
+</BaseLayout>

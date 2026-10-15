@@ -1,0 +1,152 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="隐私说明" description="盘腿修仙的数据处理、第三方服务与本地工具说明">
+  <article class="privacy-page">
+    <header>
+      <p class="privacy-kicker">Privacy</p>
+      <h1>隐私说明</h1>
+      <p>这里说明本站什么时候会连接第三方服务，以及哪些数据只留在你的浏览器里。</p>
+      <time datetime="2026-09-27">更新于 2026 年 9 月 27 日</time>
+    </header>
+
+    <section>
+      <h2>默认访问</h2>
+      <p>
+        浏览文章和普通页面不要求注册。本站不加载任何网站分析、广告或社交追踪脚本，
+        也不会出售访问数据。
+      </p>
+    </section>
+
+    <section>
+      <h2>登录与留言</h2>
+      <p>
+        留言需要先注册，使用<strong>邮箱和密码</strong>，不接入 Google、GitHub
+        等第三方登录。账号与留言保存在本站自建的服务端（Cloudflare Pages Functions + D1
+        数据库）：密码经加盐的 PBKDF2 哈希后存储，服务端不保存明文；留言会保存昵称、头像地址、
+        正文、所在页面路径、发布时间与审核状态。
+      </p>
+      <p>
+        登录凭据是一个随机令牌，保存在你浏览器的 localStorage 中，随请求通过 Authorization
+        头发送，不使用 Cookie。退出登录会吊销该令牌；修改密码会同时吊销其他设备上的登录。
+      </p>
+    </section>
+
+    <section>
+      <h2>第三方请求</h2>
+      <p>留言、账号与登录不经过任何第三方。页面会连接外部域名的只有这两种情况：</p>
+      <ul>
+        <li>
+          「站内项目资料库」中的项目快照取自公开仓库的 README，其中自带的徽章与截图由
+          shields.io、GitHub 等外部域名提供。浏览这些页面时，浏览器会直接向那些域名请求图片，
+          对方因此可以看到你的 IP 地址与来源页面。
+        </li>
+        <li>「GitHub 查看」工具会向 GitHub 请求公开仓库信息；「智能抠图」工具会下载运行模型。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>在线工具</h2>
+      <p>JSON、Base64、文本对比、图片压缩等工具都在浏览器本地处理数据，不会上传你输入的内容。</p>
+    </section>
+
+    <section>
+      <h2>浏览器存储</h2>
+      <p>
+        收藏、字号、留言草稿、登录凭据和部分界面偏好保存在浏览器的 localStorage
+        中。通过浏览器设置清除站点数据会一并移除它们（清除登录凭据等同于退出登录）。
+      </p>
+    </section>
+
+    <section>
+      <h2>外部链接</h2>
+      <p>
+        文章和日报会链接到 GitHub 等外部网站。离开本站后，数据处理方式以对应网站的隐私政策为准。
+      </p>
+    </section>
+
+    <section>
+      <h2>联系</h2>
+      <p>
+        如需查询或删除与留言相关的数据，可通过{' '}
+        <a href="https://github.com/bbw8000000" target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>{' '}
+        联系站点维护者。
+      </p>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .privacy-page {
+    width: min(100% - 2.5rem, 48rem);
+    margin: 0 auto;
+    padding: 4.5rem 0 6rem;
+  }
+  .privacy-page header {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .privacy-kicker {
+    margin-bottom: 1rem;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .privacy-page h1 {
+    margin-bottom: 1rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .privacy-page header > p:not(.privacy-kicker),
+  .privacy-page section p {
+    color: var(--color-text-secondary);
+    font-family: var(--font-serif);
+    line-height: 1.9;
+  }
+  .privacy-page section ul {
+    margin: 0.75rem 0 0 1.15rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-serif);
+    line-height: 1.9;
+    list-style: disc;
+  }
+  .privacy-page section li + li {
+    margin-top: 0.5rem;
+  }
+  .privacy-page time {
+    display: block;
+    margin-top: 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+  .privacy-page section {
+    padding-top: 2rem;
+  }
+  .privacy-page h2 {
+    margin-bottom: 0.75rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .privacy-page a {
+    color: var(--color-accent);
+    text-underline-offset: 0.2em;
+  }
+  @media (max-width: 768px) {
+    .privacy-page {
+      padding-top: 3rem;
+    }
+    .privacy-page h1 {
+      font-size: 2.25rem;
+    }
+  }
+</style>

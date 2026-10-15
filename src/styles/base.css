@@ -1,0 +1,55 @@
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden !important;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: #070a13 !important;
+  color-scheme: dark;
+  scrollbar-color: rgba(122, 149, 175, 0.35) #070a13;
+}
+
+html.dark {
+  background-color: #070a13 !important;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  line-height: 1.8;
+  background: transparent !important;
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  overflow-x: hidden !important;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 全局盒模型锁定 — 防止 padding 撑开宽度产生白边 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--color-accent, #7a95af);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 主容器约束 */
+main {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: rgba(122, 149, 175, 0.25);
+  color: var(--color-text);
+}

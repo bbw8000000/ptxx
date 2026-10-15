@@ -1,0 +1,327 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+
+const base = import.meta.env.BASE_URL
+const reports = (
+  await getCollection(
+    'posts',
+    ({ id, data }) => !data.draft && data.noindex && id.startsWith('risk-daily-'),
+  )
+).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+---
+
+<BaseLayout
+  title="风险仓库观察"
+  description="从自动生成的 GitHub 日报中隔离出的高风险仓库观察记录。"
+  robots="noindex, nofollow"
+  pagefind={false}
+>
+  <article class="risk-watch">
+    <header class="risk-header">
+      <div class="risk-marker" aria-hidden="true">
+        <span></span>
+      </div>
+      <p class="risk-kicker">Security Observation</p>
+      <h1>风险仓库观察</h1>
+      <p class="risk-intro">
+        这里单独记录自动筛选出的外挂、破解与恶意软件风险项目。内容只用于识别和复核，不构成推荐、安全认证或使用建议。
+      </p>
+      <div class="risk-note">
+        <strong>访问前请留意</strong>
+        <span>报告不提供仓库或下载链接，也不建议运行来源不明的代码；自动规则仍可能产生误报。</span>
+      </div>
+    </header>
+
+    <section class="risk-reports" aria-labelledby="reports-title">
+      <div class="section-heading">
+        <div>
+          <p>Observation Log</p>
+          <h2 id="reports-title">观察记录</h2>
+        </div>
+        <span>{reports.length} 期</span>
+      </div>
+
+      {reports.length > 0 ? (
+        <ol>
+          {reports.map((report) => (
+            <li>
+              <a href={base + 'blog/' + report.id + '/'}>
+                <time datetime={report.data.pubDate.toISOString()}>
+                  {report.data.pubDate.toLocaleDateString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  })}
+                </time>
+                <span class="report-copy">
+                  <strong>{report.data.title}</strong>
+                  <small>{report.data.description}</small>
+                </span>
+                <span class="report-arrow" aria-hidden="true">
+                  →
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div class="empty-state">
+          <strong>暂无观察记录</strong>
+          <p>自动筛选没有发现需要单独隔离的项目。</p>
+        </div>
+      )}
+    </section>
+
+    <footer class="risk-footer">
+      <a href={base + 'github-daily/'}>返回 GitHub 每日精选</a>
+      <a href={base + 'disclaimer/'}>查看自动采集免责声明</a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .risk-watch {
+    width: min(100% - 2.5rem, 58rem);
+    margin: 0 auto;
+    padding: 4.5rem 0 6rem;
+  }
+
+  .risk-header {
+    position: relative;
+    padding: 0 0 2.75rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .risk-marker {
+    position: absolute;
+    top: 0.2rem;
+    bottom: 2.75rem;
+    left: 0;
+    width: 0.25rem;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    background: var(--color-border);
+  }
+
+  .risk-marker span {
+    display: block;
+    width: 100%;
+    height: 4.5rem;
+    background: var(--color-warm);
+  }
+
+  .risk-kicker,
+  .section-heading p {
+    color: var(--color-warm);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .risk-header h1 {
+    margin: 0.8rem 0 1rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 8vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.08;
+  }
+
+  .risk-intro {
+    max-width: 42rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    line-height: 1.9;
+  }
+
+  .risk-note {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1.75rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+
+  .risk-note strong {
+    color: var(--color-warm);
+  }
+
+  .risk-reports {
+    padding-top: 2.75rem;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .section-heading h2 {
+    margin-top: 0.35rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+
+  .section-heading > span {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .risk-reports ol {
+    border-top: 1px solid var(--color-border-strong);
+  }
+
+  .risk-reports li {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .risk-reports li a {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    gap: 1.25rem;
+    min-height: 7rem;
+    padding: 1rem 0;
+    transition:
+      border-color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .risk-reports li a:hover,
+  .risk-reports li a:focus-visible {
+    background: color-mix(in srgb, var(--color-warm) 5%, transparent);
+  }
+
+  .risk-reports time {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .report-copy {
+    min-width: 0;
+  }
+
+  .report-copy strong,
+  .report-copy small {
+    display: block;
+  }
+
+  .report-copy strong {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1rem;
+  }
+
+  .report-copy small {
+    margin-top: 0.45rem;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-family: var(--font-serif);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .report-arrow {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    color: var(--color-warm);
+    font-size: 1.15rem;
+    transition: transform 180ms ease;
+  }
+
+  .risk-reports li a:hover .report-arrow,
+  .risk-reports li a:focus-visible .report-arrow {
+    transform: translateX(0.25rem);
+  }
+
+  .empty-state {
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--color-border-strong);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .empty-state strong {
+    color: var(--color-text);
+    font-family: var(--font-display);
+  }
+
+  .empty-state p {
+    margin-top: 0.5rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-serif);
+  }
+
+  .risk-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding-top: 2rem;
+  }
+
+  .risk-footer a {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    text-decoration: underline;
+    text-decoration-color: var(--color-border-strong);
+    text-underline-offset: 0.3rem;
+  }
+
+  .risk-footer a:hover,
+  .risk-footer a:focus-visible {
+    color: var(--color-warm);
+  }
+
+  @media (max-width: 640px) {
+    .risk-watch {
+      padding-top: 3rem;
+    }
+
+    .risk-header {
+      padding-left: 1.25rem;
+    }
+
+    .risk-note {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+    }
+
+    .risk-reports li a {
+      grid-template-columns: minmax(0, 1fr) 2.75rem;
+      gap: 0.75rem;
+      min-height: 7.5rem;
+    }
+
+    .risk-reports time {
+      grid-column: 1 / -1;
+    }
+
+    .report-copy small {
+      white-space: normal;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .risk-reports li a,
+    .report-arrow {
+      transition: none;
+    }
+  }
+</style>

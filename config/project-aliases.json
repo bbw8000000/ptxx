@@ -1,0 +1,14 @@
+{
+  "note": "仓库改名或转手后的旧名到现行名映射。日报正文里记的是收录当时的名字，改过名的仓库需要靠这张表才能对上站内快照页。由 scripts/github_project_snapshot.py 在抓取时自动记录。",
+  "aliases": {
+    "bolivestilo/homekit": "liirAliu/Homekit",
+    "eeliberto/ipa-download": "EEliberto/Pastel-macOS",
+    "forsy-ai/agent-apprenticeship": "ray-r-ren/agent-apprenticeship",
+    "jeff141/meatshell": "yituorou/meatshell",
+    "lyu0805/openbrowser": "sheying2013/OpenBrowser",
+    "ohad6k/ditto": "ohad6k/emulo",
+    "pewdiepie-archdaemon/odysseus": "odysseus-dev/odysseus",
+    "qiuqiubuchongle-cloud/chokepoint-atlas": "wesson9527/chokepoint-atlas",
+    "starmiaoa/chatgpt-register-sub2api": "starmiaoa/chatgpt-register-k12"
+  }
+}

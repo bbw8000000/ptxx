@@ -1,0 +1,131 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const sortedPosts = allPosts.sort((a, b) => a.data.pubDate.valueOf() - b.data.pubDate.valueOf())
+
+// 按月统计
+const monthlyStats: Record<string, number> = {}
+sortedPosts.forEach((p) => {
+  const key = p.data.pubDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })
+  monthlyStats[key] = (monthlyStats[key] || 0) + 1
+})
+
+const maxCount = Math.max(...Object.values(monthlyStats), 1)
+
+// 分类统计
+const categoryStats: Record<string, number> = {}
+allPosts.forEach((p) => {
+  categoryStats[p.data.category] = (categoryStats[p.data.category] || 0) + 1
+})
+
+// 标签统计
+const tagStats: Record<string, number> = {}
+allPosts.forEach((p) => {
+  p.data.tags?.forEach((tag) => {
+    tagStats[tag] = (tagStats[tag] || 0) + 1
+  })
+})
+const topTags = Object.entries(tagStats)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 15)
+
+// 总字数
+const totalWords = allPosts.reduce((sum, p) => {
+  const body = p.body || ''
+  return sum + (body.match(/[一-鿿]/g) || []).length + (body.match(/[a-zA-Z]+/g) || []).length
+}, 0)
+
+const firstPost = sortedPosts[0]
+const daysRunning = firstPost
+  ? Math.floor((Date.now() - firstPost.data.pubDate.getTime()) / 86400000)
+  : 0
+---
+
+<BaseLayout title="数据统计" description="盘腿修仙数据一览">
+  <div class="max-w-3xl mx-auto px-6 py-16">
+    <div class="mb-10">
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        STATS
+      </span>
+      <h1 class="font-display text-4xl font-bold text-text dark:text-dark-text mb-3">数据统计</h1>
+      <p class="text-text-muted dark:text-dark-text-muted font-serif">博客运行数据一览</p>
+    </div>
+
+    <!-- 概览 -->
+    <div class="grid grid-cols-3 gap-5 mb-14">
+      <div class="p-6 border border-border/40 dark:border-dark-border/40 text-center bg-gradient-to-br from-surface-alt/50 to-surface/30 dark:from-dark-surface-alt/50 dark:to-dark-surface/30 rounded-xl hover:shadow-lg hover:shadow-accent/5 dark:hover:shadow-dark-accent/5 transition-all duration-300">
+        <p class="font-mono text-4xl font-bold text-accent dark:text-dark-accent">
+          {allPosts.length}
+        </p>
+        <p class="text-sm text-text-muted dark:text-dark-text-muted font-sans mt-2">篇文章</p>
+      </div>
+      <div class="p-6 border border-border/40 dark:border-dark-border/40 text-center bg-gradient-to-br from-surface-alt/50 to-surface/30 dark:from-dark-surface-alt/50 dark:to-dark-surface/30 rounded-xl hover:shadow-lg hover:shadow-accent/5 dark:hover:shadow-dark-accent/5 transition-all duration-300">
+        <p class="font-mono text-4xl font-bold text-accent dark:text-dark-accent">
+          {totalWords >= 10000
+            ? (totalWords / 10000).toFixed(1) + '万'
+            : totalWords.toLocaleString()}
+        </p>
+        <p class="text-sm text-text-muted dark:text-dark-text-muted font-sans mt-2">总字数</p>
+      </div>
+      <div class="p-6 border border-border/40 dark:border-dark-border/40 text-center bg-gradient-to-br from-surface-alt/50 to-surface/30 dark:from-dark-surface-alt/50 dark:to-dark-surface/30 rounded-xl hover:shadow-lg hover:shadow-accent/5 dark:hover:shadow-dark-accent/5 transition-all duration-300">
+        <p class="font-mono text-4xl font-bold text-accent dark:text-dark-accent">{daysRunning}</p>
+        <p class="text-sm text-text-muted dark:text-dark-text-muted font-sans mt-2">天</p>
+      </div>
+    </div>
+
+    <!-- 月度发文量 -->
+    <div class="mb-14">
+      <h2 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-6">
+        月度发文
+      </h2>
+      <div class="space-y-3">
+        {Object.entries(monthlyStats).map(([month, count]) => (
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-sans text-text-muted dark:text-dark-text-muted w-24 flex-shrink-0">
+              {month}
+            </span>
+            <div class="flex-1 h-7 bg-surface-alt dark:bg-dark-surface-alt rounded-lg overflow-hidden">
+              <div
+                class="h-full bg-gradient-to-r from-accent/80 to-accent/60 dark:from-dark-accent/80 dark:to-dark-accent/60 rounded-lg transition-all duration-500"
+                style={`width: ${(count / maxCount) * 100}%`}
+              ></div>
+            </div>
+            <span class="text-sm font-mono text-text-muted dark:text-dark-text-muted w-8 text-right">
+              {count}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- 分类 -->
+    <div class="mb-14">
+      <h2 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-6">
+        分类
+      </h2>
+      <div class="flex flex-wrap gap-3">
+        {Object.entries(categoryStats).map(([cat, count]) => (
+          <span class="seal hover:bg-accent hover:text-white dark:hover:bg-dark-accent dark:hover:text-dark-surface transition-all">
+            {cat} ({count})
+          </span>
+        ))}
+      </div>
+    </div>
+
+    <!-- 热门标签 -->
+    <div>
+      <h2 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-6">
+        热门标签
+      </h2>
+      <div class="flex flex-wrap gap-2">
+        {topTags.map(([tag, count]) => (
+          <span class="px-3 py-1.5 text-sm font-sans rounded-full border border-border/40 dark:border-dark-border/40 text-text-muted dark:text-dark-text-muted hover:border-accent/60 dark:hover:border-dark-accent/60 hover:text-accent dark:hover:text-dark-accent transition-all cursor-default">
+            {tag} <span class="text-accent dark:text-dark-accent ml-1">{count}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+</BaseLayout>

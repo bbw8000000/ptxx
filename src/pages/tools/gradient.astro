@@ -1,0 +1,244 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="CSS 渐变生成器" description="可视化 CSS 渐变生成工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">CSS 渐变生成器</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        可视化编辑，一键复制 CSS
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Preview -->
+      <div class="lg:col-span-2">
+        <div
+          id="preview"
+          class="w-full h-80 rounded-xl border border-border/40 dark:border-dark-border/40 shadow-xl shadow-black/10 dark:shadow-black/30"
+        ></div>
+
+        <div class="mt-4 bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-text-muted dark:text-dark-text-muted">CSS 代码</span>
+            <button
+              id="btn-copy"
+              class="px-3 py-1 text-xs bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all"
+            >
+              复制
+            </button>
+          </div>
+          <code
+            id="css-output"
+            class="block font-mono text-sm text-text dark:text-dark-text break-all select-all"
+          ></code>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="space-y-4">
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 shadow-sm">
+          <label class="text-sm font-medium text-text dark:text-dark-text mb-3 block">
+            渐变类型
+          </label>
+          <div class="flex gap-2">
+            <button
+              class="type-btn flex-1 px-3 py-2 text-xs rounded-lg bg-accent dark:bg-dark-accent text-white"
+              data-type="linear"
+            >
+              线性
+            </button>
+            <button
+              class="type-btn flex-1 px-3 py-2 text-xs rounded-lg text-text-muted dark:text-dark-text-muted"
+              data-type="radial"
+            >
+              径向
+            </button>
+            <button
+              class="type-btn flex-1 px-3 py-2 text-xs rounded-lg text-text-muted dark:text-dark-text-muted"
+              data-type="conic"
+            >
+              锥形
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="angle-opts"
+          class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 shadow-sm"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium text-text dark:text-dark-text">角度</label>
+            <span id="angle-val" class="text-sm font-mono text-accent dark:text-dark-accent">
+              135°
+            </span>
+          </div>
+          <input type="range" id="angle" min="0" max="360" value="135" class="w-full" />
+        </div>
+
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-sm font-medium text-text dark:text-dark-text">色标</label>
+            <button
+              id="btn-add-color"
+              class="px-2 py-1 text-xs bg-surface dark:bg-dark-surface text-text-muted dark:text-dark-text-muted rounded-md hover:text-text dark:hover:text-dark-text"
+            >
+              + 添加
+            </button>
+          </div>
+          <div id="color-stops" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-surface-alt dark:bg-dark-surface-alt rounded-xl p-4 shadow-sm">
+          <p class="text-xs text-text-muted dark:text-dark-text-muted mb-2">预设</p>
+          <div class="grid grid-cols-4 gap-2" id="presets"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    ;(() => {
+      const preview = document.getElementById('preview')
+      const cssOutput = document.getElementById('css-output')
+      const angleSlider = document.getElementById('angle')
+      const angleVal = document.getElementById('angle-val')
+      const stopsContainer = document.getElementById('color-stops')
+
+      let gradType = 'linear'
+      let stops = [
+        { color: '#667eea', pos: 0 },
+        { color: '#764ba2', pos: 100 },
+      ]
+
+      const presets = [
+        ['#667eea', '#764ba2'],
+        ['#f093fb', '#f5576c'],
+        ['#4facfe', '#00f2fe'],
+        ['#43e97b', '#38f9d7'],
+        ['#fa709a', '#fee140'],
+        ['#a18cd1', '#fbc2eb'],
+        ['#fccb90', '#d57eeb'],
+        ['#e0c3fc', '#8ec5fc'],
+        ['#f5576c', '#ff6f61'],
+        ['#667eea', '#764ba2', '#f093fb'],
+        ['#00c6fb', '#005bea'],
+        ['#ffecd2', '#fcb69f'],
+      ]
+
+      function renderStops() {
+        stopsContainer.innerHTML = ''
+        stops.forEach((stop, i) => {
+          const div = document.createElement('div')
+          div.className = 'flex items-center gap-2'
+          div.innerHTML = `
+            <input type="color" value="${stop.color}" class="w-8 h-8 rounded cursor-pointer stop-color" data-idx="${i}" />
+            <input type="range" min="0" max="100" value="${stop.pos}" class="flex-1 stop-pos" data-idx="${i}" />
+            <span class="text-xs font-mono text-text dark:text-dark-text w-10 text-right">${stop.pos}%</span>
+            ${stops.length > 2 ? `<button class="text-xs text-red-400 hover:text-red-500 stop-del" data-idx="${i}">×</button>` : '<span class="w-4"></span>'}
+          `
+          stopsContainer.appendChild(div)
+        })
+
+        stopsContainer.querySelectorAll('.stop-color').forEach((el) => {
+          el.addEventListener('input', (e) => {
+            stops[e.target.dataset.idx].color = e.target.value
+            update()
+          })
+        })
+        stopsContainer.querySelectorAll('.stop-pos').forEach((el) => {
+          el.addEventListener('input', (e) => {
+            stops[e.target.dataset.idx].pos = parseInt(e.target.value)
+            e.target.nextElementSibling.textContent = e.target.value + '%'
+            update()
+          })
+        })
+        stopsContainer.querySelectorAll('.stop-del').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            stops.splice(e.target.dataset.idx, 1)
+            renderStops()
+            update()
+          })
+        })
+      }
+
+      function update() {
+        const sorted = [...stops].sort((a, b) => a.pos - b.pos)
+        const colorStr = sorted.map((s) => `${s.color} ${s.pos}%`).join(', ')
+
+        let css
+        if (gradType === 'linear') css = `linear-gradient(${angleSlider.value}deg, ${colorStr})`
+        else if (gradType === 'radial') css = `radial-gradient(circle, ${colorStr})`
+        else css = `conic-gradient(from ${angleSlider.value}deg, ${colorStr})`
+
+        preview.style.background = css
+        cssOutput.textContent = `background: ${css};`
+
+        angleVal.textContent = angleSlider.value + '°'
+        document.getElementById('angle-opts').style.display = gradType !== 'radial' ? '' : 'none'
+      }
+
+      // Type buttons
+      document.querySelectorAll('.type-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.type-btn').forEach((b) => {
+            b.classList.remove('bg-accent', 'dark:bg-dark-accent', 'text-white')
+            b.classList.add('text-text-muted', 'dark:text-dark-text-muted')
+          })
+          btn.classList.add('bg-accent', 'dark:bg-dark-accent', 'text-white')
+          btn.classList.remove('text-text-muted', 'dark:text-dark-text-muted')
+          gradType = btn.dataset.type
+          update()
+        })
+      })
+
+      angleSlider.addEventListener('input', update)
+
+      document.getElementById('btn-add-color').addEventListener('click', () => {
+        stops.push({ color: '#ffffff', pos: 100 })
+        renderStops()
+        update()
+      })
+
+      // Presets
+      const presetsEl = document.getElementById('presets')
+      presets.forEach((colors) => {
+        const btn = document.createElement('button')
+        btn.className =
+          'h-8 rounded-lg border border-border/40 dark:border-dark-border/40 hover:scale-105 transition-transform'
+        btn.style.background = `linear-gradient(135deg, ${colors.join(', ')})`
+        btn.addEventListener('click', () => {
+          stops = colors.map((c, j) => ({
+            color: c,
+            pos: Math.round((j / (colors.length - 1)) * 100),
+          }))
+          renderStops()
+          update()
+        })
+        presetsEl.appendChild(btn)
+      })
+
+      document.getElementById('btn-copy').addEventListener('click', () => {
+        navigator.clipboard.writeText(cssOutput.textContent)
+        const btn = document.getElementById('btn-copy')
+        btn.textContent = '已复制'
+        setTimeout(() => {
+          btn.textContent = '复制'
+        }, 1500)
+      })
+
+      renderStops()
+      update()
+    })()
+  </script>
+</BaseLayout>

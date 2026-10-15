@@ -1,0 +1,325 @@
+---
+// 首页「技术日报」板块。
+//
+// 之前这个文件存在但**从未被 home.astro 引用**，而且实现方式是抓另一套站点的
+// sitemap，把每天的日报渲染成三张只有日期的空壳卡片（没有项目名、没有 star 数）。
+// 实际上 src/content/posts/ 里已经有当天日报的完整正文，直接读本地内容更好：
+// 不用跨域请求、不依赖另一个站点在线、卡片里能显示真实项目。
+import { getCollection } from 'astro:content'
+import { parseDailyDigest } from '../../lib/dailyDigest'
+import { loadGoneProjects } from '../../lib/goneProjects'
+import { loadProjectAliases } from '../../lib/projectAliases'
+
+const base = import.meta.env.BASE_URL
+const posts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+
+/** 日报 = 正文里带 "### n." 条目的那些文章，不只靠文件名前缀判断。 */
+const dailyPosts = posts
+  .filter((post) => /(?:^|\/)daily-\d{4}-\d{2}-\d{2}$/.test(post.id))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+
+const latest = dailyPosts[0]
+const digest = latest ? parseDailyDigest(latest.body ?? '', { base }) : { picks: [] }
+const picks = digest.picks.slice(0, 6)
+
+// 站内有没有这个项目的快照页，决定了卡片该往哪跳。
+//
+// 日报正文里的链接形态并不可靠：生成脚本对**每一条**推荐都写 ../../projects/...，
+// 但被安全过滤拦下、没写快照的项目根本没有页面（现存日报里有 17 条这样的死链）；
+// 反过来，早期日报一律直连 GitHub，其中 257 条其实站内已经有快照页可看。
+// 所以不信任正文里的链接，直接按快照集合决定：有快照 → 站内页面，没有 → GitHub。
+const snapshotNames = new Set(
+  (await getCollection('projects')).map((snapshot) => snapshot.data.fullName.toLowerCase()),
+)
+
+// 而「没有快照」的那一批里，有 46%（实测 429 个里 198 个）仓库已经被 GitHub 删除
+// 或封号 —— 再做成可点击的 GitHub 按钮，读者点过去就是 404。
+const goneNames = loadGoneProjects()
+
+// 还有一批是**改过名/转过手**：日报里记的是收录当时的旧名字，快照却按现行名建。
+// 不查别名表就会误判成「站内没有快照」—— 实测回填那批候选 9 个全是这种情况。
+const aliases = loadProjectAliases()
+
+/** 日报里的名字 → 站内快照用的现行名（没改过名就返回原值）。 */
+function canonicalName(name: string) {
+  return aliases.get(name.toLowerCase()) ?? name
+}
+
+/**
+ * 三种去向：
+ *   internal —— 站内有快照页，跳站内（读者不用翻墙也能看 README）
+ *   external —— 站内没有快照、但仓库还在，直连 GitHub 仓库页
+ *   gone     —— 仓库已经没了，不做成链接，只说明情况
+ */
+function targetFor(pick: { name: string; href: string | null; sourceUrl: string | null }) {
+  const canonical = canonicalName(pick.name)
+  if (snapshotNames.has(canonical.toLowerCase())) {
+    // 用现行名拼站内路径：项目页是按 owner/name 生成的，旧名的页面只是归档。
+    const [owner, repo] = canonical.split('/')
+    return {
+      kind: 'internal' as const,
+      href: `${base.replace(/\/$/, '')}/projects/${owner}/${repo}/`,
+    }
+  }
+  if (snapshotNames.has(pick.name.toLowerCase()) && pick.href) {
+    return { kind: 'internal' as const, href: pick.href }
+  }
+  if (goneNames.has(pick.name.toLowerCase())) {
+    return { kind: 'gone' as const, href: pick.sourceUrl ?? '#' }
+  }
+  return { kind: 'external' as const, href: pick.sourceUrl ?? pick.href ?? '#' }
+}
+
+const latestDate = latest
+  ? latest.data.pubDate
+      .toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+      .replace(/\//g, '.')
+  : ''
+
+/** 描述在 Markdown 源里带转义（\. \- \(），卡片上要还原成正常标点。 */
+function plainText(value: string) {
+  return value.replace(/\\([.()_*#\-[\]`>+!])/g, '$1')
+}
+
+function formatStars(value: number | null) {
+  if (value === null) return null
+  return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value)
+}
+---
+
+{picks.length > 0 && (
+  <section class="home-daily reveal-target" aria-labelledby="home-daily-title">
+    <div class="home-daily-inner">
+      <div class="home-daily-header">
+        <div>
+          <h2 id="home-daily-title" class="section-kicker">
+            技术日报
+          </h2>
+          <p class="home-daily-subtitle">
+            每天从 GitHub 挑几个刚冒头的新项目，这是第 {latestDate} 期。
+          </p>
+        </div>
+        <a href={`${base}blog/${latest.id}/`} class="home-posts-all">
+          看这一期 &rarr;
+        </a>
+      </div>
+
+      <ol class="home-daily-list">
+        {picks.map((pick) => {
+          const target = targetFor(pick)
+          const card = (
+            <>
+              <span class="home-daily-index">{String(pick.index).padStart(2, '0')}</span>
+              <span class="home-daily-body">
+                <strong class="home-daily-name">{pick.name}</strong>
+                {pick.description && (
+                  <span class="home-daily-desc">{plainText(pick.description)}</span>
+                )}
+                <span class="home-daily-meta">
+                  {pick.stars !== null && (
+                    <span class="home-daily-stars">★ {formatStars(pick.stars)}</span>
+                  )}
+                  {pick.language && <span class="home-daily-lang">{pick.language}</span>}
+                  {target.kind === 'external' && <span class="home-daily-external">GitHub</span>}
+                  {target.kind === 'gone' && <span class="home-daily-gone">仓库已不存在</span>}
+                </span>
+              </span>
+            </>
+          )
+
+          // 仓库已经没了的项目不做成链接：点过去是 404，比不给链接更糟。
+          return (
+            <li class="home-daily-item">
+              {target.kind === 'gone' ? (
+                <span class="home-daily-card is-gone">{card}</span>
+              ) : (
+                <a
+                  class="home-daily-card"
+                  href={target.href}
+                  rel={target.kind === 'external' ? 'noopener noreferrer' : undefined}
+                  target={target.kind === 'external' ? '_blank' : undefined}
+                >
+                  {card}
+                </a>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  </section>
+)}
+
+<style>
+  .home-daily {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 2rem 3rem;
+  }
+
+  .home-daily-inner {
+    padding: 2.25rem 2.5rem;
+    border: 1px solid var(--border-glass);
+    border-radius: 1.65rem;
+    background:
+      linear-gradient(145deg, rgba(32, 45, 68, 0.52), rgba(6, 10, 18, 0.3)),
+      radial-gradient(ellipse at 92% 0%, rgba(226, 238, 248, 0.12), transparent 46%),
+      radial-gradient(circle at 8% 100%, rgba(200, 142, 82, 0.08), transparent 42%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    box-shadow: var(--shadow-glass-floating);
+  }
+
+  .home-daily-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .home-daily-subtitle {
+    margin-top: 0.8rem;
+    max-width: 30rem;
+    font-family: var(--font-serif);
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: rgba(214, 218, 225, 0.64);
+  }
+
+  .home-posts-all {
+    font-size: 0.8rem;
+    color: rgba(122, 149, 175, 0.7);
+    text-decoration: none;
+    font-family: var(--font-serif);
+    transition: color 0.3s;
+    white-space: nowrap;
+  }
+  .home-posts-all:hover,
+  .home-posts-all:focus-visible {
+    color: var(--color-accent);
+  }
+
+  .home-daily-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .home-daily-card {
+    display: flex;
+    gap: 0.9rem;
+    height: 100%;
+    padding: 1rem 1.15rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(226, 238, 248, 0.06);
+    background: linear-gradient(150deg, rgba(24, 35, 54, 0.42), rgba(6, 10, 18, 0.24));
+    text-decoration: none;
+    transition:
+      border-color 0.35s,
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+      background 0.35s;
+  }
+  .home-daily-card:hover,
+  .home-daily-card:focus-visible {
+    border-color: rgba(200, 182, 142, 0.26);
+    transform: translateY(-2px);
+  }
+
+  .home-daily-index {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.7;
+    color: rgba(122, 149, 175, 0.62);
+    flex: none;
+  }
+
+  .home-daily-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .home-daily-name {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+  }
+
+  .home-daily-desc {
+    font-family: var(--font-serif);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: rgba(214, 218, 225, 0.7);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .home-daily-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.72rem;
+    color: rgba(168, 175, 186, 0.66);
+  }
+
+  .home-daily-stars {
+    color: rgba(200, 182, 142, 0.86);
+    font-family: var(--font-mono);
+  }
+
+  .home-daily-lang,
+  .home-daily-external {
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.4rem;
+    background: rgba(122, 149, 175, 0.1);
+    font-size: 0.68rem;
+  }
+
+  /* 仓库已被删除/封号：不做成链接，视觉上也要弱化，避免被当成可点项 */
+  .home-daily-card.is-gone {
+    cursor: default;
+    border-style: dashed;
+    border-color: rgba(226, 238, 248, 0.05);
+    background: rgba(12, 18, 30, 0.28);
+  }
+
+  .home-daily-card.is-gone .home-daily-name {
+    color: rgba(214, 218, 225, 0.62);
+    text-decoration: line-through;
+    text-decoration-color: rgba(214, 218, 225, 0.28);
+  }
+
+  .home-daily-gone {
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.4rem;
+    background: rgba(200, 142, 82, 0.12);
+    color: rgba(200, 142, 82, 0.86);
+    font-size: 0.68rem;
+  }
+
+  @media (max-width: 768px) {
+    .home-daily {
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
+    .home-daily-inner {
+      padding: 1.75rem 1.5rem;
+    }
+    .home-daily-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+  }
+</style>

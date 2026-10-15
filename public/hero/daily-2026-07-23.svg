@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 506"
+     width="900" height="506">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="hsl(348, 60%, 18%)"/>
+      <stop offset="100%" stop-color="hsl(33, 50%, 12%)"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="506" rx="16" fill="url(#bg)"/>
+  <circle cx="800" cy="50" r="120" fill="white" opacity="0.04"/>
+  <circle cx="120" cy="460" r="80" fill="white" opacity="0.03"/>
+  <rect x="120" y="30" width="100" height="28" rx="14"
+        fill="hsl(348, 70%, 50%)" opacity="0.8"/>
+  <text x="170" y="49" font-family="system-ui, sans-serif" font-size="12"
+        font-weight="600" fill="white" text-anchor="middle">DAILY</text>
+  <text x="130" y="110" font-family="system-ui, sans-serif" font-size="48"
+        font-weight="700" fill="white" opacity="0.15">07.23</text>
+  <text x="130" y="165"
+        font-family="'Noto Serif SC', 'LXGW WenKai', Georgia, serif"
+        font-size="36" font-weight="700" fill="white">GitHub 每日精选</text>
+  <text x="130" y="210" font-family="system-ui, sans-serif" font-size="16"
+        fill="white" opacity="0.6">dextoolstrending.. · podcast-shorts-f.. · robinhoodvolumebot</text>
+  
+    <circle cx="530" cy="226" r="5" fill="#888" opacity="0.8"/>
+    <text x="545" y="230" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">dextoolstrendingbot</text>
+    <text x="780" y="230" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 115</text>
+
+    <circle cx="530" cy="260" r="5" fill="#3572A5" opacity="0.8"/>
+    <text x="545" y="264" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">podcast-shorts-facto</text>
+    <text x="780" y="264" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 34</text>
+
+    <circle cx="530" cy="294" r="5" fill="#888" opacity="0.8"/>
+    <text x="545" y="298" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">robinhoodvolumebot</text>
+    <text x="780" y="298" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 123</text>
+
+    <circle cx="530" cy="328" r="5" fill="#888" opacity="0.8"/>
+    <text x="545" y="332" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">dexscreenerreactions</text>
+    <text x="780" y="332" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 116</text>
+
+    <circle cx="530" cy="362" r="5" fill="#888" opacity="0.8"/>
+    <text x="545" y="366" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">dexreactionsbot</text>
+    <text x="780" y="366" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 105</text>
+
+    <circle cx="530" cy="396" r="5" fill="#3178c6" opacity="0.8"/>
+    <text x="545" y="400" font-family="system-ui, sans-serif" font-size="14"
+          fill="white" opacity="0.9">holocloth</text>
+    <text x="780" y="400" font-family="system-ui, sans-serif" font-size="12"
+          fill="white" opacity="0.5" text-anchor="end">⭐ 31</text>
+  <line x1="130" y1="466" x2="850" y2="466" stroke="white"
+        stroke-width="1" opacity="0.1"/>
+  <text x="130" y="490" font-family="system-ui, sans-serif" font-size="11"
+        fill="white" opacity="0.3">github.com/trending · 2026-07-23</text>
+</svg>

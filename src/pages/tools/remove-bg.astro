@@ -1,0 +1,621 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="智能抠图" description="AI 驱动的在线抠图工具，浏览器端处理">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">智能抠图</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        AI 语义分割，浏览器端处理，图片不上传服务器
+      </p>
+    </div>
+
+    <!-- 上传区 -->
+    <div
+      id="upload-zone"
+      class="border-2 border-dashed border-border/60 dark:border-dark-border/60 rounded-2xl p-12 text-center hover:border-accent dark:hover:border-dark-accent transition-colors cursor-pointer mb-6"
+    >
+      <svg
+        class="w-12 h-12 mx-auto mb-4 text-text-muted dark:text-dark-text-muted"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+        />
+      </svg>
+      <p class="text-text-muted dark:text-dark-text-muted mb-2">点击上传或拖拽图片到此处</p>
+      <p class="text-xs text-text-muted/60 dark:text-dark-text-muted/60">支持 JPG / PNG / WebP</p>
+      <input
+        type="file"
+        id="file-input"
+        accept="image/*"
+        style="position:absolute;width:0;height:0;overflow:hidden"
+      />
+    </div>
+
+    <!-- 编辑区 -->
+    <div id="editor" style="display:none">
+      <!-- 工具栏 -->
+      <div class="flex flex-wrap items-center gap-3 mb-4 p-4 bg-surface-alt dark:bg-dark-surface-alt rounded-xl">
+        <button
+          id="btn-ai-remove"
+          class="px-4 py-2 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light transition-colors flex items-center gap-2"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+            />
+          </svg>
+          AI 一键抠图
+        </button>
+
+        <div class="flex gap-1 bg-surface dark:bg-dark-surface rounded-lg p-1">
+          <button
+            class="tool-btn px-3 py-1.5 text-xs font-medium rounded-md text-text-muted dark:text-dark-text-muted"
+            data-mode="eraser"
+          >
+            橡皮擦
+          </button>
+          <button
+            class="tool-btn px-3 py-1.5 text-xs font-medium rounded-md text-text-muted dark:text-dark-text-muted"
+            data-mode="restore"
+          >
+            恢复
+          </button>
+        </div>
+
+        <div id="brush-opts" style="display:none" class="flex items-center gap-3">
+          <label class="text-xs text-text-muted dark:text-dark-text-muted">画笔</label>
+          <input type="range" id="brush-size" min="2" max="80" value="20" class="w-24" />
+          <span id="brush-val" class="text-xs font-mono text-text dark:text-dark-text w-8">
+            20
+          </span>
+        </div>
+
+        <div class="ml-auto flex gap-2 flex-wrap">
+          <button
+            id="btn-save-draft"
+            class="px-3 py-1.5 text-xs font-medium border border-accent/60 dark:border-dark-accent/60 text-accent dark:text-dark-accent rounded-md hover:bg-accent/10 dark:hover:bg-dark-accent/10"
+          >
+            保存草稿
+          </button>
+          <button
+            id="btn-switch"
+            class="px-3 py-1.5 text-xs font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-md hover:text-text dark:hover:text-dark-text"
+          >
+            换图
+          </button>
+          <button
+            id="btn-undo"
+            class="px-3 py-1.5 text-xs font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-md disabled:opacity-40"
+            disabled
+          >
+            撤销
+          </button>
+          <button
+            id="btn-reset"
+            class="px-3 py-1.5 text-xs font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-md"
+          >
+            重置
+          </button>
+          <button
+            id="btn-download"
+            class="px-3 py-1.5 text-xs font-medium bg-accent dark:bg-dark-accent text-white rounded-md hover:bg-accent-light"
+          >
+            下载 PNG
+          </button>
+        </div>
+      </div>
+
+      <!-- 画布 -->
+      <div
+        id="canvas-container"
+        class="rounded-xl overflow-hidden border border-border/40 dark:border-dark-border/40 bg-[repeating-conic-gradient(#e5e5e5_0%_25%,#f5f5f5_0%_50%)] dark:bg-[repeating-conic-gradient(#2a2a2e_0%_25%,#1f1f23_0%_50%)] bg-[length:16px_16px]"
+        style="display:inline-block;position:relative"
+      >
+        <canvas id="canvas" class="block"></canvas>
+        <div
+          id="loading-overlay"
+          style="display:none"
+          class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        >
+          <div class="bg-surface dark:bg-dark-surface rounded-xl px-6 py-4 flex flex-col items-center gap-3 shadow-xl">
+            <svg
+              class="w-8 h-8 animate-spin text-accent dark:text-dark-accent"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              ></path>
+            </svg>
+            <div class="text-sm font-medium text-text dark:text-dark-text" id="loading-text">
+              正在加载 AI 模型...
+            </div>
+            <div class="text-xs text-text-muted dark:text-dark-text-muted" id="loading-sub">
+              首次使用需下载模型（约 40MB），后续秒开
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-text-muted dark:text-dark-text-muted">
+        AI 抠图后可用橡皮擦/恢复手动微调
+      </p>
+    </div>
+
+    <!-- 草稿箱浮动按钮 -->
+    <button
+      id="draft-fab"
+      class="fixed bottom-6 right-6 z-[90] w-14 h-14 rounded-full bg-accent dark:bg-dark-accent text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+      title="草稿箱"
+    >
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+        />
+      </svg>
+      <span
+        id="draft-badge"
+        class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden"
+      >
+        0
+      </span>
+    </button>
+
+    <!-- 草稿箱弹窗 -->
+    <div id="draft-modal" class="fixed inset-0 z-[100] hidden">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="draft-backdrop"></div>
+      <div class="relative max-w-lg mx-auto mt-[10vh] px-4">
+        <div class="bg-surface dark:bg-dark-surface rounded-xl shadow-2xl border border-border dark:border-dark-border overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-border dark:border-dark-border">
+            <h3 class="font-display text-lg font-bold text-text dark:text-dark-text">草稿箱</h3>
+            <span class="text-xs text-text-muted dark:text-dark-text-muted" id="draft-count-label">
+              0 / 10
+            </span>
+          </div>
+          <div id="draft-list" class="p-4 max-h-[60vh] overflow-y-auto">
+            <div class="text-center py-8 text-text-muted dark:text-dark-text-muted text-sm">
+              暂无草稿
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 保存成功提示 -->
+    <div
+      id="save-toast"
+      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110] px-5 py-3 bg-accent dark:bg-dark-accent text-white rounded-lg shadow-lg text-sm font-medium opacity-0 pointer-events-none transition-opacity duration-300"
+    >
+      草稿已保存
+    </div>
+  </div>
+
+  <script>
+    import { removeBackground } from '@imgly/background-removal'
+    import { canvasToBlob } from '../../utils/canvas'
+
+    const uploadZone = document.getElementById('upload-zone')!
+    const fileInput = document.getElementById('file-input') as HTMLInputElement
+    const editor = document.getElementById('editor') as HTMLElement
+    const canvas = document.getElementById('canvas') as HTMLCanvasElement
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+    const brushSizeInput = document.getElementById('brush-size') as HTMLInputElement
+    const undoButton = document.getElementById('btn-undo') as HTMLButtonElement
+
+    let mode = 'eraser'
+    let originalImage: HTMLImageElement | null = null
+    let origImageData: ImageData | null = null
+    let history: ImageData[] = []
+    let isDrawing = false
+    let lastX = 0,
+      lastY = 0
+    let isProcessing = false
+
+    // === Upload ===
+    uploadZone.addEventListener('click', () => fileInput.click())
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      uploadZone.style.borderColor = 'var(--color-accent)'
+    })
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.style.borderColor = ''
+    })
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      uploadZone.style.borderColor = ''
+      const f = e.dataTransfer!.files[0]
+      if (f && f.type.startsWith('image/')) loadImage(f)
+    })
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files?.[0]) loadImage(fileInput.files[0])
+    })
+
+    function loadImage(file: File) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const img = new Image()
+        img.onload = () => {
+          originalImage = img
+          const maxW = 1200
+          const scale = img.width > maxW ? maxW / img.width : 1
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          uploadZone.style.display = 'none'
+          editor.style.display = 'block'
+          history = []
+          saveHistory()
+        }
+        const result = ev.target?.result
+        if (typeof result === 'string') img.src = result
+      }
+      reader.readAsDataURL(file)
+    }
+
+    // === AI Background Removal ===
+    document.getElementById('btn-ai-remove')!.addEventListener('click', async () => {
+      if (isProcessing || !originalImage) return
+      isProcessing = true
+
+      const loadOverlay = document.getElementById('loading-overlay')!
+      const loadText = document.getElementById('loading-text')!
+      const btn = document.getElementById('btn-ai-remove')!
+      loadOverlay.style.display = 'flex'
+      btn.setAttribute('disabled', 'true')
+      btn.style.opacity = '0.6'
+
+      try {
+        loadText.textContent = 'AI 正在分析图像...'
+
+        // Convert current canvas to blob
+        const blob = await canvasToBlob(canvas)
+
+        const result = await removeBackground(blob, {
+          progress: (key, current, total) => {
+            if (key === 'compute:inference') {
+              const pct = Math.round((current / total) * 100)
+              loadText.textContent = `AI 处理中... ${pct}%`
+            }
+          },
+        })
+
+        // Draw result onto canvas
+        const resultImg = new Image()
+        const resultUrl = URL.createObjectURL(result)
+        try {
+          resultImg.src = resultUrl
+          await resultImg.decode()
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(resultImg, 0, 0, canvas.width, canvas.height)
+          saveHistory()
+          loadOverlay.style.display = 'none'
+        } finally {
+          URL.revokeObjectURL(resultUrl)
+        }
+      } catch (err) {
+        console.error('AI removal failed:', err)
+        loadText.textContent = '处理失败，请重试'
+        setTimeout(() => {
+          loadOverlay.style.display = 'none'
+        }, 2000)
+      } finally {
+        isProcessing = false
+        btn.removeAttribute('disabled')
+        btn.style.opacity = '1'
+      }
+    })
+
+    // === Mode Switching ===
+    document.querySelectorAll<HTMLButtonElement>('.tool-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach((b) => {
+          b.classList.remove('bg-accent', 'dark:bg-dark-accent', 'text-white')
+          b.classList.add('text-text-muted', 'dark:text-dark-text-muted')
+        })
+        btn.classList.add('bg-accent', 'dark:bg-dark-accent', 'text-white')
+        btn.classList.remove('text-text-muted', 'dark:text-dark-text-muted')
+        mode = btn.dataset.mode || 'eraser'
+        document.getElementById('brush-opts')!.style.display =
+          mode === 'eraser' || mode === 'restore' ? 'flex' : 'none'
+        canvas.style.cursor = mode === 'eraser' || mode === 'restore' ? 'crosshair' : 'default'
+      })
+    })
+
+    // === Slider ===
+    brushSizeInput.addEventListener('input', function (this: HTMLInputElement) {
+      document.getElementById('brush-val')!.textContent = this.value
+    })
+
+    // === History ===
+    function saveHistory() {
+      if (history.length >= 20) history.shift()
+      history.push(ctx.getImageData(0, 0, canvas.width, canvas.height))
+      undoButton.disabled = history.length <= 1
+    }
+
+    undoButton.addEventListener('click', () => {
+      if (history.length > 1) {
+        history.pop()
+        ctx.putImageData(history[history.length - 1], 0, 0)
+        undoButton.disabled = history.length <= 1
+      }
+    })
+
+    document.getElementById('btn-reset')!.addEventListener('click', () => {
+      if (origImageData) {
+        ctx.putImageData(origImageData, 0, 0)
+        history = []
+        saveHistory()
+      }
+    })
+
+    document.getElementById('btn-switch')!.addEventListener('click', () => {
+      editor.style.display = 'none'
+      uploadZone.style.display = ''
+      uploadZone.style.borderColor = ''
+      originalImage = null
+      origImageData = null
+      history = []
+      fileInput.value = ''
+    })
+
+    document.getElementById('btn-download')!.addEventListener('click', () => {
+      const a = document.createElement('a')
+      a.download = 'removed-bg.png'
+      a.href = canvas.toDataURL('image/png')
+      a.click()
+    })
+
+    // === Brush (Eraser / Restore) ===
+    canvas.addEventListener('mousedown', (e) => {
+      if (mode !== 'eraser' && mode !== 'restore') return
+      isDrawing = true
+      const rect = canvas.getBoundingClientRect()
+      lastX = (e.clientX - rect.left) * (canvas.width / rect.width)
+      lastY = (e.clientY - rect.top) * (canvas.height / rect.height)
+      applyBrush(lastX, lastY)
+    })
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDrawing) return
+      const rect = canvas.getBoundingClientRect()
+      const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+      const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+      const dist = Math.hypot(x - lastX, y - lastY)
+      const steps = Math.max(1, Math.ceil(dist / 3))
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps
+        applyBrush(lastX + (x - lastX) * t, lastY + (y - lastY) * t)
+      }
+      lastX = x
+      lastY = y
+    })
+
+    function endDraw() {
+      if (isDrawing) {
+        isDrawing = false
+        saveHistory()
+      }
+    }
+    canvas.addEventListener('mouseup', endDraw)
+    canvas.addEventListener('mouseleave', endDraw)
+
+    function applyBrush(x: number, y: number) {
+      const size = parseInt(brushSizeInput.value)
+      const r = size / 2
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.clip()
+
+      if (mode === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.fillStyle = 'rgba(0,0,0,1)'
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fill()
+      } else if (mode === 'restore' && origImageData) {
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = canvas.width
+        tempCanvas.height = canvas.height
+        const tempCtx = tempCanvas.getContext('2d')!
+        tempCtx.putImageData(origImageData, 0, 0)
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.drawImage(tempCanvas, 0, 0)
+      }
+      ctx.restore()
+    }
+
+    // === Touch Support ===
+    canvas.addEventListener(
+      'touchstart',
+      (e) => {
+        e.preventDefault()
+        if (mode !== 'eraser' && mode !== 'restore') return
+        const t = e.touches[0]
+        const rect = canvas.getBoundingClientRect()
+        lastX = (t.clientX - rect.left) * (canvas.width / rect.width)
+        lastY = (t.clientY - rect.top) * (canvas.height / rect.height)
+        isDrawing = true
+        applyBrush(lastX, lastY)
+      },
+      { passive: false },
+    )
+
+    canvas.addEventListener(
+      'touchmove',
+      (e) => {
+        e.preventDefault()
+        if (!isDrawing) return
+        const t = e.touches[0]
+        const rect = canvas.getBoundingClientRect()
+        const x = (t.clientX - rect.left) * (canvas.width / rect.width)
+        const y = (t.clientY - rect.top) * (canvas.height / rect.height)
+        const dist = Math.hypot(x - lastX, y - lastY)
+        const steps = Math.max(1, Math.ceil(dist / 3))
+        for (let i = 0; i <= steps; i++) {
+          const tt = i / steps
+          applyBrush(lastX + (x - lastX) * tt, lastY + (y - lastY) * tt)
+        }
+        lastX = x
+        lastY = y
+      },
+      { passive: false },
+    )
+
+    canvas.addEventListener('touchend', endDraw)
+
+    // === Draft Box ===
+    const { saveDraft, getAllDrafts, deleteDraft, countDrafts, formatTime } =
+      await import('../../utils/draftStorage')
+
+    function showToast(msg: string) {
+      const toast = document.getElementById('save-toast')!
+      toast.textContent = msg
+      toast.style.opacity = '1'
+      setTimeout(() => {
+        toast.style.opacity = '0'
+      }, 2000)
+    }
+
+    async function updateDraftBadge() {
+      const count = await countDrafts()
+      const badge = document.getElementById('draft-badge')!
+      if (count > 0) {
+        badge.textContent = count.toString()
+        badge.classList.remove('hidden')
+      } else {
+        badge.classList.add('hidden')
+      }
+    }
+    updateDraftBadge()
+
+    // 保存草稿
+    document.getElementById('btn-save-draft')!.addEventListener('click', async () => {
+      try {
+        await saveDraft(canvas)
+        showToast('草稿已保存')
+        updateDraftBadge()
+      } catch (error) {
+        if (error instanceof Error && error.message === 'DRAFT_FULL') {
+          showToast('草稿箱已满（最多10个），请删除旧草稿')
+        } else {
+          showToast('保存失败')
+        }
+      }
+    })
+
+    // 打开草稿箱
+    document.getElementById('draft-fab')!.addEventListener('click', async () => {
+      await renderDraftList()
+      document.getElementById('draft-modal')!.classList.remove('hidden')
+    })
+
+    document.getElementById('draft-backdrop')!.addEventListener('click', () => {
+      document.getElementById('draft-modal')!.classList.add('hidden')
+    })
+
+    async function renderDraftList() {
+      const drafts = await getAllDrafts()
+      const list = document.getElementById('draft-list')!
+      const label = document.getElementById('draft-count-label')!
+      label.textContent = `${drafts.length} / 10`
+
+      if (drafts.length === 0) {
+        list.innerHTML =
+          '<div class="text-center py-8 text-text-muted dark:text-dark-text-muted text-sm">暂无草稿</div>'
+        return
+      }
+
+      list.innerHTML = drafts
+        .map(
+          (d) => `
+        <div class="flex items-center gap-4 p-3 rounded-lg border border-border/40 dark:border-dark-border/40 mb-2 hover:bg-surface-alt dark:hover:bg-dark-surface-alt transition-colors">
+          <img src="${d.thumbnail}" class="w-16 h-12 object-cover rounded border border-border/30 dark:border-dark-border/30" alt="背景移除草稿缩略图" />
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-text-muted dark:text-dark-text-muted">${formatTime(d.createdAt)}</div>
+          </div>
+          <button class="draft-restore-btn px-3 py-1 text-xs font-medium bg-accent dark:bg-dark-accent text-white rounded hover:bg-accent-light" data-id="${d.id}">恢复</button>
+          <button class="draft-delete-btn px-2 py-1 text-xs text-text-muted dark:text-dark-text-muted hover:text-red-500" data-id="${d.id}">删除</button>
+        </div>
+      `,
+        )
+        .join('')
+
+      // 恢复草稿
+      list.querySelectorAll<HTMLButtonElement>('.draft-restore-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id
+          if (!id) return
+          const { getDraft } = await import('../../utils/draftStorage')
+          const draft = await getDraft(id)
+          if (!draft) return
+          const url = URL.createObjectURL(draft.blob)
+          const img = new Image()
+          img.onload = () => {
+            originalImage = img
+            canvas.width = img.width
+            canvas.height = img.height
+            ctx.drawImage(img, 0, 0)
+            origImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            uploadZone.style.display = 'none'
+            editor.style.display = 'block'
+            history = []
+            saveHistory()
+            URL.revokeObjectURL(url)
+            document.getElementById('draft-modal')!.classList.add('hidden')
+          }
+          img.src = url
+        })
+      })
+
+      // 删除草稿
+      list.querySelectorAll<HTMLButtonElement>('.draft-delete-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id
+          if (!id) return
+          await deleteDraft(id)
+          await renderDraftList()
+          updateDraftBadge()
+        })
+      })
+    }
+  </script>
+</BaseLayout>

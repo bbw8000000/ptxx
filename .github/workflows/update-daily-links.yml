@@ -1,0 +1,86 @@
+name: Update Daily Links
+
+# 定时重建站点，用于刷新静态内容并顺带体检构建状态。
+#
+# 时间点放在 Daily Auto Update **之后**（UTC 06:00 / 北京 14:00）。原来定在
+# 02:00 UTC，而日更提交实际落在 04:20–04:35 UTC：一旦这个工作流在 04:28 前后
+# 启动，它签出的是还没有当天日更的内容，却可能比日更工作流部署得更晚 ——
+# 那就等于用旧构建把刚上线的日更覆盖掉，用户反而看不到当天的更新。
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: daily-links
+  cancel-in-progress: true
+
+jobs:
+  rebuild-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      # 中文字体分档需要 fontTools（见 daily-growth-draft.yml 的说明）。
+      - name: Install font subsetting tools
+        run: pip install fonttools brotli
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run check
+      - run: python3 scripts/generate_daily_digest.py --self-test
+      # Astro/Vite only exposes PUBLIC_* values that come from a .env file, not
+      # from the process environment, so the value has to be written out first.
+      - name: Write .env for the build
+        run: echo "PUBLIC_API_BASE=${{ vars.PUBLIC_API_BASE }}" >> .env
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: rebuild-deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # 与另外两个会部署站点的工作流共用同一个 concurrency group，
+    # 避免同时往 github-pages 环境推、互相覆盖。
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  notify:
+    needs: [rebuild-deploy, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create failure issue
+        run: |
+          gh issue create \
+            --title "🚨 Update Daily Links 失败 $(date +%Y-%m-%d)" \
+            --body "Workflow run failed. [查看日志](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            --label "bug"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

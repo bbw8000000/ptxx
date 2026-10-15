@@ -1,0 +1,526 @@
+---
+const base = import.meta.env.BASE_URL
+
+declare global {
+  interface Window {
+    __siteSearchModule?: unknown | null
+    __siteSearchLoadPromise?: Promise<unknown> | null
+    __loadSiteSearch?: () => Promise<unknown>
+    __renderSearchMessage?: (message: string, retry?: () => void) => void
+    __renderSearchLoading?: () => void
+    __renderSiteSearchResults?: (results: any[]) => void
+    __closeSiteSearch?: () => void
+    __openSiteSearch?: () => Promise<void>
+    __siteSearchLastFocus?: Element | null
+    __siteSearchCloseTimer?: number
+    __initSiteSearch?: () => void
+    __siteSearchPageLoadReady?: boolean
+    __siteSearchKeyboardReady?: boolean
+  }
+}
+---
+
+<div class="relative">
+  <button
+    id="search-toggle"
+    class="header-action inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-surface-alt dark:text-dark-text-muted dark:hover:text-dark-text dark:hover:bg-dark-surface-alt transition-colors"
+    aria-label="搜索"
+    aria-controls="search-modal"
+    aria-expanded="false"
+  >
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
+  </button>
+</div>
+
+<!-- Search Modal -->
+<div
+  id="search-modal"
+  class="search-modal fixed inset-0 z-[100] hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-hidden="true"
+  aria-labelledby="search-dialog-title"
+>
+  <!-- Backdrop -->
+  <div class="search-modal-backdrop absolute inset-0 bg-black/50" id="search-backdrop"></div>
+
+  <!-- Search Panel -->
+  <div class="search-modal-positioner relative max-w-2xl mx-auto mt-[15vh] px-4">
+    <div class="search-modal-panel bg-surface dark:bg-dark-surface rounded-xl shadow-2xl border border-border dark:border-dark-border overflow-hidden">
+      <h2 id="search-dialog-title" class="sr-only">
+        搜索文章
+      </h2>
+      <!-- Search Input -->
+      <div class="flex items-center px-4 border-b border-border dark:border-dark-border">
+        <svg
+          class="w-5 h-5 text-text-muted dark:text-dark-text-muted flex-shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          id="site-search-input"
+          placeholder="搜索文章..."
+          aria-label="搜索文章"
+          autocomplete="off"
+          class="w-full px-3 py-4 bg-transparent text-text dark:text-dark-text placeholder:text-text-muted dark:placeholder:text-dark-text-muted focus:outline-none"
+        />
+        <button
+          id="search-close"
+          type="button"
+          class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-surface-alt transition-colors"
+          aria-label="关闭搜索"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div
+        id="search-results"
+        class="max-h-[60vh] overflow-y-auto p-2"
+        aria-live="polite"
+        aria-busy="false"
+      >
+        <div class="px-4 py-8 text-center text-text-muted dark:text-dark-text-muted">
+          输入关键词开始搜索
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-4 py-2 border-t border-border dark:border-dark-border text-xs text-text-muted dark:text-dark-text-muted">
+        <span>由 Pagefind 提供搜索</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ pagefindUrl: base + 'pagefind/pagefind.js' }}>
+  window.__siteSearchModule = window.__siteSearchModule || null
+  window.__siteSearchLoadPromise = window.__siteSearchLoadPromise || null
+
+  window.__loadSiteSearch = async function () {
+    if (window.__siteSearchModule) return window.__siteSearchModule
+    if (!window.__siteSearchLoadPromise) {
+      window.__siteSearchLoadPromise = import(pagefindUrl)
+        .then((module) => {
+          window.__siteSearchModule = module
+          return module
+        })
+        .catch(() => {
+          window.__siteSearchLoadPromise = null
+          return null
+        })
+    }
+    return window.__siteSearchLoadPromise
+  }
+
+  window.__renderSearchMessage = function (message, retry) {
+    const container = document.getElementById('search-results')
+    if (!container) return
+    container.setAttribute('aria-busy', 'false')
+    container.replaceChildren()
+    const state = document.createElement('div')
+    state.className = 'search-message'
+    const text = document.createElement('p')
+    text.textContent = message
+    state.appendChild(text)
+    if (retry) {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.textContent = '重新尝试'
+      button.addEventListener('click', retry)
+      state.appendChild(button)
+    }
+    container.appendChild(state)
+  }
+
+  window.__renderSearchLoading = function () {
+    const container = document.getElementById('search-results')
+    if (!container) return
+    container.setAttribute('aria-busy', 'true')
+    container.innerHTML =
+      '<div class="search-skeleton" aria-label="正在搜索"><span></span><span></span><span></span></div>'
+  }
+
+  window.__renderSiteSearchResults = function (results) {
+    const container = document.getElementById('search-results')
+    if (!container) return
+    container.setAttribute('aria-busy', 'false')
+    container.replaceChildren()
+    if (!results || results.length === 0) {
+      window.__renderSearchMessage('没有找到相关文章')
+      return
+    }
+
+    results.forEach((result, index) => {
+      const link = document.createElement('a')
+      link.href = result.url
+      link.className = 'search-result'
+      link.dataset.searchResult = ''
+      link.style.setProperty('--search-index', String(index))
+      if (index === 0) link.classList.add('is-search-active')
+
+      const title = document.createElement('strong')
+      title.textContent = result.meta?.title || '无标题'
+      const excerpt = document.createElement('p')
+      excerpt.innerHTML = result.excerpt || ''
+      link.append(title, excerpt)
+
+      if (typeof result.meta?.tags === 'string' && result.meta.tags.trim()) {
+        const tags = document.createElement('div')
+        tags.className = 'search-result-tags'
+        result.meta.tags
+          .split(',')
+          .slice(0, 3)
+          .forEach((tag) => {
+            const tagEl = document.createElement('span')
+            tagEl.textContent = tag.trim()
+            tags.appendChild(tagEl)
+          })
+        link.appendChild(tags)
+      }
+
+      link.addEventListener('click', () => window.__closeSiteSearch())
+      container.appendChild(link)
+    })
+  }
+
+  window.__openSiteSearch = async function () {
+    const modal = document.getElementById('search-modal')
+    const toggle = document.getElementById('search-toggle')
+    const input = document.getElementById('site-search-input')
+    if (!modal || !input) return
+    window.__siteSearchLastFocus = document.activeElement
+    window.clearTimeout(window.__siteSearchCloseTimer)
+    modal.classList.remove('hidden')
+    modal.setAttribute('aria-hidden', 'false')
+    toggle?.setAttribute('aria-expanded', 'true')
+    document.body.style.overflow = 'hidden'
+    requestAnimationFrame(() => {
+      modal.classList.add('is-search-open')
+      input.focus()
+    })
+    window.__renderSearchLoading()
+    const index = await window.__loadSiteSearch()
+    if (!index) {
+      window.__renderSearchMessage('搜索索引加载失败', () => window.__openSiteSearch())
+    } else if (!input.value.trim()) {
+      window.__renderSearchMessage('输入关键词开始搜索')
+    }
+  }
+
+  window.__closeSiteSearch = function () {
+    const modal = document.getElementById('search-modal')
+    const toggle = document.getElementById('search-toggle')
+    const input = document.getElementById('site-search-input')
+    if (!modal || !modal.classList.contains('is-search-open')) return
+    modal.classList.remove('is-search-open')
+    modal.setAttribute('aria-hidden', 'true')
+    toggle?.setAttribute('aria-expanded', 'false')
+    if (input) input.value = ''
+    window.__renderSearchMessage('输入关键词开始搜索')
+    document.body.style.overflow = ''
+    if (window.__siteSearchLastFocus?.focus) window.__siteSearchLastFocus.focus()
+    window.clearTimeout(window.__siteSearchCloseTimer)
+    window.__siteSearchCloseTimer = window.setTimeout(() => modal.classList.add('hidden'), 540)
+  }
+
+  window.__initSiteSearch = function () {
+    const toggle = document.getElementById('search-toggle')
+    const backdrop = document.getElementById('search-backdrop')
+    const close = document.getElementById('search-close')
+    const input = document.getElementById('site-search-input')
+    if (!toggle || !backdrop || !close || !input || toggle.dataset.searchReady === 'true') return
+    toggle.dataset.searchReady = 'true'
+    let debounceTimer = 0
+    let requestId = 0
+
+    toggle.addEventListener('click', () => window.__openSiteSearch())
+    backdrop.addEventListener('click', () => window.__closeSiteSearch())
+    close.addEventListener('click', () => window.__closeSiteSearch())
+
+    input.addEventListener('input', () => {
+      window.clearTimeout(debounceTimer)
+      const query = input.value.trim()
+      const currentRequest = ++requestId
+      if (!query) {
+        window.__renderSearchMessage('输入关键词开始搜索')
+        return
+      }
+
+      debounceTimer = window.setTimeout(async () => {
+        window.__renderSearchLoading()
+        const index = await window.__loadSiteSearch()
+        if (currentRequest !== requestId) return
+        if (!index) {
+          window.__renderSearchMessage('搜索索引加载失败', () => window.__openSiteSearch())
+          return
+        }
+
+        try {
+          const search = await index.search(query)
+          const results = await Promise.all(
+            search.results.slice(0, 10).map((result) => result.data()),
+          )
+          if (currentRequest === requestId) window.__renderSiteSearchResults(results)
+        } catch {
+          if (currentRequest === requestId) {
+            window.__renderSearchMessage('搜索失败，请稍后重试', () =>
+              input.dispatchEvent(new Event('input')),
+            )
+          }
+        }
+      }, 180)
+    })
+
+    input.addEventListener('keydown', (event) => {
+      const container = document.getElementById('search-results')
+      const links = [...(container?.querySelectorAll('[data-search-result]') || [])]
+      const current = container?.querySelector('.is-search-active')
+      let index = links.indexOf(current)
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        index = Math.min(index + 1, links.length - 1)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        index = Math.max(index - 1, 0)
+      } else if (event.key === 'Enter' && current) {
+        event.preventDefault()
+        current.click()
+        return
+      } else {
+        return
+      }
+
+      links.forEach((link) => link.classList.remove('is-search-active'))
+      links[index]?.classList.add('is-search-active')
+      links[index]?.scrollIntoView({ block: 'nearest' })
+    })
+  }
+
+  window.__initSiteSearch()
+  if (!window.__siteSearchPageLoadReady) {
+    window.__siteSearchPageLoadReady = true
+    document.addEventListener('astro:page-load', () => window.__initSiteSearch())
+    document.addEventListener('astro:before-swap', () => {
+      document.body.style.overflow = ''
+    })
+  }
+
+  if (!window.__siteSearchKeyboardReady) {
+    window.__siteSearchKeyboardReady = true
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        window.__openSiteSearch()
+        return
+      }
+      if (event.key === 'Escape') {
+        window.__closeSiteSearch()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const modal = document.getElementById('search-modal')
+      if (!modal || !modal.classList.contains('is-search-open')) return
+      const focusable = [...modal.querySelectorAll('button, input, a[href]')].filter(
+        (element) => !element.hasAttribute('disabled'),
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    })
+  }
+</script>
+
+<style is:global>
+  .search-modal {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--motion-base) var(--ease-standard),
+      visibility 0s linear var(--motion-slow);
+  }
+
+  .search-modal.is-search-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .search-modal-backdrop {
+    opacity: 0;
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+    transition:
+      opacity var(--motion-base) var(--ease-standard),
+      backdrop-filter var(--motion-slow) var(--ease-emphasized);
+  }
+
+  .search-modal.is-search-open .search-modal-backdrop {
+    opacity: 1;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .search-modal-positioner {
+    transform: translateY(-0.8rem) scale(0.985);
+    transition: transform var(--motion-slow) var(--ease-emphasized);
+  }
+
+  .search-modal-panel {
+    box-shadow:
+      0 34px 100px rgba(0, 0, 0, 0.54),
+      var(--glass-rim-strong);
+  }
+
+  .search-modal.is-search-open .search-modal-positioner {
+    transform: translateY(0) scale(1);
+  }
+
+  .search-message {
+    display: grid;
+    min-height: 8rem;
+    place-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  .search-message button {
+    min-height: 2.75rem;
+    padding: 0 0.9rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.375rem;
+    color: var(--color-accent);
+  }
+
+  .search-skeleton {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .search-skeleton span {
+    height: 3.5rem;
+    border-radius: 0.375rem;
+    background: var(--color-border);
+    animation: searchSkeletonPulse 1.2s ease-in-out infinite alternate;
+  }
+
+  .search-result {
+    display: block;
+    padding: 0.85rem 1rem;
+    border-radius: 0.375rem;
+    transition:
+      background-color var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+    animation: searchResultIn var(--motion-base) var(--ease-emphasized) both;
+    animation-delay: calc(var(--search-index, 0) * 35ms);
+  }
+
+  .search-result:hover,
+  .search-result:focus-visible,
+  .search-result.is-search-active {
+    background: var(--color-surface-alt);
+  }
+
+  .search-result strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .search-result p {
+    display: -webkit-box;
+    margin-top: 0.3rem;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .search-result-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  .search-result-tags span {
+    color: var(--color-accent);
+    font-size: 0.68rem;
+  }
+
+  @keyframes searchSkeletonPulse {
+    from {
+      opacity: 0.45;
+    }
+    to {
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes searchResultIn {
+    from {
+      opacity: 0;
+      transform: translateY(0.35rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .search-skeleton span {
+      animation: none;
+    }
+
+    .search-result {
+      transition: none;
+      animation: none;
+    }
+
+    .search-modal,
+    .search-modal-backdrop,
+    .search-modal-positioner {
+      transition: none;
+    }
+  }
+</style>

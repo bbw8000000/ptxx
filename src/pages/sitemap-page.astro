@@ -1,0 +1,86 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+const base = import.meta.env.BASE_URL
+---
+
+<BaseLayout title="站点地图" description="盘腿修仙所有页面一览">
+  <div class="max-w-3xl mx-auto px-6 py-12">
+    <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text mb-8">站点地图</h1>
+
+    <div class="space-y-8">
+      <!-- 主要页面 -->
+      <div>
+        <h2 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-4">
+          页面
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <a
+            href={base}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">首页</span>
+          </a>
+          <a
+            href={`${base}blog/`}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">文章</span>
+          </a>
+          <a
+            href={`${base}archive/`}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">归档</span>
+          </a>
+          <a
+            href={`${base}about/`}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">关于</span>
+          </a>
+          <a
+            href={`${base}friends/`}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">友链</span>
+          </a>
+          <a
+            href={`${base}rss.xml`}
+            class="p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors"
+          >
+            <span class="text-sm font-sans text-text dark:text-dark-text">RSS</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 所有文章 -->
+      <div>
+        <h2 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-4">
+          文章 ({sortedPosts.length})
+        </h2>
+        <div class="space-y-2">
+          {sortedPosts.map((post) => (
+            <a
+              href={`${base}blog/${post.id}/`}
+              class="flex items-center gap-3 p-3 border border-border/40 dark:border-dark-border/40 hover:border-accent/60 dark:hover:border-dark-accent/60 transition-colors group"
+            >
+              <time class="text-xs font-mono text-text-muted dark:text-dark-text-muted flex-shrink-0">
+                {post.data.pubDate.toLocaleDateString('zh-CN', {
+                  month: '2-digit',
+                  day: '2-digit',
+                })}
+              </time>
+              <span class="text-sm text-text dark:text-dark-text group-hover:text-accent dark:group-hover:text-dark-accent transition-colors truncate">
+                {post.data.title}
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

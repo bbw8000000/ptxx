@@ -1,0 +1,15 @@
+# 仓库统一用 LF：存进去是 LF，检出也是 LF。
+# Windows 上 core.autocrlf 默认为 true，会把检出文件变成 CRLF，而 Prettier 的
+# 默认 endOfLine 是 lf —— 结果是全新 clone 之后 `npm run format:check` 会把
+# 每一个文件都判为「格式不合规」，而 CI（Linux）却是通过的，非常难排查。
+# 这一行让两端行为一致；text=auto 仍会让 git 自行识别二进制文件。
+* text=auto eol=lf
+
+# Shell scripts also run on macOS and inside CI, where a CRLF shebang fails with
+# "bad interpreter: /usr/bin/env bash^M".
+*.sh text eol=lf
+
+src/content/projects/*.md whitespace=-trailing-space
+firestore.indexes.json whitespace=-blank-at-eof
+src/content/posts/daily-*.md whitespace=-trailing-space
+public/hero/*.svg whitespace=-trailing-space

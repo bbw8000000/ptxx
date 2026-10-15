@@ -1,0 +1,248 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+const base = import.meta.env.BASE_URL
+---
+
+<BaseLayout
+  title="Markdown 转微信格式"
+  description="将博客 Markdown 转换为微信公众号可用的图文排版"
+>
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a href={`${base}tools/`} class="text-sm text-accent hover:underline mb-4 inline-block">
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent border border-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text">微信格式转换</h1>
+      <p class="text-text-muted mt-2 font-serif">Markdown → 微信公众号排版 HTML</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-text mb-2">Markdown 原文</label>
+        <textarea
+          id="input"
+          class="w-full h-[520px] bg-surface-alt border border-border/40 rounded-xl p-4 font-mono text-sm text-text resize-y focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all"
+          placeholder="粘贴 Markdown 内容..."
+        ></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text mb-2">微信预览</label>
+        <div
+          id="preview"
+          class="w-full h-[520px] bg-white border border-border/40 rounded-xl p-6 overflow-y-auto shadow-sm"
+        ></div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button
+        id="copy-btn"
+        class="px-5 py-2.5 text-sm font-sans font-medium rounded-xl bg-accent text-white hover:bg-accent-hover transition-all duration-300 cursor-pointer"
+      >
+        复制微信 HTML
+      </button>
+      <span id="copy-status" class="text-xs text-text-muted font-serif hidden"></span>
+      <label class="ml-auto flex items-center gap-2 text-xs text-text-muted font-serif cursor-pointer">
+        <input type="checkbox" id="add-source" checked />
+        添加来源声明
+      </label>
+    </div>
+
+    <div class="mt-6 p-4 bg-surface-alt/50 border border-border/20 rounded-xl text-xs text-text-muted font-serif leading-relaxed">
+      <p class="font-semibold text-text mb-1">说明</p>
+      <p>1. 粘贴你的 Markdown 文章 → 右侧实时预览微信排版效果</p>
+      <p>2. 点击"复制微信 HTML"后，在公众号编辑器中粘贴（Ctrl+V / Cmd+V）即可</p>
+      <p>3. 图片需手动上传到公众号编辑器，代码块为灰色背景样式</p>
+    </div>
+  </div>
+
+  <script>
+    import { marked } from 'marked'
+
+    const input = document.getElementById('input') as HTMLTextAreaElement
+    const preview = document.getElementById('preview')!
+    const copyBtn = document.getElementById('copy-btn')!
+    const copyStatus = document.getElementById('copy-status')!
+    const addSource = document.getElementById('add-source') as HTMLInputElement
+
+    const SOURCE_TEXT =
+      '\n\n<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 2em 0;" />\n<p style="font-size: 13px; color: #999; text-align: center;">本文首发于 <strong>盘腿修仙</strong> · 一个走非传统路线的个人博客</p>'
+
+    const placeholder = `# 标题示例
+
+## 副标题
+
+这是一段**加粗**正文内容，也可以有 \`行内代码\`。
+
+- 列表项一
+- 列表项二
+- 列表项三
+
+1. 有序列表一
+2. 有序列表二
+
+> 引用一段有深度的文字
+
+\`\`\`python
+def hello():
+    print("Hello, WeChat!")
+\`\`\`
+
+---
+
+[盘腿修仙](https://example.com)
+
+![图片占位](https://) *需在公众号编辑器上传图片*`
+
+    function escapeHtml(value: unknown) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+    }
+
+    function escapeAttribute(value: unknown) {
+      return escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    }
+
+    function safeUrl(value: string | null, kind: 'link' | 'image') {
+      if (!value?.trim()) return ''
+      try {
+        const url = new URL(value, window.location.href)
+        const allowed =
+          kind === 'image'
+            ? ['http:', 'https:'].includes(url.protocol)
+            : ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)
+        return allowed ? url.toString() : ''
+      } catch {
+        return ''
+      }
+    }
+
+    function toWechatHtml(md: string): string {
+      // 先用 marked 解析为 HTML
+      const raw = marked.parse(md, { breaks: true, gfm: true }) as string
+
+      // 解析 DOM 并转换
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(`<div id="root">${raw}</div>`, 'text/html')
+      const root = doc.getElementById('root')!
+
+      function convertNode(node: Node): string {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return escapeHtml(node.textContent || '')
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) return ''
+        const el = node as HTMLElement
+        const tag = el.tagName.toLowerCase()
+        const inner = Array.from(el.childNodes).map(convertNode).join('')
+
+        switch (tag) {
+          case 'h1':
+            return `<p style="font-size: 20px; font-weight: bold; margin: 1em 0 0.5em; line-height: 1.6;">${inner}</p>`
+          case 'h2':
+            return `<p style="font-size: 18px; font-weight: bold; margin: 0.8em 0 0.4em; line-height: 1.6;">${inner}</p>`
+          case 'h3':
+            return `<p style="font-size: 16px; font-weight: bold; margin: 0.6em 0 0.3em; line-height: 1.6;">${inner}</p>`
+          case 'h4':
+          case 'h5':
+          case 'h6':
+            return `<p style="font-size: 15px; font-weight: bold; margin: 0.5em 0 0.3em;">${inner}</p>`
+          case 'p':
+            return `<p style="margin: 0.6em 0; line-height: 1.8; font-size: 15px; color: #333;">${inner}</p>`
+          case 'strong':
+          case 'b':
+            return `<strong>${inner}</strong>`
+          case 'em':
+          case 'i':
+            return `<em>${inner}</em>`
+          case 'code': {
+            // 检查是否是代码块内的 <code>
+            if (el.parentElement?.tagName === 'PRE') {
+              return `<code style="font-size: 13px;">${inner}</code>`
+            }
+            return `<code style="font-size: 13px; background: #f5f5f5; padding: 2px 6px; border-radius: 3px; color: #d63384;">${inner}</code>`
+          }
+          case 'pre':
+            return `<div style="background: #f7f7f7; border-radius: 6px; padding: 12px 16px; margin: 1em 0; overflow-x: auto; font-size: 13px; line-height: 1.6;"><pre style="margin: 0; white-space: pre-wrap; font-family: Menlo, Monaco, monospace; color: #333;">${inner}</pre></div>`
+          case 'blockquote':
+            return `<blockquote style="margin: 1em 0; padding: 8px 16px; border-left: 4px solid #7a95af; background: #f8f9fa; color: #666; font-size: 14px; line-height: 1.7;">${inner}</blockquote>`
+          case 'ul':
+            return `<ul style="margin: 0.6em 0; padding-left: 1.5em; font-size: 15px; color: #333; line-height: 1.8;">${inner}</ul>`
+          case 'ol':
+            return `<ol style="margin: 0.6em 0; padding-left: 1.5em; font-size: 15px; color: #333; line-height: 1.8;">${inner}</ol>`
+          case 'li':
+            return `<li style="margin: 0.3em 0;">${inner}</li>`
+          case 'a':
+            return `<a href="${escapeAttribute(safeUrl(el.getAttribute('href'), 'link'))}" style="color: #7a95af; text-decoration: underline;">${inner}</a>`
+          case 'img':
+            const src = escapeAttribute(safeUrl(el.getAttribute('src'), 'image'))
+            const alt = escapeAttribute(el.getAttribute('alt') || '')
+            return `<p style="text-align: center; margin: 1em 0;"><img src="${src}" alt="${alt}" style="max-width: 100%; border-radius: 6px;" /></p>`
+          case 'hr':
+            return `<hr style="border: none; border-top: 1px solid #e0e0e0; margin: 1.5em 0;" />`
+          case 'table':
+            return `<table style="border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px;">${inner}</table>`
+          case 'thead':
+          case 'tbody':
+            return inner
+          case 'tr':
+            return `<tr>${inner}</tr>`
+          case 'th':
+            return `<th style="border: 1px solid #ddd; padding: 8px 12px; background: #f5f5f5; font-weight: bold; text-align: left;">${inner}</th>`
+          case 'td':
+            return `<td style="border: 1px solid #ddd; padding: 8px 12px;">${inner}</td>`
+          default:
+            return inner
+        }
+      }
+
+      let html = Array.from(root.childNodes).map(convertNode).join('\n')
+
+      if (addSource.checked) {
+        html += SOURCE_TEXT
+      }
+
+      // 包裹为完整片段
+      return `<section style="font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 100%; padding: 0 4px;">\n${html}\n</section>`
+    }
+
+    function update() {
+      const md = input.value
+      if (!md.trim()) {
+        preview.innerHTML =
+          '<div style="color: #999; text-align: center; padding: 2em 0; font-size: 14px;">在左侧粘贴 Markdown 内容</div>'
+        return
+      }
+      try {
+        preview.innerHTML = toWechatHtml(md)
+      } catch {
+        preview.innerHTML =
+          '<div style="color: #e74c3c; text-align: center; padding: 2em 0;">转换出错，请检查 Markdown 格式</div>'
+      }
+    }
+
+    copyBtn.addEventListener('click', async () => {
+      const html = toWechatHtml(input.value)
+      try {
+        // 复制已过滤的内联 HTML，直接粘贴到公众号编辑器
+        await navigator.clipboard.writeText(html)
+        copyStatus.textContent = '已复制微信 HTML ✓'
+        copyStatus.classList.remove('hidden')
+        setTimeout(() => copyStatus.classList.add('hidden'), 2000)
+      } catch {
+        copyStatus.textContent = '复制失败，请手动选择'
+        copyStatus.classList.remove('hidden')
+      }
+    })
+
+    input.addEventListener('input', update)
+    addSource.addEventListener('change', update)
+    input.value = placeholder
+    update()
+  </script>
+</BaseLayout>

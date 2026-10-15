@@ -1,0 +1,909 @@
+---
+title: "domanski-ai/headroom"
+owner: "domanski-ai"
+name: "headroom"
+fullName: "domanski-ai/headroom"
+description: "Track and rotate your Claude & Codex usage across accounts from one live dashboard — read live, never spending a token."
+sourceUrl: "https://github.com/domanski-ai/headroom"
+stars: 107
+forks: 13
+language: "Python"
+topics: ["anthropic", "claude", "claude-code", "cli", "codex", "dashboard", "developer-tools", "openai"]
+license: "MIT"
+homepage: "https://domanski.ai"
+defaultBranch: "master"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-08-25T13:44:35Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# headroom
+
+**A live dashboard for every Claude and Codex subscription you own — read
+straight from the providers *without spending a single token* — that rotates
+you to the next account with headroom the moment one hits a limit.**
+
+The heart of headroom is a **live web dashboard you run locally**. Run
+`headroom serve`, open `http://127.0.0.1:8377`, and every account's 5-hour,
+weekly, and model-scoped capacity is on one page, updating in real time. It's
+an ordinary local web page, so it works in any browser on any OS — you're not
+tied to one machine. A menu-bar app and pinnable desktop widgets are optional
+extras layered on the same data, for a glance without opening a tab.
+
+https://github.com/user-attachments/assets/71e8ec51-8f0f-4ec2-806f-221b9eb6571f
+
+Five built-in themes (Midnight, Minimal, Chrome, Paper, Terminal), switchable
+live from the dashboard. The setup wizard asks how you want it to look.
+
+
+All five themes (static)
+
+| Midnight | Minimal |
+|---|---|
+| *图片：midnight* | *图片：minimal* |
+
+| Chrome | Terminal |
+|---|---|
+| *图片：chrome* | *图片：terminal* |
+
+
+## Why this exists
+
+If you run more than one Claude or ChatGPT subscription (work + personal +
+team), you know the drill: a session dies with *"you've hit your limit"*, you
+have no idea how much is left on the other accounts, and you burn ten minutes
+logging in and out to find out.
+
+headroom fixes all three problems:
+
+1. **See** — every account's 5-hour, weekly, and model-scoped windows on one
+   page, color-coded by what's *left*, not what's used.
+2. **Read for free** — usage comes live from the same reads your CLIs already
+   use (Anthropic's OAuth usage API; the Codex app-server's rate-limits read).
+   Checking your limits never consumes them.
+3. **Rotate** — `headroom claude` launches on the highest-ranked account with
+   *proven* headroom. Claude accounts are ranked by how much of the `fable`
+   model-scoped weekly window they have left, so a fresh session lands where
+   you can still switch model family. An explicitly **non-Fable** launch
+   (`opus`/`sonnet`/`haiku`) is ranked the opposite way — toward the account
+   whose Fable week needs the least protecting — because non-Fable usage
+   drains only the account-wide weekly window, and burning that window on the
+   wrong account leaves Fable capacity stranded behind a 7-day wall (see
+   `headroom fable` below). The order accounts appear in your config breaks
+   ties, and an account with no readable scoped reading ranks last among the
+   eligible ones; Codex accounts keep config order. Ranking never overrides
+   eligibility: an account without proven headroom is skipped whatever it is
+   ranked. When a limit hits, `headroom rotate` (or the `/rotator` skill
+   inside Claude Code) cools that login down until its window resets and hands
+   you the next one. Set a **reserve** (e.g. 10%) and it skips any account
+   already below that much headroom, so a session starts fresh instead of
+   hitting a wall mid-task.
+4. **Maximize** — `headroom fable` is the scoped-pool calculator: per account
+   it reports how much of the Fable weekly pool is still *reachable* through
+   the account-wide 7-day window, how much is stranded or at risk, and how
+   much non-Fable **slack** each account has. The router enforces it: a
+   non-Fable launch that would strand Fable capacity is demoted whenever an
+   account with positive slack can take the work instead (never when the
+   whole fleet is negative — a degraded fleet still routes, least harm
+   first). Tune the pool-size assumption with `routing.fable_pool_ratio`
+   (default 1.0, deliberately pessimistic); `headroom fable` also shows a
+   history-calibrated estimate per account when your usage history supports
+   one.
+
+## New in v0.2: automatic Claude conversation handoff
+
+Automatic handoff is **on by default** — uninterrupted continuation is the
+point of headroom. `headroom claude` stays resident around the Claude process
+it launched. If that exact session reaches a subscription cap, headroom
+requires three independent proofs before it acts: a current-session `StopFailure` hook matched as
+`rate_limit`, a narrow session/weekly-cap message, and a new identity-bound
+usage read showing at least 99% used in the corresponding account or model
+window. The active model family comes from the final API-error transcript
+event, not the model used when the session launched. Missing or ambiguous
+evidence leaves Claude running.
+
+After every non-mutating preflight succeeds, headroom sends Claude one
+`SIGTERM`, requires its `SessionEnd` cleanup hook, verifies the final transcript
+again, publishes the source bytes plus one content-free headroom boundary
+record without overwriting anything in the target account, and resumes with a
+forked session. The source transcript is never modified. If post-stop
+validation fails, the source session is relaunched
+with automation disabled. Three automatic handoffs in any rolling ten minutes
+trips the loop guard; the fourth child stays alive. The guard counts
+admissions that actually *touched* a session — one that reached its stop, or
+one still in flight — so an admission released without ever stopping a child
+(an aborted preemptive attempt, a lost target race) cannot spend the budget a
+genuine cap needs.
+
+### Waiting for capacity: a cap holds, it does not give up
+
+**When there is nowhere to go, headroom waits instead of giving up.** A cap
+that cannot be answered — every other account is capped too — used to disarm
+automatic handoff for that child permanently, while it sat on the capped
+account: the one state where it most needs to move. Nothing was disproven, and
+the condition fixes itself, so headroom now HOLDS the proof (child alive,
+automation armed, a `cap_held` event, one stderr line) and re-runs the **full**
+preflight every five minutes — nothing is admitted on weaker evidence than a
+first attempt would need. The moment an account frees up, the session moves.
+
+Two refusals in that chain hold rather than disarm, because neither is
+evidence *against* the cap: no account with headroom worth moving to, and a
+usage collect that failed outright. (A third absence gets its own small bound
+rather than the hold: if the transcript has not been flushed far enough to say
+which model was running when the cap landed, the lookup is given
+`HEADROOM_CAP_MODEL_RETRIES` further six-second windows — two by default —
+before the child is disarmed.)
+
+The destination bar is part of it: a capped session is never moved onto an
+account that is itself about to refuse — 5h at or past the preemptive 5h
+threshold, weekly or model-scoped weekly at or past 99%
+(`HEADROOM_CAP_TARGET_WEEKLY=100` restores the plain routing bar) — and when
+that leaves nothing, the hold message names every account it skipped and why.
+
+The wait is bounded: 60 attempts five minutes apart, so about five hours
+(`HEADROOM_CAP_HOLD_SECONDS`, `HEADROOM_CAP_HOLD_MAX`; set the max to `0` for
+the old give-up-immediately behaviour). **When the budget runs out** headroom
+disarms exactly as it did before the hold existed: it prints the reason and
+how long it waited, emits `supervision_lost`, and leaves the child alive and
+untouched on the capped account. Nothing is killed and nothing is cooled — the
+session is simply no longer being watched, and moving it is now a manual
+`/exit` plus `headroom handoff`. Each new cap proof gets its own fresh budget.
+
+If the capped window resets before then, the hold ends with the session still
+armed (`cap_cleared`) — there is nothing left to rotate away from.
+
+A cap that fresh usage *contradicts* is not a hold and never was: that still
+disarms on the first look. Neither is a **trust** failure — a login the
+provider rejected or revoked, a slot bound to a different account than
+expected, an organization that changed underneath the slot, a missing CLI or
+credential, an API-key seat with no subscription windows at all. Waiting does
+not fix any of those, so they disarm immediately instead of spending the
+budget. What a *corroborated* cap does wait out is the absence of a reading:
+the provider throttling the usage API, a Codex app-server that would not
+start, answer, or speak protocol, or one that answered with windows headroom
+could not map. (On the very first look there is nothing corroborated yet, so
+an unreadable account row disarms there too — a proof nobody can check must
+never move a session.)
+
+A hold only ever moves the session on the cap it corroborated when the hold
+began, even if a *different* window has hit the wall meanwhile — a
+scoped-weekly cap can never turn into the account-wide handoff nobody proved.
+On a retry where fresh usage still resolves to exactly that cap, the attempt
+simply proceeds on it. Where it resolves to something else — no cap at all, or
+a different window — headroom re-reads the *recorded* window in the fresh
+snapshot and gets one of three answers. Readable and back below the wall: the
+cap is over (`cap_cleared`). Readable and still at the wall: it is not over, so
+the session rotates on the recorded cap as soon as an account frees up — set
+`HEADROOM_CAP_ROTATE_AT_WALL=0` and it keeps waiting instead. Missing,
+malformed, or an expired observation: that proves nothing either way, so the
+proof is kept and the wait continues. A window the snapshot simply stopped
+reporting is never read as a window that reset.
+
+The same asymmetry runs through the rest of the retry. Missing or ambiguous
+reset metadata on a cap that was already corroborated holds; on a first look
+it disarms, as it always did.
+
+What comes back is the **conversation**, not the turn that was refused. The
+resumed session starts idle: nothing re-sends the prompt Claude refused, and
+background tasks, MCP connections and permission state do not survive a
+handoff (see `docs/KNOWN-LIMITS.md`).
+
+Turn it off in `headroom setup`, or explicitly in config:
+
+```json
+{
+  "routing": {
+    "reserve_percent": 0,
+    "auto_handoff": false
+  }
+}
+```
+
+### Preemptive rotation: leaving before the wall
+
+A cap-reactive handoff can only fire once the provider has already refused a
+turn. A seat that climbs to 97% while your session sits idle would otherwise
+strand you: you notice the percentage, `/exit`, and hand off by hand. So the
+supervisor also watches the usage feed it already collects and rotates
+**early** — when the account crosses **93%** of the model-family window it is
+running (e.g. fable), **95%** of the all-model weekly window, or **97%** of
+the **5-hour** window, *and* a target seat with proven headroom exists, *and*
+the child is idle.
+
+The 5-hour window is deliberately the latest of the three and has its own
+rules, because it is the only one that heals by itself. For a session that
+will go idle and wait, moving off it buys nothing; for continuous autonomous
+work the wall lands mid-task and "it resets in four hours" means four hours of
+nothing. So headroom leaves late, and only when leaving actually helps: the
+destination must have **real** 5h headroom (by default ten points below the
+threshold — swapping 97% for 96% is a restart, not a rotation). If every seat
+is near its own 5h cap, headroom **holds and says so** rather than spending a
+seat to arrive at the same wall — that hold is the correct answer, not a
+failure. Regardless of the trigger, a seat at or past the 5h threshold is
+never a rotation *destination*.
+
+"Idle" means no active turn, and quiet is not enough to prove that — a model
+can think silently for minutes. So the transcript must have been quiet for a
+full minute **and** its newest conversational record must be a finished
+assistant turn: a prompt still awaiting its answer, an unanswered tool result,
+or a live subagent all mean a turn is in flight and the session stays put.
+**Background agents count too**: a backgrounded `Agent` call returns its tool
+result immediately and keeps working in its own sidechain transcript
+(`projects///subagents/`), so a session whose main thread looks
+finished is still busy. Recency is not enough there either — an agent blocked
+in one long build writes nothing for an hour — so headroom uses the session's
+own records: an agent the transcript shows as launched (or re-messaged with
+`SendMessage`) with no later terminal `` is still running,
+and any sidechain transcript that ends in unanswered input or an unfinished
+tool call is still working. Only the harness's own notification record can
+retire an agent — the same envelope quoted inside another tool's output (a
+command that prints a transcript, say) is an echo, and an echo bearing a live
+agent's id must never clear the way for its stop. Both are bounded by the running child's own
+lifetime, so agents that died with an earlier run of a resumed session never
+block. Anything unreadable refuses the rotation. No hook
+event may be pending, a session stopped mid-tool-call is never moved early,
+and idleness is re-proven on the very edge of the stop, after the durable
+ledger write, so a turn that starts in that window cancels the stop instead of
+being killed by it (and that cancellation is not charged to the loop budget,
+because nothing was ever stopped).
+
+The rotation itself is the same pipeline as the cap path — staging, target
+identity verification, slot leases, ledger admission, the same
+three-per-ten-minutes loop guard, resume with `--fork-session`. Nothing is
+cooled, because the seat is not capped, and the handoff is recorded with
+`"reason": "preemptive"`.
+
+Preemptive rotation is strictly an optimisation on top of the cap-reactive
+guarantee: **any** refusal — no proven target (near-limit seats are skipped in
+favour of a healthy one further down the ranking), a busy child, a guard
+holding — only defers (with a backoff, so a stranded session never thrashes)
+and leaves cap handoff fully armed. If a rotation is aborted *after* the child
+has stopped, the session is recovered on its own seat with auto-handoff still
+armed — an elective rotation never costs you the guarantee. It is on
+by default; `HEADROOM_PREEMPTIVE=0` is the one-run kill switch for all of it
+and `HEADROOM_PREEMPTIVE_SESSION=0` for just the 5-hour trigger (which never
+disables the 5h *target* rule), and the thresholds are config:
+
+```json
+{
+  "routing": {
+    "preemptive_handoff": true,
+    "preemptive_scoped_percent": 93,
+    "preemptive_overall_percent": 95,
+    "preemptive_session_handoff": true,
+    "preemptive_session_percent": 97
+  }
+}
+```
+
+`HEADROOM_PREEMPTIVE_SESSION_MARGIN` (default 10) is how many points below the
+5h threshold a target must be before a 5h crossing will move onto it.
+
+### Context backstop: never lose a session to its own window
+
+Usage caps are not the only wall. A long session fills its **context window**,
+and at 0% remaining the conversation is over — with whatever it had not
+written down. The intended answer is cooperative and lives in your own hooks:
+warn the session early, let it write a handoff note, let it restart itself.
+That produces a far better handoff than any mechanical one, so headroom stays
+out of the way for as long as it can.
+
+Underneath it, for a session that ignores the warning — wedged in a loop, or
+spending its last context inside one long turn — the supervisor keeps its own
+measurement. It reads the transcript's own usage records (the newest
+main-thread assistant record's input + cache-read + cache-creation tokens;
+sidechains and per-iteration copies are excluded so a subagent or a
+multi-iteration turn cannot inflate the number) and infers the window the way
+the transcript allows: a child launched with an explicit `--model …[1m]` is
+known to be on the 1M window; otherwise usage above ~205k tokens can only have
+been served by that window, and anything below assumes the standard 200k.
+`HEADROOM_CTX_WINDOW` overrides both.
+
+At **10% remaining**, and only with the child provably idle by the same
+three-proof machinery preemptive rotation uses, headroom forces one **lossless**
+rotation: stop, then `--resume … --fork-session` on the **same seat**, with the
+resumed session re-modelled onto the 1M-window model so the conversation
+actually has room. Nothing is cleared — the fork carries the whole
+conversation — the pre-rotation session id stays on disk, no account moves,
+nothing is cooled, and no target is reserved. If the stop cannot be proven
+clean (no `SessionEnd`, a transcript ending mid-tool-call) the session is
+resumed in place instead of forked, but it always comes back — including when
+the replacement itself cannot be spawned, which falls back to the plain resume
+on the same seat, supervised, and prints the manual resume command if even
+that refuses to start. A subscription cap landing *during* a context stop is
+never absorbed the way it is for a seat rotation: there is no reserved target
+here and the session would come back on a seat that has just been refused, so
+the fork is abandoned, the session resumes in place with auto-handoff armed,
+and the cap-reactive path moves it off the seat through the pipeline that can
+actually stage it.
+
+It is bounded on purpose: a fork inherits its parent's usage records, so
+rotations are capped (two per ten minutes per supervisor, separate from the
+handoff ledger's own loop guard, which a genuine cap needs) and held for a
+backoff afterwards. A session already on the largest window is **not**
+restarted — there is no bigger window to move it to, so headroom says so once
+(loudly, via notify) and leaves it running rather than spending its last
+minutes on a pointless restart; `HEADROOM_CONTEXT_BACKSTOP_ALWAYS=1` forces it
+anyway. On by default, `HEADROOM_CONTEXT_BACKSTOP=0` is the kill switch, and:
+
+```json
+{
+  "routing": {
+    "context_backstop": true,
+    "context_backstop_percent": 10
+  }
+}
+```
+
+The same window-fit rule applies to **every** automatic resume, not just this
+one: a transcript that has outgrown the standard window is resumed on
+`opus[1m]` whether it is moving for a cap, moving preemptively, being
+recovered on its own seat, or being forked by the backstop. Without it a large
+conversation resumed under a 200k window dies on its first prompt ("Prompt is
+too long") and is stranded on a seat nobody is watching.
+
+Every path that disables automatic handoff for a running child — a malformed
+hook event, an unreadable hook journal, a lost session binding, a child that
+ignores `SIGTERM` — emits a `supervision_lost` event through
+`HEADROOM_NOTIFY_CMD` as well as printing to stderr, so a dashboard can show
+that a session is no longer protected. Preemptive activity emits
+`preemptive_scheduled`, `preemptive_handoff`, and `preemptive_held`; the
+context backstop emits `context_backstop_scheduled`,
+`context_backstop_rotation`, and `context_backstop_held`, plus
+`context_window_fit` when a handoff resume is re-modelled to fit its window.
+
+One-run overrides are `headroom claude --headroom-auto-handoff` and
+`--headroom-no-auto-handoff`. Supervision activates when auto-handoff is
+enabled, no hook-incompatible Claude flag is present, and **either** stdin,
+stdout and stderr are all TTYs **or** the run opted in explicitly. That opt-in
+is what supervises a **piped / non-TTY launch**: pass `--headroom-auto-handoff`
+(or set `HEADROOM_HEADLESS_SUPERVISION=1`) and a scheduled or scripted session
+is supervised too, so it rotates on a cap instead of stalling on it — it stops
+the child and resumes the same session on a fresh account, and it never
+replays work that already finished. `HEADROOM_HEADLESS_SUPERVISION=0` forces
+the old exec-only behaviour for non-TTY runs; a fully interactive run is
+unaffected either way. Anything else — a plain piped run with no opt-in, or a
+hook-incompatible flag (`-p`/`--print`, `--output-format`, `--input-format`,
+`--bare`, `--safe-mode`, `--disable-all-hooks`, `--no-session-persistence`) —
+takes the normal direct-exec launch path and prints why on stderr. The
+incompatible flags win in every mode: a `--print` run has no resumable
+session, so it stays exec-only whatever the TTYs and the opt-in say.
+
+Your own `--settings` (a file or an inline JSON string) is **merged**, not
+obeyed instead of supervision. Claude honours one `--settings` and a second
+replaces the first, so the supervisor lifts the flag off the child's argv,
+merges your document underneath its own, and launches the child with the one
+file it owns: your keys pass through, its hook groups run first, and the
+merged document rides every rotation — including the unsupervised relaunch
+that recovers a session whose rotation target could not start, which carries
+your settings without the hooks. A document it cannot merge — missing, empty,
+unparseable, absurdly nested, setting `disableAllHooks`/
+`allowManagedHooksOnly`, or setting a `CLAUDE_*`/`HEADROOM_*` variable (or
+`HOME`/`USERPROFILE`) in `env` — **refuses the launch** and names the file
+and the key.
+Those two namespaces are refused wholesale rather than by a list of known-bad
+names: they are the CLI's and headroom's own control surfaces (which shell
+runs a hook, whether it runs at all, which state tree it writes into), and a
+document being read by a surface may not reconfigure it. Your own variables
+pass through untouched. `--managed-settings` is refused for the same reason
+and cannot be merged at all: policy settings sit above the merged document.
+
+It never degrades to an unsupervised child, because a session that looks
+launched but rotates on nothing is the failure this replaced. That includes
+the opt-in `--headroom-launch-fallback`: a bare CLI cannot be supervised, so
+when the argv carries `--settings` the fallback refuses and prints the exact
+bare command instead of running it for you.
+
+What carries is the conversation, model-family routing, and latest session cwd.
+Background tasks, live MCP connections, pending MCP/permission approvals,
+permission mode, and other ephemeral launch flags do not carry. If termination
+races a tool call, Claude may re-drive that interrupted call on resume; headroom
+prints a notice because a side effect could therefore execute twice. See
+Known limits before enabling automation on a new
+platform.
+
+## Platform support
+
+Linux and macOS support the complete CLI, including supervised Claude
+auto-handoff. The one exception is `headroom ops-status`, whose session census
+reads `/proc`: on macOS it reports account batteries and `sessions: null`.
+Windows v1 supports collection, `status`, `pick`/`env`, token
+stats and history, and dashboard build/serve. Invoke it from PowerShell or
+Command Prompt with the stdlib entrypoint:
+
+```powershell
+python -m headroom collect
+python -m headroom status
+python -m headroom serve --demo
+```
+
+On Windows, `headroom claude` still selects an account but launches the CLI
+unsupervised. Supervised auto-handoff, transactional handoff, and the menu-bar
+app are not yet supported. Git Bash/MSYS2 users may also use `bin/headroom`;
+the launcher converts its checkout path for the native Python interpreter.
+
+## Quickstart
+
+Requirements: Python 3.9+ (stdlib only — no pip installs) on Windows, macOS,
+or Linux, and the `claude` and/or `codex` CLIs you already use. (On macOS the
+Claude token lives in the login Keychain; headroom reads it directly — approve
+the Keychain prompt on first run. Multiple Claude accounts on one Mac need a
+current Claude Code version — see
+docs/KNOWN-LIMITS.md.)
+
+On macOS or Linux:
+
+```bash
+git clone https://github.com/domanski-ai/headroom
+cd headroom
+./install.sh              # symlinks bin/headroom onto your PATH
+headroom serve --demo     # OPTIONAL: preview it now with sample data, no setup
+headroom setup            # the wizard: connects accounts, styles your dashboard
+```
+
+Want to see it before connecting anything? `headroom serve --demo` opens the
+dashboard on bundled sample data — it's exactly what the screenshots show.
+
+The wizard finds logins already on your machine (`~/.claude`, `~/.codex`) and
+adopts them in place — credentials are never moved, copied, or read beyond
+what's needed to verify who's logged in. Extra accounts get their own isolated
+config home and log in through the provider's own flow.
+
+Then:
+
+```bash
+headroom serve --open      # live dashboard at http://127.0.0.1:8377
+headroom status sonnet     # who has capacity right now, and why not
+headroom claude            # launch Claude Code on the best account
+headroom rotate            # limit hit? cool this login, switch to the next
+```
+
+## Reading the numbers: what's LEFT
+
+Providers report capacity as *used*, and a bare percentage next to a window
+name is ambiguous the moment two surfaces disagree about which one it is —
+`7d 99%` is either a spent week or an untouched one. So the surfaces you read
+when you are deciding where to work all print what is **left**, and say so:
+
+```
+$ headroom status opus
+model family: opus
+  AVAIL  work               5h 66% left / 7d 88% left / opus 41% left
+  skip   personal           5h 4% left / 7d 12% left / opus 0% left   (opus weekly cap 0% left)
+-> chosen: work
+```
+
+The dashboard and the widgets use the same convention (`% left`, color-coded
+green→red as it empties). Two surfaces still print what is *used*, so know
+which one you are looking at: the per-account lines `headroom collect` prints
+(`5h=34%` means 34% used) and the Claude Code status line (`5h 34%`, colored
+green→red as it *fills* — see
+integrations/claude-code). The `headroom
+ops-status` JSON is machine-facing and names its fields `*_used` for the same
+reason.
+
+**A window nobody reported is never drawn as an empty one.** If a provider
+window is missing from the reading, malformed, or an expired observation,
+every surface says it does not know — `-` in `headroom status`, `?` in the
+status line, `null` in `headroom ops-status` — and the router **holds** the
+account rather than reading "no number" as "no usage". Same for an account
+whose whole reading failed. The one deliberate exception: OpenAI lifted
+Codex's 5-hour limit, so a live Codex account that reports no `5h` window at
+all is read as having no such limit; a Codex `5h` window that is *present but
+unusable* still holds.
+
+## Stats & history
+
+The dashboard's Stats tab charts saved provider-window utilization, summarizes
+current/peak/average percentages and cap-hit episodes, and ranks the 7-day
+workhorses. History contains window percentages only: never token counts,
+emails, or provider identity fields. It is sampled at most once per minute and
+retained for 30 days by default, with up to one extra grace day before the
+amortized retention prune runs.
+
+Set `HEADROOM_HISTORY=0` to disable history entirely. Retention and sampling can
+be adjusted with `HEADROOM_HISTORY_RETENTION_DAYS` and
+`HEADROOM_HISTORY_MIN_INTERVAL`. The two-file static dashboard remains
+supported; on static hosting the Usage tab works normally and Stats explains
+that the live `/history.json` feed requires `headroom serve`.
+
+### Token stats (opt-in)
+
+Token stats add local Codex-style insights to the same Stats tab: lifetime
+tokens, peak day, daily activity, streaks, and a leaderboard ranked by real
+token volume. This is **off by default** because enabling it reads local CLI
+session transcripts. It makes no network requests.
+
+Enable it in `~/.headroom/config.json`:
+
+```json
+{
+  "dashboard": {
+    "token_stats": true,
+    "token_extra_roots": [
+      {
+        "label": "server-cli",
+        "provider": "claude",
+        "path": "/home/you/.claude"
+      }
+    ]
+  }
+}
+```
+
+`token_extra_roots` adds local CLI homes that are not registered account
+slots. Each entry becomes its own labeled row in token rankings and contributes
+to the fleet activity heatmap. Labels must be 1–40 characters, contain no `@`,
+and be unique across extra-root labels and account-slot names. `provider` is
+`claude` or `codex`; `path` must be an absolute path to an existing directory.
+An unusable path is skipped and token telemetry is marked partial. Removing an
+entry removes its row from the next dashboard payload immediately; private scan
+state for it is pruned by the next token scan. Its virtual ID derives from the
+label, provider, and canonical real path, so rebinding any field creates a new
+row and retires the old state.
+
+An extra-root row represents the configured **home**, not a provider account.
+For a shared bare-CLI home, `server-cli` is a useful label. Historical activity
+is split exactly by project when a record has `cwd`: headroom keeps only the
+first directory name below the operator's home (`~` for the home itself), never
+the full path. Account attribution is forward-only and deliberately stays on
+the virtual row. When a Claude session file is first seen, headroom read-only
+checks that home's current OAuth identity and, when its verified email uniquely
+matches a registry `expected_email`, stamps the file with that slot name. The
+stamp never changes. This is scan-time attribution, not proof of which login
+created every turn; older and unverifiable sessions are shown as `earlier`, and
+the attributed totals are never merged into real account rows.
+
+Or set `HEADROOM_TOKEN_STATS=1` for the headroom process. Disable it by removing
+that environment variable and removing the setting or changing it to `false`.
+The off state does not scan session logs or attach token data to the dashboard
+payload.
+
+When enabled, headroom streams Claude Code's `projects/**/*.jsonl` and Codex's
+`sessions/**/rollout-*.jsonl` under each registered account home and valid extra
+root. It stores daily numeric aggregates and private incremental byte-offset
+state under `state/tokens/`; it never stores message content, emails, full cwd
+paths, or raw provider identities. The headline count is input + output + cache creation.
+Cache reads are kept as a separate number, so total tokens processed can still
+be derived without inflating the headline. Scans run at most every 15 minutes
+by default and only read new files or appended tails after the first backfill;
+override the interval with `HEADROOM_TOKEN_SCAN_INTERVAL` (seconds).
+
+Coverage is local to this machine and the configured registered/extra homes.
+Sessions run on another machine do not appear until their logs exist here.
+Static dashboard exports can show the embedded token aggregates without adding
+an endpoint.
+
+## Widgets
+
+*图片：Menu bar widget and compact dashboard, rendered from live fleet data*
+
+Widgets are display-only views of the same fail-closed public snapshot. The
+mini dashboard app is the existing dashboard in a compact layout: open
+`http://127.0.0.1:8377/widget`, or add `?compact=1` to the normal dashboard URL.
+It keeps stale, held, limited, and offline state visible; it does not rotate or
+select accounts.
+
+### SwiftBar on macOS
+
+Install [SwiftBar](https://swiftbar.app/), make sure the installed `headroom`
+binary is on SwiftBar's `PATH`, then copy the one-minute plugin into SwiftBar's
+plugin folder:
+
+```bash
+mkdir -p "$HOME/Library/Application Support/SwiftBar/Plugins"
+cp integrations/swiftbar/headroom.1m.sh \
+  "$HOME/Library/Application Support/SwiftBar/Plugins/headroom.1m.sh"
+chmod +x "$HOME/Library/Application Support/SwiftBar/Plugins/headroom.1m.sh"
+headroom serve
+```
+
+Local mode runs `headroom widget-feed --swiftbar`, which renders the last
+published snapshot and never initiates collection. The live server's
+`/usage.json`, `/widget.json`, and `/widget.txt` feeds share one refresh gate.
+The menu shows the fullest current 5-hour tank plus both windows and reset times
+for every account. Its only actions are Refresh and Open dashboard.
+
+For a headroom server on another machine, keep the server bound to loopback and
+forward it over SSH. This is the only supported remote pattern for live widget
+feeds:
+
+```bash
+ssh -N -L 8377:127.0.0.1:8377 user@headroom-host
+launchctl setenv HEADROOM_WIDGET_URL http://127.0.0.1:8377
+```
+
+Restart SwiftBar after setting the environment variable. Do not expose
+`headroom serve` on a LAN, public interface, or reverse proxy. It remains
+loopback-only, validates the `Host` header, sends no CORS allowance, and marks
+all responses `no-store` and `nosniff`. Remote plugin fetches have a three-second
+timeout and 64 KB cap. The exact `headroom_widget_txt@1` sentinel is version
+validation, not authentication; the plugin never evaluates, sources, or
+executes fetched bytes. Server-rendered menu text is centrally sanitized and
+contains no SwiftBar shell-execution parameters.
+
+### Windows tray — EXPERIMENTAL
+
+The Windows tray client is **EXPERIMENTAL**, not stable or supported as a
+production integration. Make the server available at loopback (for example,
+with the SSH tunnel above), preserve the four files under
+`experimental/windows/icons/`, and launch it from the repository root with
+Windows PowerShell 5.1:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File experimental/windows/headroom-tray.ps1
+```
+
+It uses bundled green, amber, red, and gray icons, caps the Windows tooltip at
+63 characters, and offers Refresh and Open dashboard. Any HTTP, JSON, schema,
+or clock failure becomes gray `OFFLINE`. A real Windows 10/11 PowerShell 5.1
+E2E pass is still required before the experimental label can be reconsidered;
+Windows requesters are invited to validate startup, all four transitions, both
+menu actions, and clean exit.
+
+## The commands
+
+| command | what it does |
+|---|---|
+| `headroom setup` | first-run wizard: accounts + dashboard style quiz |
+| `headroom connect` | add another account (guided login, clobber-proof) |
+| `headroom collect` | refresh usage for every account (no tokens spent) |
+| `headroom status [model]` | table: every account, how much of each window is **left**, and exactly why any is skipped |
+| `headroom pick ` | print the best account name (exit 2 if none) — script-friendly |
+| `headroom env ` | print the `export CLAUDE_CONFIG_DIR=...` line for the best account |
+| `headroom claude` / `codex [args]` | launch the CLI on the best account; a Claude launch is supervised so it hands off on a cap (on by default) |
+| `headroom run  -- ` | headless run with automatic rotation on limit-hit |
+| `headroom rotate [model]` | cool the current account, hand you the next |
+| `headroom handoff` | transactional manual handoff (`--yes`, `--print`, `--model FAMILY`) |
+| `headroom serve [--open]` | local live dashboard (auto-refreshes stale data) |
+| `headroom serve --demo` | preview the dashboard with bundled sample data — no accounts needed |
+| `headroom widget-feed --swiftbar` | render the last published snapshot for SwiftBar; never collects |
+| `headroom statusline` | color-coded capacity for your Claude Code status line |
+| `headroom accounts` | list the connected accounts |
+| `headroom ops-status [--json]` | read-only JSON: every supervised session on this machine (mid-turn or not, subagents, context left, tmux container) plus per-account batteries — **Linux only** for the session half (see below) |
+| `headroom doctor` | environment + config health check (handy for bug reports) |
+
+`headroom ops-status` is for something *else* driving headroom — a scheduler,
+a dashboard, a babysitter script — rather than for reading yourself. It writes
+nothing, makes no network calls, spends no tokens, and degrades per session:
+one unreadable transcript costs that session's fields, never the report. An
+empty list and a failed read are never confused: `sessions` and `seats` are
+lists when they were read (possibly empty) and `null` when they could not be,
+with the reason in the top-level `errors` array; exit 0 if anything could be
+read, 1 if nothing could. Session discovery walks `/proc`, so on macOS the
+report is batteries with `sessions: null` and `session_discovery_failed` in
+`errors`. The battery half comes from headroom's own private snapshot and
+nowhere else; if you publish a usage feed of your own, point
+`HEADROOM_OPS_FALLBACK_USAGE` at it and the command reads it when that
+snapshot is unreadable.
+
+It is also the right way to answer **"is this process safe to kill?"**. A
+supervised child appears in `ps` as `claude --settings
+/supervisors/-..settings.json`; the
+slot name is in that path on purpose, because it is the only thing a live lane
+says about itself in the process table. A long `etime` is what a healthy
+supervised session looks like, not a leak. Check the pid against
+`ops-status`'s `sessions` before reaping anything — see
+docs/KNOWN-LIMITS.md.
+
+## Hand off a capped session
+
+**EXPERIMENTAL.** With automatic handoff off, after Claude reaches its cap run `/exit`, then run
+`headroom handoff`. It verifies and copies the conversation transcript to the
+best other Claude account, cools the capped slot, and resumes from the same
+working directory with a new session id. Use `--print` to stage the handoff and
+print the exact resume command without running it; use `--yes` for a confirmed
+non-interactive handoff. If the journal lacks a model, pass `--model FAMILY`.
+`FAMILY` must name a scoped Claude family such as `sonnet`, `opus`, `haiku`, or
+`fable`; generic `claude` is not enough to enforce model-scoped caps.
+`--yes` and `--print` are mutually exclusive. The source transcript is never
+changed or deleted. Every manual handoff refuses an unresolved tool call unless
+`--force` is given; even a 99–100% provider snapshot is cooldown evidence, not
+authenticated cap proof.
+
+## How the reads work (and why they're safe)
+
+- **Claude — real-time.** Your login token already has access to
+  `api.anthropic.com/api/oauth/usage`, the endpoint the Claude apps themselves
+  use to draw their usage UI. headroom calls it read-only and verifies the
+  organization the response belongs to matches the login bound to that slot —
+  a swapped or clobbered login can never report another account's headroom.
+  Claude usage is always live.
+- **Codex — real-time.** headroom reads Codex usage live from the Codex
+  **app-server** (`codex app-server` → `account/rateLimits/read` +
+  `account/read`), bound to each account's own config home. That's a live,
+  identity-verified read of the same rate-limit data ChatGPT/Codex uses — not
+  a scrape of stale session logs — so Codex usage is as current as Claude's,
+  and Codex accounts are **routed and rotated** just like Claude ones.
+  (On an older Codex CLI without the app-server, headroom falls back to a
+  best-effort session-log read and the router holds those accounts until a
+  fresh reading appears.)
+
+Every account is optional — run only Claude, only Codex, or both. Both
+providers are read live, identity-bound, and fully routed.
+- Snapshots are written atomically. The dashboard gets a sanitized projection
+  (optionally with emails redacted) — raw identity material stays in the
+  private state directory with `0600` permissions.
+
+## Fail-closed by design
+
+headroom never guesses. An account with a stale reading, an unverifiable
+identity, a missing or malformed provider window, an out-of-range percentage,
+a window the provider itself flags critical while it is live, or an active
+cooldown is *held* — shown on the dashboard as held, skipped by the router,
+with the reason spelled out in `headroom status`. If no account has proven
+capacity, `pick` says so with a non-zero exit instead of pointing you at a
+login that will die mid-task.
+
+Connecting accounts is protected the same way: a fresh login that turns out to
+be an account you already connected is rolled back and refused, because two
+slots silently sharing one login is how you eat a week's quota by accident.
+
+## Claude Code integration
+
+See integrations/claude-code — a status line
+showing live capacity at the bottom of every session, and a `/rotator` skill
+so Claude can rotate accounts for you when a limit hits.
+
+## Keeping sessions fresh (reserve)
+
+By default headroom uses each account right down to its limit. If you'd rather
+not *start* a session on an account that's about to run out, set a reserve —
+the setup wizard asks, or add it to `~/.headroom/config.json`:
+
+```json
+{ "routing": { "reserve_percent": 10 } }
+```
+
+Now any account with less than 10% headroom left on its 5-hour, weekly, or
+model-scoped window is skipped in favour of a fuller one (and `headroom status`
+shows exactly why). `0` (the default) keeps today's use-to-the-limit behaviour.
+
+## Reserving an account (tracked, never routed)
+
+Mark an account `"reserved": true` in `~/.headroom/config.json` to keep it on
+the dashboard and in `headroom collect` while excluding it from routing
+entirely: it is never returned by `pick`/`env`, never launched by
+`headroom claude`/`codex`, and never chosen as a rotation or handoff target.
+Use it for a login that belongs to some other workflow (a desktop app, a
+teammate, a pinned service) that automatic rotation must not consume.
+
+## Driving headroom from scripts
+
+Six affordances make headroom composable with launch wrappers:
+
+- **An exported config home is honoured.** If `CLAUDE_CONFIG_DIR` (or
+  `CODEX_HOME`) is already set and names a registered account, that account is
+  used as the *initial* slot instead of being re-routed — your wrapper's
+  routing decision is consumed, not overridden. Rotation off it when it caps
+  is unchanged, and if it has no proven headroom, headroom says so on stderr
+  and picks another.
+- **`HEADROOM_LAUNCH_MARKER=/abs/path.json`** makes `headroom claude`/`codex`
+  write a small JSON file at the moment routing commits to launching the CLI
+  (`{"mode": "supervised"|"exec", "account": ..., "note": ...}`; `note`
+  carries the auto-handoff downgrade reason when supervision was requested
+  but unavailable). The marker is written *before* the CLI starts, so a
+  wrapper that wants a bare-CLI fallback can treat "headroom exited with no
+  marker" as "the CLI never started" and launch directly — without ever
+  racing a CLI headroom did start. If a requested marker cannot be written,
+  headroom refuses to launch (exit 2) rather than leave the handshake
+  dangling.
+- **`--headroom-launch-fallback`** (or `HEADROOM_LAUNCH_FALLBACK=1`) makes
+  `headroom claude`/`codex` exec the *bare* CLI in-process — same passthrough
+  args, headroom's own flags removed — when anything fails strictly **before**
+  the first CLI process was started: no routable account, a failed usage
+  collect, an unwritable settings file or marker, a failed spawn. Once a CLI
+  has started, a later exit — clean or capped — is a normal exit and never a
+  fallback; a supervised session that eventually runs out of accounts isn't
+  one either. Off by default; with it on, a wrapper can simply `exec headroom
+  claude …` and never needs an external bare-CLI fallback of its own.
+- **`HEADROOM_NOTIFY_CMD=`** invokes your command at launch
+  transitions with one JSON argument: `{"event": "launch", "mode":
+  "supervised"|"exec", "account": …, "model": …, "note": …}` when the launch
+  commits, `{"event": "downgrade", …}` when supervision was requested but the
+  run is exec-only, `{"event": "supervision_lost", …}` when a supervised
+  child's auto-handoff disarms after launch (e.g. the SessionStart hook never
+  bound, a malformed hook event, a child that ignores `SIGTERM`), and
+  `{"event": "fallback", …}` when the bare-CLI fallback fires. Preemptive
+  rotation adds `{"event": "preemptive_scheduled", "account", "family",
+  "window", "used_percent"}` when a seat crosses its threshold and a target
+  exists, `{"event": "preemptive_handoff", …, "target", "handoff_id"}` when
+  the session actually moves, and `{"event": "preemptive_held", "account",
+  "reason"}` when an early rotation is deferred. A cap with nowhere to go adds
+  `{"event": "cap_held", "account", "reason"}` while it waits for a seat and
+  `{"event": "cap_cleared", "account", "reason"}` if the capped window resets
+  first — neither is a loss of supervision, and a `supervision_lost` still
+  follows if the wait runs out. The context backstop adds
+  `{"event": "context_backstop_scheduled", "account", "used", "window",
+  "remaining_percent"}`, `{"event": "context_backstop_rotation", …, "model",
+  "forked"}` when a session is forcibly continued, `{"event":
+  "context_backstop_held", "account", "reason"}` when it is deferred (including
+  the "already on the largest context window" case, which only an operator can
+  resolve), and `{"event": "context_window_fit", "account", "model",
+  "handoff_id"}` when a handoff resume is re-modelled to fit its window.
+  Delivery is bounded (10s hard timeout, override with
+  `HEADROOM_NOTIFY_TIMEOUT`); on timeout the command's whole process group is
+  killed, and a broken or hung command is swallowed with a stderr line and
+  never delays or kills the launch. Events replace external marker-polling and
+  are independent of `HEADROOM_LAUNCH_MARKER`. `HEADROOM_NOTIFY_CMD` is trusted
+  code — it runs as you, with your environment; the timeout bounds it, it is
+  not a sandbox.
+- **`HEADROOM_SLOT_LEASE=1`** takes an exclusive `flock()` on a per-account
+  lock file under `~/.headroom/state/leases/` at the moment routing commits to
+  an account, and treats an account another *live* launch holds as unavailable
+  — so two concurrent launches deterministically pick different accounts
+  instead of both grabbing the top-ranked one. The kernel drops the flock
+  when the holder dies, so a crash frees the slot with no pid to reuse and no
+  stale file to clean. The lock rides on the launched CLI: on the exec path it
+  is inherited across `exec`, and a supervised launch hands it to the child
+  (so even if the supervisor exits, the lease stays held by the live session);
+  a supervised auto-handoff moves the lease to the new account before stopping
+  the old one. Acquisition **fails closed**: if leasing is on but the lock (or
+  its inheritability) can't be taken for an infrastructure reason, headroom
+  refuses rather than launch two sessions on one account (with
+  `--headroom-launch-fallback` also set, that refusal degrades to the bare CLI
+  — your explicit "run something over nothing").
+- **`headroom caps`** prints the scripting capabilities this binary supports
+  as command-scoped JSON — `{"schema": 2, "launch_marker": {"claude": true,
+  "codex": true}, "launch_fallback": {"claude": true, "codex": true, "run":
+  false}, "notify_cmd": true, "slot_lease": {"claude": true, "codex": true,
+  "run": false, "fail_closed": true}}` — so a launcher can see which surface
+  each feature is wired into and refuse or adapt to an older binary instead of
+  assuming a feature exists.
+
+## Running across multiple machines
+
+Usage is read **per account, from the provider's side** — so it's correct no
+matter how many machines a given login is signed in on, and the reads are
+token-safe: checking your headroom never disturbs or logs out your other
+sessions. Run headroom on each machine against the logins it has. To view a
+live server from another machine, use the Widgets section's `ssh -L` loopback
+forward; for ordinary static hosting, use `headroom dashboard` as described
+below. Each machine keeps its own cooldown ledger; there's no central
+coordinator to stand up.
+
+## Hosting the dashboard somewhere else
+
+`headroom dashboard` builds two static files (`index.html` + `usage.json`)
+in `~/.headroom/state/public/`. Put them behind any static host or reverse
+proxy; add a cron for `headroom collect` to keep the JSON fresh. Turn on
+`redact_emails` in setup if the page might be visible to others.
+
+## Security posture
+
+The engine was adversarially reviewed cross-model (GPT-5.6 at x-high
+reasoning effort) before first release; every fixable finding is patched and
+the deliberate tradeoffs are documented in
+docs/KNOWN-LIMITS.md. Highlights: auth-override
+environment variables are scrubbed from every provider subprocess, usage
+snapshots are atomic with a sanitized public projection (emails redacted by
+default), authenticated requests never follow redirects, corrupt protective
+state holds routing instead of clearing it, and stale data is always shown
+as held — never promoted to live.
+
+## A note on multiple accounts
+
+headroom manages accounts you legitimately hold — a personal plan, a work
+plan, a team seat. It doesn't create accounts, share credentials, or bypass
+provider controls; it just routes your own tools at your own logins and tells
+you what's left. Check your providers' terms if you're unsure what applies
+to your setup.
+
+## Who builds this
+
+headroom is built and maintained by [Paul Domanski](https://www.linkedin.com/in/paul-domanski-ai/)
+at **[Domanski.AI](https://domanski.ai)**, Cape Town.
+
+Domanski.AI installs AI agents into existing roles inside real businesses, and
+runs its own operations on the same multi-agent stack it sells. headroom came
+out of that: running many agents across several provider accounts makes
+capacity the thing that actually stops you, so it needed a live answer rather
+than a guess.
+
+If that is the problem you have, [domanski.ai](https://domanski.ai) is where to
+find the rest of the work.
+
+## License
+
+MIT — see LICENSE.

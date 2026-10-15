@@ -1,0 +1,155 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="二维码生成" description="在线二维码生成器">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">二维码生成</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        输入文字或链接，实时生成二维码
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">内容</label>
+        <textarea
+          id="input"
+          class="w-full h-40 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入文字或 URL..."
+        >https://example.com</textarea>
+
+        <div class="flex flex-wrap items-center gap-4 mt-4">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-text-muted dark:text-dark-text-muted">尺寸</label>
+            <select
+              id="size"
+              class="bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-lg px-2 py-1 text-xs text-text dark:text-dark-text"
+            >
+              <option value="200">200px</option>
+              <option value="300" selected>
+                300px
+              </option>
+              <option value="400">400px</option>
+              <option value="500">500px</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-text-muted dark:text-dark-text-muted">前景色</label>
+            <input
+              type="color"
+              id="fg-color"
+              value="#000000"
+              class="w-8 h-8 rounded-lg cursor-pointer"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-text-muted dark:text-dark-text-muted">背景色</label>
+            <input
+              type="color"
+              id="bg-color"
+              value="#ffffff"
+              class="w-8 h-8 rounded-lg cursor-pointer"
+            />
+          </div>
+          <button
+            id="btn-download"
+            class="ml-auto px-4 py-1.5 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all"
+          >
+            下载 PNG
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-center">
+        <div
+          id="qr-container"
+          class="p-6 bg-white rounded-xl shadow-xl shadow-black/10 dark:shadow-black/30"
+        ></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import QRCode from 'qrcode'
+
+    const qrInput = document.getElementById('input') as HTMLTextAreaElement
+    const qrSize = document.getElementById('size') as HTMLInputElement
+    const qrFg = document.getElementById('fg-color') as HTMLInputElement
+    const qrBg = document.getElementById('bg-color') as HTMLInputElement
+    const container = document.getElementById('qr-container') as HTMLElement
+
+    async function updateQr() {
+      const text = qrInput.value.trim()
+      if (!text) {
+        container.innerHTML = ''
+        return
+      }
+      const size = parseInt(qrSize.value)
+      try {
+        const svg = await QRCode.toString(text, {
+          type: 'svg',
+          width: size,
+          margin: 4,
+          color: { dark: qrFg.value, light: qrBg.value },
+          errorCorrectionLevel: 'M',
+        })
+        container.innerHTML = svg
+        const svgEl = container.querySelector('svg')
+        if (svgEl) {
+          svgEl.style.display = 'block'
+          svgEl.style.width = size + 'px'
+          svgEl.style.height = size + 'px'
+        }
+      } catch (e) {
+        container.innerHTML = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;color:#ef4444;font-size:14px;text-align:center;padding:16px;">内容过长<br>请缩短</div>`
+      }
+    }
+
+    qrInput.addEventListener('input', updateQr)
+    qrSize.addEventListener('change', updateQr)
+    qrFg.addEventListener('input', updateQr)
+    qrBg.addEventListener('input', updateQr)
+
+    const btnDownload = document.getElementById('btn-download') as HTMLButtonElement
+    btnDownload.addEventListener('click', () => {
+      const svgEl = container.querySelector('svg')
+      if (!svgEl) return
+      const svgData = new XMLSerializer().serializeToString(svgEl)
+      const canvas = document.createElement('canvas')
+      const size = parseInt(qrSize.value)
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const img = new Image()
+      img.onload = () => {
+        ctx.fillStyle = qrBg.value
+        ctx.fillRect(0, 0, size, size)
+        ctx.drawImage(img, 0, 0)
+        canvas.toBlob((blob) => {
+          if (!blob) return
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.download = 'qrcode.png'
+          a.href = url
+          a.click()
+          URL.revokeObjectURL(url)
+        }, 'image/png')
+      }
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData)
+    })
+
+    updateQr()
+  </script>
+</BaseLayout>

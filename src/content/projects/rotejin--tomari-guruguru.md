@@ -1,0 +1,236 @@
+---
+title: "rotejin/tomari-guruguru"
+owner: "rotejin"
+name: "tomari-guruguru"
+fullName: "rotejin/tomari-guruguru"
+description: "25方向のマウス追従と口パクに対応したトマリ用ブラウザアバター"
+sourceUrl: "https://github.com/rotejin/tomari-guruguru"
+stars: 340
+forks: 49
+language: "JavaScript"
+topics: []
+license: "MIT"
+homepage: "https://rotejin.github.io/tomari-guruguru/"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-06-14T07:28:59Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# トマリぐるぐる / トマリトーク
+
+マウスに追従して25方向に振り向き、音声に合わせて口パク・まばたきする、トマリ用のブラウザアバターです。
+
+- **トマリぐるぐる**: マウス追従でキャラクターがこっちを見るシンプル版
+- **トマリトーク**: マイク入力または音声ファイルに合わせて口パクするトーク版
+
+*图片：トマリぐるぐる / トマリトークの動作デモ*
+
+---
+
+## セットアップ
+
+必要環境:
+
+- Node.js 22 LTS 推奨
+- Vite 8 の要件: Node.js 20.19+ または 22.12+
+
+```bash
+npm install
+```
+
+## ローカル起動
+
+Windowsなら `start.bat` をダブルクリックすると、ローカルサーバーを起動してブラウザで開きます。
+
+手動で起動する場合は:
+
+```bash
+npm run dev
+```
+
+トマリトークが自動で開きます。手動でアクセスする場合は:
+
+```text
+http://127.0.0.1:5173/talk.html
+http://127.0.0.1:5173/guruguru.html
+```
+
+注意:
+
+- マイク入力は `localhost` または HTTPS でのみ利用できます。
+- Google Fonts はCDNから読み込むため、初回表示にはネット接続が必要です。
+
+## ビルド
+
+```bash
+npm run build
+npm run preview   # ビルド結果をローカル確認
+```
+
+preview は GitHub Pages と同じ `/tomari-guruguru/` のベースパスで起動します。
+
+```text
+http://127.0.0.1:4173/tomari-guruguru/talk.html
+http://127.0.0.1:4173/tomari-guruguru/guruguru.html
+```
+
+---
+
+## ディレクトリ構成
+
+```
+.
+├── index.html              # トマリトークへのリダイレクト
+├── guruguru.html              # ぐるぐる版エントリ
+├── talk.html                 # トーク版エントリ
+├── vite.config.js          # Vite 8 ビルド設定
+├── package.json
+├── start.bat               # Windows用起動バッチ
+├── src/
+│   ├── app.jsx             # ぐるぐる版アプリ本体
+│   ├── talk-app.jsx        # トーク版アプリ本体
+│   ├── tweaks-panel.jsx    # 画面右下の調整パネル
+│   └── character-config.js # キャラ画像の参照先を一元管理
+├── public/
+│   └── slices2/            # スライス済みキャラ画像 (Git追跡)
+├── docs/                   # 画像生成・差し替え手順の資料
+│   ├── 01_画像指示例.png
+│   ├── 01_画像生成用テンプレ.png
+│   ├── 01_画像生成用プロンプト.txt
+│   ├── 再生用トマリセリフ.wav
+│   └── 新キャラ差し替え手順.md
+├── tools/
+│   └── slice_character_sheets.py
+├── sheets/                 # 元シート画像 (Git非追跡)
+├── uploads/                # 元アップロード画像 (Git非追跡)
+├── 新キャラ資料/            # 新キャラ素材 (Git非追跡)
+├── LICENSE
+├── ASSET_LICENSE.md
+└── README.md
+```
+
+---
+
+## フレーム画像の仕組み
+
+このアプリは、キャラクターの向きと表情に応じて `public/slices2/` 内の画像を1枚ずつ切り替えています。
+
+### 25方向
+
+5列 × 5行の向き差分です。
+
+- 列: 左向き → 正面 → 右向き
+  - `c0`: 左向き / `c1`: 左斜め / `c2`: 正面 / `c3`: 右斜め / `c4`: 右向き
+- 行: 上向き → 水平 → 下向き
+  - `r0`: 強く上を見る / `r1`: 少し上 / `r2`: 水平 / `r3`: 少し下 / `r4`: 強く下
+
+### 6状態
+
+| フォルダ | 目 | 口 |
+|---|---|---|
+| `A` | 開け | とじ |
+| `B` | 開け | 中間 |
+| `C` | 開け | 開け |
+| `D` | 閉じ | とじ |
+| `E` | 閉じ | 中間 |
+| `F` | 閉じ | 開け |
+
+画像パス例: `slices2/A/r2c2.webp`
+
+`src/character-config.js` の `basePath` と `ext` で切り替え可能です。
+
+---
+
+## 使い方
+
+### トマリぐるぐる
+
+1. `guruguru.html` を開く
+2. マウスを動かす
+3. キャラクターがマウス方向に合わせて25方向で振り向きます
+4. 自動まばたきも入ります
+
+### トマリトーク
+
+1. `talk.html` を開く
+2. **マイク開始** を押す、または音声ファイルを読み込む
+3. 音量に応じて口が切り替わります（とじ / はんびらき / ぜんかい）
+4. まばたき時は `D/E/F` の目閉じ画像に切り替わります
+
+---
+
+## Tweaks 調整パネル
+
+画面右下の **Tweaks** ボタンから調整できます。
+
+主な項目:
+
+- マイク感度 / 口パクのしきい値 / 口を閉じる速さ / 自動まばたき
+- 追従範囲 / 追従速度 / キャラサイズ / 背景色
+
+OBSなどで使う場合は、背景色をクロマキーしやすい色に調整してください。
+
+---
+
+## 公開URL
+
+GitHub Pagesで公開しています。
+
+```text
+https://rotejin.github.io/tomari-guruguru/
+```
+
+トップページは `talk.html` に自動転送されます。
+
+---
+
+## 自分のキャラで作るには
+
+このアプリで動かすには最終的に **5×5角度シートを6枚** 作る必要があります。
+
+必要な6枚:
+
+```text
+A_目開け_口とじ.png
+B_目開け_口中間.png
+C_目開け_口開け.png
+D_目閉じ_口とじ.png
+E_目閉じ_口中間.png
+F_目閉じ_口開け.png
+```
+
+おすすめの流れ:
+
+1. 自分のキャラクター参照画像を用意する
+2. `docs/01_画像生成用テンプレ.png` と合わせてChatGPT Images 2.0に添付する
+3. `docs/01_画像生成用プロンプト.txt` の指示を使って6枚のシートを作る
+4. 6枚のPNGを `新キャラ資料/` フォルダに入れる
+5. `tools/slice_character_sheets.py` でスライス画像を生成
+
+詳しい注意点や検証方法は `docs/新キャラ差し替え手順.md` を参照してください。
+
+---
+
+## ライセンス
+
+このリポジトリは、**プログラム部分** と **キャラクター素材・音声** でライセンスを分けています。
+
+### プログラム部分
+
+プログラムコードは MIT License で公開しています。詳細は `LICENSE` を参照してください。
+
+### キャラクター画像・音声・生成素材
+
+キャラクター画像、スライス済みフレーム、サムネイル、音声ファイルは MIT License の対象外です。
+非商用の範囲でのSNS投稿はOKですが、商用利用や他プロジェクトへの流用は禁止です。
+詳細は `ASSET_LICENSE.md` を参照してください。
+
+---
+
+## 技術スタック
+
+- **Vite 8** — ビルド・開発サーバー
+- **React 18** — UI フレームワーク
+- **@vitejs/plugin-react 6** — JSX トランスフォーム

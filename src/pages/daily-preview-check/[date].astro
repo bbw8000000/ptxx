@@ -1,0 +1,242 @@
+---
+// 仅本地预览用的日报页：把任意一期日报按首页卡片的样子渲染出来。
+//
+// 为什么需要它：首页板块只渲染**最新一期**，而最近几期恰好都命中「站内有快照」这条路，
+// 于是「直连 GitHub」「仓库已不存在」这两种卡片在本地根本看不到。要检查它们长什么样、
+// 链接对不对，就得能指定期数。
+//
+// 只在显式打开开关时才生成（`npm run preview:daily` 会设置 DAILY_PREVIEW=1），
+// 默认构建里 getStaticPaths 返回空数组，线上产物中不存在这个页面。
+//
+// 目录名不能以下划线开头：Astro 会把 `_` 开头的pages 目录整个忽略掉（试过，不生成）。
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+import { parseDailyDigest } from '../../lib/dailyDigest'
+import { loadGoneProjects } from '../../lib/goneProjects'
+
+// 注意：不要给它加 `: GetStaticPaths` 类型注解。一旦加了，Astro 推导出的 props 会
+// 退化成 unknown，`Astro.props` 解构出的 post 在 astro check 里报 ts(18046)。
+// 其它动态路由（blog/[...slug].astro）也都是无注解写法。
+export async function getStaticPaths() {
+  // 这个判断必须写在函数体里：Astro 会把 getStaticPaths 提取到独立 chunk，
+  // 模块作用域的变量在那里面不可见（会报 "enabled is not defined"）。
+  if (process.env.DAILY_PREVIEW !== '1') return []
+  const posts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+  return posts
+    .filter((post) => /(?:^|\/)daily-\d{4}-\d{2}-\d{2}$/.test(post.id))
+    .map((post) => ({ params: { date: post.id.replace(/^.*daily-/, '') }, props: { post } }))
+}
+
+const { post } = Astro.props
+const base = import.meta.env.BASE_URL
+const goneNames = loadGoneProjects()
+const snapshotNames = new Set(
+  (await getCollection('projects')).map((snapshot) => snapshot.data.fullName.toLowerCase()),
+)
+
+const digest = parseDailyDigest(post.body ?? '', { base })
+const picks = digest.picks
+
+const all = await getCollection('posts')
+const dates = all
+  .filter((item) => /(?:^|\/)daily-\d{4}-\d{2}-\d{2}$/.test(item.id))
+  .map((item) => item.id.replace(/^.*daily-/, ''))
+  .sort()
+  .reverse()
+
+function targetFor(pick: { name: string; href: string | null; sourceUrl: string | null }) {
+  if (snapshotNames.has(pick.name.toLowerCase()) && pick.href) {
+    return { kind: 'internal' as const, href: pick.href }
+  }
+  if (goneNames.has(pick.name.toLowerCase())) {
+    return { kind: 'gone' as const, href: pick.sourceUrl ?? '#' }
+  }
+  return { kind: 'external' as const, href: pick.sourceUrl ?? pick.href ?? '#' }
+}
+
+const counts = picks.reduce(
+  (accumulator, pick) => {
+    accumulator[targetFor(pick).kind] += 1
+    return accumulator
+  },
+  { internal: 0, external: 0, gone: 0 },
+)
+
+const currentDate = post.id.replace(/^.*daily-/, '')
+---
+
+<BaseLayout title={`日报预览 ${currentDate}`} robots="noindex, nofollow">
+  <div class="preview-page">
+    <p class="preview-banner">
+      本地预览页（线上不存在）· 本期 {picks.length} 条：站内 {counts.internal}、直连 GitHub{' '}
+      {counts.external}、已删除 {counts.gone}
+    </p>
+
+    <nav class="preview-nav">
+      {dates.slice(0, 60).map((date) => (
+        <a
+          href={`${base}daily-preview-check/${date}/`}
+          class:list={[{ current: date === currentDate }]}
+        >
+          {date.slice(5)}
+        </a>
+      ))}
+    </nav>
+
+    <ol class="preview-list">
+      {picks.map((pick) => {
+        const target = targetFor(pick)
+        return (
+          <li class:list={['preview-item', target.kind]}>
+            <span class="preview-index">{String(pick.index).padStart(2, '0')}</span>
+            <div class="preview-body">
+              <strong>{pick.name}</strong>
+              <span class="preview-desc">{pick.description}</span>
+              <span class="preview-meta">
+                <span class="badge kind">{target.kind}</span>
+                {pick.stars !== null && <span class="badge">★ {pick.stars}</span>}
+                {pick.language && <span class="badge">{pick.language}</span>}
+                {target.kind === 'gone' ? (
+                  <span class="url">（不可点）{target.href}</span>
+                ) : (
+                  <a
+                    class="url"
+                    href={target.href}
+                    target={target.kind === 'external' ? '_blank' : undefined}
+                    rel={target.kind === 'external' ? 'noopener noreferrer' : undefined}
+                  >
+                    {target.href}
+                  </a>
+                )}
+              </span>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  </div>
+</BaseLayout>
+
+<style>
+  .preview-page {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .preview-banner {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: rgba(200, 182, 142, 0.9);
+    border: 1px dashed rgba(200, 182, 142, 0.3);
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1.4rem;
+  }
+  .preview-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 2rem;
+  }
+  .preview-nav a {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    background: rgba(122, 149, 175, 0.12);
+    color: rgba(214, 218, 225, 0.8);
+    text-decoration: none;
+  }
+  .preview-nav a.current {
+    background: rgba(200, 182, 142, 0.28);
+    color: #fff;
+  }
+  .preview-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .preview-item {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(226, 238, 248, 0.08);
+    background: rgba(18, 27, 43, 0.5);
+  }
+  .preview-item.gone {
+    border-style: dashed;
+    border-color: rgba(226, 238, 248, 0.05);
+    opacity: 0.75;
+  }
+  .preview-item.external {
+    border-color: rgba(122, 149, 175, 0.28);
+  }
+  .preview-index {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: rgba(122, 149, 175, 0.62);
+  }
+  .preview-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+  .preview-body strong {
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    color: var(--color-text);
+  }
+  .preview-item.gone strong {
+    text-decoration: line-through;
+    color: rgba(214, 218, 225, 0.6);
+  }
+  .preview-desc {
+    font-family: var(--font-serif);
+    font-size: 0.8rem;
+    color: rgba(214, 218, 225, 0.68);
+  }
+  .preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+  }
+  .badge {
+    padding: 0.08rem 0.4rem;
+    border-radius: 0.35rem;
+    background: rgba(122, 149, 175, 0.12);
+    color: rgba(214, 218, 225, 0.8);
+  }
+  .badge.kind {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .preview-item.internal .badge.kind {
+    background: rgba(122, 149, 175, 0.22);
+  }
+  .preview-item.external .badge.kind {
+    background: rgba(120, 200, 140, 0.2);
+    color: rgba(150, 230, 170, 0.95);
+  }
+  .preview-item.gone .badge.kind {
+    background: rgba(200, 142, 82, 0.2);
+    color: rgba(230, 170, 110, 0.95);
+  }
+  .url {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: rgba(122, 149, 175, 0.75);
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+  .url:hover {
+    color: var(--color-accent);
+  }
+</style>

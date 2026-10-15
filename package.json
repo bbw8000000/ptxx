@@ -1,0 +1,77 @@
+{
+  "name": "blog",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/generate-robots.mjs && npm run fonts:build && pagefind --site dist",
+    "fonts:build": "node scripts/build-font-packs.mjs --report && node scripts/run-python.mjs scripts/subset_font_packs.py && node scripts/inject-font-packs.mjs --report",
+    "fonts:check": "node scripts/check-font-coverage.mjs",
+    "build:api": "node scripts/build-api-dist.mjs",
+    "api:dev": "npm run build:api && wrangler pages dev .pages-dist --port 8788",
+    "migrate:comments": "node --experimental-strip-types scripts/migrate-firestore-comments.mjs",
+    "export:comments": "node scripts/export-firestore-comments.mjs",
+    "test": "node --experimental-strip-types --test",
+    "check": "astro check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:site": "node scripts/check-site.mjs",
+    "guard:images": "node scripts/guard-content-images.mjs",
+    "preview": "astro preview",
+    "preview:daily": "node scripts/build-daily-preview.mjs",
+    "daily": "npm run daily:digest && npm run daily:growth",
+    "daily:digest": "node scripts/run-python.mjs scripts/generate_daily_digest.py",
+    "daily:growth": "node scripts/run-python.mjs scripts/generate_growth_draft.py",
+    "daily:dry": "node scripts/run-python.mjs scripts/generate_daily_digest.py --dry-run",
+    "self-test": "node scripts/run-python.mjs scripts/generate_daily_digest.py --self-test && node scripts/run-python.mjs scripts/generate_growth_draft.py --self-test",
+    "weekly": "node scripts/run-python.mjs scripts/generate_weekly_picks.py",
+    "weekly:dry": "node scripts/run-python.mjs scripts/generate_weekly_picks.py --dry-run",
+    "indexnow": "bash scripts/submit-indexnow.sh",
+    "astro": "astro",
+    "test:coverage": "node --experimental-strip-types --experimental-test-coverage --test",
+    "verify": "npm run lint && npm run format:check && npm run test && npm run check && npm run self-test && npm run guard:images && npm run build && npm run fonts:check && npm run check:site"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.2.1",
+    "@astrojs/mdx": "^5.0.6",
+    "@astrojs/rss": "^4.0.18",
+    "@astrojs/sitemap": "^3.7.2",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/noto-serif-sc": "^5.2.9",
+    "@imgly/background-removal": "^1.7.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "astro": "^6.4.8",
+    "marked": "^18.0.5",
+    "pagefind": "^1.5.2",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@types/qrcode": "^1.5.6",
+    "@typescript-eslint/parser": "^8.70.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-astro": "^1.7.0",
+    "prettier": "^3.9.8",
+    "prettier-plugin-astro": "^1.0.1",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.131.0"
+  },
+  "license": "MIT",
+  "overrides": {
+    "esbuild": "0.28.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bbw8000000/ptxx.git"
+  },
+  "homepage": "http://101.42.44.71/blog/",
+  "author": "bbw8000000"
+}

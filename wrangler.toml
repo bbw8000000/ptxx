@@ -1,0 +1,23 @@
+# Cloudflare Pages project that serves ONLY the auth + comments API.
+#
+# The static blog stays on GitHub Pages; this project exists so the API is
+# reachable from mainland China. It must be Pages, not a plain Worker: measured
+# from a China network, *.workers.dev is unreachable while *.pages.dev resolves
+# and answers from Cloudflare's edge.
+#
+# Secrets (set with `npx wrangler pages secret put <NAME> --project-name blog-api`):
+#   PBKDF2_PEPPER      required - HMAC pepper applied before PBKDF2. Never in D1.
+#   PBKDF2_ITERATIONS  optional - defaults to 50000 (free-tier CPU budget)
+#   ALLOWED_ORIGINS    optional - comma-separated CORS allowlist
+
+name = "blog-api"
+compatibility_date = "2026-09-01"
+pages_build_output_dir = ".pages-dist"
+
+# Replace database_id with the value printed by:
+#   npx wrangler d1 create blog-comments
+# Local development ignores the id and uses .wrangler/state, but deploys need it.
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-comments"
+database_id = "8ebd16dd-840e-4bd5-af73-62ce8ee73405"

@@ -1,0 +1,293 @@
+---
+interface Props {
+  title: string
+  description: string
+  pubDate: Date
+  tags: string[]
+  category: string
+  slug: string
+  heroImage?: string
+  featured?: boolean
+  readingTime?: number
+}
+
+const {
+  title,
+  description,
+  pubDate,
+  tags,
+  category,
+  slug,
+  featured = false,
+  readingTime,
+} = Astro.props
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+---
+
+<div class="card-tilt-wrapper reveal-target blur-reveal">
+  <article class="card card-tilt group relative overflow-hidden">
+    <a href={`${import.meta.env.BASE_URL}blog/${slug}/`} class="block p-5" data-post-transition>
+      <div class="flex items-center gap-2 text-xs mb-2.5">
+        <span class="seal">{category}</span>
+        <time datetime={pubDate.toISOString()} class="font-mono text-[11px] text-text-secondary">
+          {formatDate(pubDate)}
+        </time>
+        {readingTime && <span class="text-text-secondary/40">·</span>}
+        {readingTime && <span class="text-text-secondary">{readingTime} 分钟</span>}
+      </div>
+      <h3
+        class="font-display font-bold leading-snug mb-2 text-text group-hover:text-accent transition-colors duration-200"
+        data-post-transition-title
+      >
+        {title}
+      </h3>
+      <p class="text-sm text-text-secondary line-clamp-2 leading-relaxed">{description}</p>
+      {tags.length > 0 && (
+        <div class="flex flex-wrap gap-1.5 mt-3">
+          {tags.slice(0, 3).map((tag) => (
+            <span class="post-card-tag text-[11px] px-2.5 py-1 text-text-secondary rounded-md font-sans transition-all duration-300">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+      {featured && (
+        <span class="post-card-featured inline-block mt-3 px-2 py-0.5 text-[10px] font-bold rounded font-sans tracking-wide">
+          精选
+        </span>
+      )}
+    </a>
+  </article>
+</div>
+
+<script>
+  const MAX_TILT = 4.0
+  const MAX_LIFT = 12
+  let cleanupTiltCards = () => {}
+
+  const clearTilt = (card: HTMLElement) => {
+    card.style.removeProperty('--tilt-x')
+    card.style.removeProperty('--tilt-y')
+    card.style.removeProperty('--tilt-lift')
+    card.style.removeProperty('--tilt-shadow-x')
+    card.style.removeProperty('--tilt-shadow-y')
+    card.style.removeProperty('--tilt-shadow-blur')
+    card.style.removeProperty('--tilt-shadow-spread')
+    card.style.setProperty('--spotlight-x', '50%')
+    card.style.setProperty('--spotlight-y', '50%')
+  }
+
+  function initTilt(wrapper: HTMLElement) {
+    const card = wrapper.querySelector<HTMLElement>('.card-tilt')
+    if (!card) return () => {}
+
+    let animationFrame = 0
+    let latestEvent: PointerEvent | undefined
+
+    const updateTilt = () => {
+      animationFrame = 0
+      if (!latestEvent) return
+
+      const rect = wrapper.getBoundingClientRect()
+      const x = (latestEvent.clientX - rect.left) / rect.width
+      const y = (latestEvent.clientY - rect.top) / rect.height
+
+      const tiltX = (y - 0.5) * 2 * MAX_TILT
+      const tiltY = (x - 0.5) * -2 * MAX_TILT
+      const shadowX = (x - 0.5) * -14
+      const shadowY = (y - 0.5) * -14 + 8
+      const dx = x - 0.5
+      const dy = y - 0.5
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const lift = (1 - Math.min(dist * 1.4, 1)) * MAX_LIFT
+
+      card.style.setProperty('--tilt-x', `${tiltY}deg`)
+      card.style.setProperty('--tilt-y', `${tiltX}deg`)
+      card.style.setProperty('--tilt-lift', `${-lift}px`)
+      card.style.setProperty('--tilt-shadow-x', `${shadowX}px`)
+      card.style.setProperty('--tilt-shadow-y', `${shadowY}px`)
+      card.style.setProperty('--tilt-shadow-blur', `${10 + lift * 1.1}px`)
+      card.style.setProperty('--tilt-shadow-spread', `${lift * 0.18}px`)
+      card.style.setProperty('--spotlight-x', `${x * 100}%`)
+      card.style.setProperty('--spotlight-y', `${y * 100}%`)
+    }
+
+    const moveTilt = (event: PointerEvent) => {
+      latestEvent = event
+      if (!animationFrame) animationFrame = requestAnimationFrame(updateTilt)
+    }
+
+    const resetTilt = () => {
+      latestEvent = undefined
+      if (animationFrame) cancelAnimationFrame(animationFrame)
+      animationFrame = 0
+      clearTilt(card)
+    }
+
+    wrapper.addEventListener('pointermove', moveTilt)
+    wrapper.addEventListener('pointerleave', resetTilt)
+
+    return () => {
+      wrapper.removeEventListener('pointermove', moveTilt)
+      wrapper.removeEventListener('pointerleave', resetTilt)
+      resetTilt()
+    }
+  }
+
+  const initAllTiltCards = () => {
+    cleanupTiltCards()
+
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      !window.matchMedia('(pointer: fine)').matches
+    ) {
+      cleanupTiltCards = () => {}
+      return
+    }
+
+    const cleanups = [...document.querySelectorAll<HTMLElement>('.card-tilt-wrapper')].map(initTilt)
+    cleanupTiltCards = () => {
+      cleanups.forEach((cleanup) => cleanup())
+      cleanupTiltCards = () => {}
+    }
+  }
+
+  document.addEventListener('astro:page-load', initAllTiltCards)
+  document.addEventListener('astro:before-swap', () => cleanupTiltCards())
+  initAllTiltCards()
+</script>
+
+<style>
+  .card-tilt-wrapper {
+    perspective: 800px;
+  }
+
+  .card-tilt {
+    position: relative;
+    transform: rotateX(var(--tilt-y, 0deg)) rotateY(var(--tilt-x, 0deg))
+      translateY(var(--tilt-lift, 0px));
+    transition:
+      transform 0.15s cubic-bezier(0.03, 0.98, 0.53, 0.99),
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  .card-tilt-wrapper:hover .card-tilt {
+    border-color: var(--border-warm);
+    box-shadow:
+      var(--tilt-shadow-x, 0px) var(--tilt-shadow-y, 6px) var(--tilt-shadow-blur, 12px)
+        var(--tilt-shadow-spread, 0px) rgba(0, 0, 0, 0.32),
+      var(--glow-warm),
+      var(--inner-glass);
+  }
+
+  .card-tilt::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(226, 238, 248, 0.28),
+      rgba(200, 142, 82, 0.22),
+      transparent
+    );
+    transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-tilt-wrapper:hover .card-tilt::before {
+    width: 60%;
+  }
+
+  .card-tilt h3 {
+    font-size: 1.1rem;
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      transform var(--motion-base) var(--ease-emphasized),
+      text-shadow var(--motion-base) var(--ease-standard);
+  }
+
+  .card-tilt-wrapper:hover .card-tilt h3 {
+    transform: translateX(0.12rem);
+    text-shadow: 0 0 22px rgba(226, 238, 248, 0.12);
+  }
+
+  .card-tilt::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle 160px at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+      rgba(226, 238, 248, 0.06) 0%,
+      rgba(200, 142, 82, 0.035) 42%,
+      transparent 100%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-standard);
+  }
+  .card-tilt-wrapper:hover .card-tilt::after {
+    opacity: 1;
+  }
+
+  .post-card-tag {
+    background: linear-gradient(135deg, rgba(122, 149, 175, 0.1), rgba(6, 10, 18, 0.24));
+    border: 1px solid rgba(226, 238, 248, 0.075);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    transition:
+      color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      transform var(--motion-base) var(--ease-spring),
+      background-color var(--motion-base) var(--ease-standard);
+  }
+
+  .card-tilt-wrapper:hover .post-card-tag {
+    color: var(--color-text);
+    border-color: rgba(226, 238, 248, 0.18);
+    transform: translateY(-0.12rem);
+  }
+
+  .card-tilt-wrapper:hover .post-card-tag:nth-child(2) {
+    transition-delay: 35ms;
+  }
+
+  .card-tilt-wrapper:hover .post-card-tag:nth-child(3) {
+    transition-delay: 70ms;
+  }
+
+  .post-card-featured {
+    color: rgba(255, 244, 220, 0.92);
+    border: 1px solid var(--border-warm);
+    background: linear-gradient(135deg, rgba(200, 142, 82, 0.16), rgba(122, 149, 175, 0.06));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-tilt {
+      transform: none;
+      transition:
+        border-color 0.01ms linear,
+        box-shadow 0.01ms linear;
+    }
+
+    .card-tilt::before,
+    .card-tilt::after {
+      transition: none;
+    }
+
+    .card-tilt-wrapper:hover .card-tilt::before {
+      width: 0;
+    }
+
+    .card-tilt-wrapper:hover .card-tilt::after {
+      opacity: 0;
+    }
+  }
+</style>

@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="此刻" description="我现在在做什么">
+  <div class="max-w-2xl mx-auto px-6 py-16 md:py-24">
+    <!-- Header -->
+    <div class="mb-14 ink-reveal">
+      <span class="inline-block px-3 py-1 text-[11px] font-sans tracking-[0.28em] text-accent dark:text-dark-accent border border-accent/25 dark:border-dark-accent/25 mb-5 uppercase">
+        Now
+      </span>
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-text dark:text-dark-text mb-3">
+        此刻
+      </h1>
+      <p class="text-text-muted dark:text-dark-text-muted font-serif text-sm leading-relaxed">
+        这是{' '}
+        <a
+          href="https://nownownow.com/about"
+          class="text-accent dark:text-dark-accent hover:underline"
+        >
+          /now page
+        </a>
+        ，一个告诉你我最近在做什么的页面。
+      </p>
+    </div>
+
+    <!-- Now items -->
+    <div class="space-y-10 ink-reveal" style="animation-delay:0.15s">
+      <!-- 在做 -->
+      <section>
+        <h2 class="font-display text-base font-bold text-text dark:text-dark-text mb-4 flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent dark:bg-dark-accent inline-block"></span>
+          在做
+        </h2>
+        <ul class="space-y-3 text-sm text-text-secondary dark:text-dark-text-secondary font-serif leading-relaxed list-none pl-0">
+          <li class="pl-5 border-l-2 border-accent/15 dark:border-dark-accent/15">
+            折腾这个博客 —— 从视觉到内容，一点点打磨一个不装的个人空间
+          </li>
+          <li class="pl-5 border-l-2 border-accent/15 dark:border-dark-accent/15">
+            学 AI 工具的实际用法，不只是"会调用 API"，而是能把 AI 嵌入日常工作和创作流
+          </li>
+          <li class="pl-5 border-l-2 border-accent/15 dark:border-dark-accent/15">
+            在闲鱼上接小单子补贴零花 —— 老照片修复、证件照、Excel 处理
+          </li>
+        </ul>
+      </section>
+
+      <!-- 在看 -->
+      <section>
+        <h2 class="font-display text-base font-bold text-text dark:text-dark-text mb-4 flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent/60 dark:bg-dark-accent/60 inline-block"></span>
+          在看/在读
+        </h2>
+        <ul class="space-y-3 text-sm text-text-secondary dark:text-dark-text-secondary font-serif leading-relaxed list-none pl-0">
+          <li class="pl-5 border-l-2 border-accent/10 dark:border-dark-accent/10">
+            各种独立博客，看别人怎么写、怎么设计、怎么生活
+          </li>
+          <li class="pl-5 border-l-2 border-accent/10 dark:border-dark-accent/10">
+            研究怎么用 AI 真正提高效率，而不是被 AI 吆喝
+          </li>
+        </ul>
+      </section>
+
+      <!-- 用到的 -->
+      <section>
+        <h2 class="font-display text-base font-bold text-text dark:text-dark-text mb-4 flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-accent/30 dark:bg-dark-accent/30 inline-block"></span>
+          常用工具
+        </h2>
+        <div class="flex flex-wrap gap-2">
+          {[
+            'Claude Code',
+            'Astro',
+            'VS Code',
+            'GitHub',
+            'Playwright',
+            'Python',
+            'Three.js',
+            'Figma',
+          ].map((t) => (
+            <span class="px-2.5 py-1 text-xs font-sans text-text-muted dark:text-dark-text-muted border border-border/30 dark:border-dark-border/30 rounded-full">
+              {t}
+            </span>
+          ))}
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer note -->
+    <div
+      class="mt-20 pt-8 border-t border-border/15 dark:border-dark-border/15 ink-reveal"
+      style="animation-delay:0.4s"
+    >
+      <p class="text-xs text-text-muted dark:text-dark-text-muted font-serif leading-relaxed">
+        最后更新：2026年6月。
+        <br />
+        这个页面不定期更新，灵感来自{' '}
+        <a href="https://sive.rs/now" class="text-accent dark:text-dark-accent hover:underline">
+          Derek Sivers
+        </a>
+        。
+      </p>
+    </div>
+  </div>
+</BaseLayout>

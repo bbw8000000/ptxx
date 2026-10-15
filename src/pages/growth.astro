@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import PostCard from '../components/PostCard.astro'
+import { getCollection } from 'astro:content'
+
+const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const growthPosts = allPosts
+  .filter((post) => post.data.category === '成长记录')
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+
+const latest = growthPosts[0]
+const earlier = growthPosts.slice(1)
+---
+
+<BaseLayout title="成长记录" description="一个大专生的成长日记，记录每一天的思考和变化。">
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-20">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="inline-block w-8 h-0.5 bg-emerald-500"></span>
+        <span class="text-sm font-sans tracking-widest text-emerald-600 dark:text-emerald-400 uppercase">
+          Growth
+        </span>
+      </div>
+      <h1 class="font-display text-5xl font-bold text-text dark:text-dark-text mb-4">成长记录</h1>
+      <p class="text-xl text-text-muted dark:text-dark-text-muted max-w-2xl">
+        没火，没赚到大钱，但我每天都在写。这里记录一个大专生的真实成长轨迹。
+      </p>
+      <div class="flex gap-6 mt-8 text-sm text-text-muted dark:text-dark-text-muted">
+        <span>{growthPosts.length} 篇记录</span>
+        <span>·</span>
+        <span>持续更新中</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 最新一篇（置顶） -->
+  {latest && (
+    <section class="max-w-5xl mx-auto px-6 py-12">
+      <h2 class="text-sm font-sans tracking-widest text-accent dark:text-dark-accent mb-6 uppercase">
+        最新记录
+      </h2>
+      <a href={`${import.meta.env.BASE_URL}blog/${latest.id}/`} class="group block">
+        <div class="grid md:grid-cols-2 gap-8 items-center p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 dark:hover:border-dark-accent/30 transition-colors">
+          {latest.data.heroImage && (
+            <div class="overflow-hidden rounded-xl aspect-video">
+              <img
+                src={latest.data.heroImage}
+                alt={latest.data.title}
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+            </div>
+          )}
+          <div>
+            <time class="text-sm text-text-muted dark:text-dark-text-muted">
+              {latest.data.pubDate.toLocaleDateString('zh-CN')}
+            </time>
+            <h3 class="font-display text-2xl font-bold text-text dark:text-dark-text mt-2 mb-3 group-hover:text-accent dark:group-hover:text-dark-accent transition-colors">
+              {latest.data.title}
+            </h3>
+            <p class="text-text-muted dark:text-dark-text-muted leading-relaxed">
+              {latest.data.description}
+            </p>
+          </div>
+        </div>
+      </a>
+    </section>
+  )}
+
+  <!-- 更多记录 -->
+  {earlier.length > 0 && (
+    <section class="max-w-5xl mx-auto px-6 pb-20">
+      <h2 class="text-sm font-sans tracking-widest text-accent dark:text-dark-accent mb-6 uppercase">
+        更多记录
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {earlier.map((post) => (
+          <PostCard
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            heroImage={post.data.heroImage}
+            tags={post.data.tags}
+            category={post.data.category}
+            slug={post.id}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+</BaseLayout>

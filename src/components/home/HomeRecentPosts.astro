@@ -1,0 +1,276 @@
+---
+import { calcReadingTime } from '../../utils/readingTime'
+
+interface Props {
+  posts: {
+    id: string
+    body?: string
+    data: {
+      title: string
+      description: string
+      pubDate: Date
+      tags: string[]
+      category: string
+    }
+  }[]
+}
+
+const { posts } = Astro.props
+const [featured, ...rest] = posts
+const base = import.meta.env.BASE_URL
+
+function formatDate(d: Date) {
+  return d
+    .toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    .replace(/\//g, '.')
+}
+---
+
+<section class="home-posts">
+  <div class="home-posts-header">
+    <div>
+      <h2 class="section-kicker">最近更新</h2>
+      <p class="home-posts-subtitle">最近写下的工具实验、踩坑记录和阶段复盘。</p>
+    </div>
+    <a href={`${base}blog/`} class="home-posts-all">
+      查看全部 &rarr;
+    </a>
+  </div>
+
+  {featured ? (
+    <div class="home-post-list">
+      <!-- 主文章：大卡 -->
+      <a href={`${base}blog/${featured.id}/`} class="reveal-target home-post-featured">
+        <span class="home-post-featured-kicker">{featured.data.category}</span>
+        <h3>{featured.data.title}</h3>
+        <p>{featured.data.description}</p>
+        <span class="home-post-featured-meta">
+          {formatDate(featured.data.pubDate)} · {calcReadingTime(featured.body || '')} 分钟
+        </span>
+      </a>
+
+      <!-- 次文章：轻列表 -->
+      {rest.length > 0 && (
+        <div class="home-post-secondary">
+          {rest.slice(0, 4).map((post, i) => (
+            <a
+              href={`${base}blog/${post.id}/`}
+              class="reveal-target home-post-row"
+              style={`transition-delay: ${((i + 1) * 0.05).toFixed(2)}s`}
+            >
+              <span class="home-post-row-index">{String(i + 2).padStart(2, '0')}</span>
+              <span class="home-post-row-main">
+                <strong>{post.data.title}</strong>
+                <small>{post.data.category}</small>
+              </span>
+              <time class="home-post-row-date">{formatDate(post.data.pubDate)}</time>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : (
+    <div class="home-empty">
+      <p class="text-lg mb-2 font-serif">还没有文章</p>
+      <p class="text-sm">
+        在 <code class="px-2 py-0.5 bg-surface-alt rounded text-xs">src/content/posts/</code>{' '}
+        目录下添加 Markdown 文件即可
+      </p>
+    </div>
+  )}
+</section>
+
+<style>
+  .home-posts {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 2rem 3rem;
+  }
+
+  .home-posts-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .home-posts-subtitle {
+    margin-top: 0.8rem;
+    max-width: 28rem;
+    font-family: var(--font-serif);
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: rgba(214, 218, 225, 0.64);
+  }
+
+  .home-posts-all {
+    font-size: 0.8rem;
+    color: rgba(122, 149, 175, 0.7);
+    text-decoration: none;
+    font-family: var(--font-serif);
+    transition: color 0.3s;
+  }
+  .home-posts-all:hover,
+  .home-posts-all:focus-visible {
+    color: var(--color-accent);
+  }
+
+  .home-post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* 主文章 */
+  .home-post-featured {
+    display: block;
+    position: relative;
+    padding: 2.25rem 2.5rem;
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(145deg, rgba(28, 40, 62, 0.5), rgba(6, 10, 18, 0.28)),
+      radial-gradient(ellipse at 12% 0%, rgba(226, 238, 248, 0.09), transparent 46%);
+    border: 1px solid rgba(226, 238, 248, 0.07);
+    backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+    box-shadow: var(--shadow-glass);
+    text-decoration: none;
+    transition:
+      border-color 0.4s,
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.5s;
+  }
+  .home-post-featured:hover,
+  .home-post-featured:focus-visible {
+    border-color: rgba(200, 182, 142, 0.28);
+    transform: translateY(-2px);
+    box-shadow:
+      0 24px 56px rgba(0, 0, 0, 0.42),
+      var(--glow-warm);
+  }
+  .home-post-featured-kicker {
+    display: inline-block;
+    font-size: 0.6rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    margin-bottom: 0.9rem;
+  }
+  .home-post-featured h3 {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+  }
+  .home-post-featured p {
+    font-family: var(--font-serif);
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: rgba(226, 229, 234, 0.8);
+    margin-bottom: 1.1rem;
+    max-width: 42rem;
+  }
+  .home-post-featured-meta {
+    font-size: 0.75rem;
+    color: rgba(168, 175, 186, 0.66);
+    font-family: var(--font-sans);
+  }
+
+  /* 次文章：轻列表 */
+  .home-post-secondary {
+    display: flex;
+    flex-direction: column;
+  }
+  .home-post-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1.25rem;
+    padding: 0.9rem 0.5rem;
+    border-bottom: 1px solid rgba(226, 238, 248, 0.055);
+    text-decoration: none;
+    transition:
+      background 0.3s,
+      padding-left 0.3s;
+  }
+  .home-post-row:last-child {
+    border-bottom: none;
+  }
+  .home-post-row:hover,
+  .home-post-row:focus-visible {
+    background: rgba(226, 238, 248, 0.025);
+    padding-left: 1rem;
+  }
+  .home-post-row-index {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: rgba(200, 182, 142, 0.55);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    width: 2rem;
+  }
+  .home-post-row-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .home-post-row-main strong {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(250, 250, 249, 0.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.3s;
+  }
+  .home-post-row:hover .home-post-row-main strong {
+    color: var(--color-accent);
+  }
+  .home-post-row-main small {
+    font-size: 0.68rem;
+    color: rgba(168, 175, 186, 0.6);
+    font-family: var(--font-sans);
+    flex-shrink: 0;
+  }
+  .home-post-row-date {
+    font-size: 0.72rem;
+    color: rgba(168, 175, 186, 0.55);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+
+  .home-empty {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 768px) {
+    .home-posts {
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
+    .home-post-featured {
+      padding: 1.5rem 1.25rem;
+    }
+    .home-post-featured h3 {
+      font-size: 1.4rem;
+    }
+    .home-post-row {
+      gap: 0.85rem;
+    }
+    .home-post-row-main {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+    }
+    .home-post-row-date {
+      display: none;
+    }
+  }
+</style>

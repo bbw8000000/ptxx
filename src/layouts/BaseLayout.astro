@@ -1,0 +1,176 @@
+---
+import '../styles/global.css'
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
+import '@fontsource/jetbrains-mono/400.css'
+// 中文（Noto Serif SC）不走 @fontsource 的 100 个 unicode-range 分片：那样每页要拉
+// 约 22 个文件（~800KB）才能显示约 250 个汉字。改成 scripts/build-font-packs.mjs
+// 按词频分档，由 scripts/inject-font-packs.mjs 把页面真正用到的那 1~2 档写进 <head>。
+// 因此这里的字体栈不再列出 Noto Serif SC —— 未注入的页面回退到系统衬线体，而不是卡住。
+import Header from '../components/Header.astro'
+import Footer from '../components/Footer.astro'
+import BackToTop from '../components/BackToTop.astro'
+import ReadingProgress from '../components/ReadingProgress.astro'
+import PageProgress from '../components/PageProgress.astro'
+import { ClientRouter } from 'astro:transitions'
+
+interface Props {
+  title: string
+  description?: string
+  image?: string
+  robots?: string
+  pagefind?: boolean
+  ogType?: 'website' | 'article'
+}
+
+const {
+  title,
+  description = '一个关于技术、设计与生活的博客',
+  image,
+  robots = 'index, follow',
+  pagefind = true,
+  ogType = 'website',
+} = Astro.props
+const canonicalURL = new URL(Astro.url.pathname, Astro.site)
+const siteRootURL = new URL(import.meta.env.BASE_URL, Astro.site)
+const isEntrance = Astro.url.pathname === import.meta.env.BASE_URL || Astro.url.pathname === '/'
+---
+
+<!doctype html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="google-site-verification" content="nF43Ycr0M27ASMgp4dtsTYJa9xfQ2mO9lyB1aWs2iYs" />
+    <meta name="robots" content={robots} />
+    <meta name="theme-color" content="#070A13" />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+    <link rel="icon" type="image/x-icon" href={`${import.meta.env.BASE_URL}favicon.ico`} />
+    <link rel="apple-touch-icon" href={`${import.meta.env.BASE_URL}apple-touch-icon.svg`} />
+    <link rel="manifest" href={`${import.meta.env.BASE_URL}manifest.webmanifest`} />
+    <link rel="canonical" href={canonicalURL} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="盘腿修仙 RSS"
+      href={new URL(`${import.meta.env.BASE_URL}rss.xml`, Astro.site)}
+    />
+    <meta
+      property="og:image"
+      content={
+        new URL(
+          image
+            ? `${import.meta.env.BASE_URL}${image.replace(/^\//, '')}`
+            : `${import.meta.env.BASE_URL}hero/og-default.png`,
+          Astro.site,
+        )
+      }
+    />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:site_name" content="盘腿修仙" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta
+      name="twitter:image"
+      content={
+        new URL(
+          image
+            ? `${import.meta.env.BASE_URL}${image.replace(/^\//, '')}`
+            : `${import.meta.env.BASE_URL}hero/og-default.png`,
+          Astro.site,
+        )
+      }
+    />
+    <meta name="author" content="又逢雨季" />
+    <title>{title} | 盘腿修仙</title>
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Blog',
+        name: '盘腿修仙',
+        description: '一个关于技术、设计与生活的博客',
+        url: siteRootURL.href,
+        author: { '@type': 'Person', name: '又逢雨季' },
+        inLanguage: 'zh-CN',
+      })}
+    ></script>
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: '盘腿修仙',
+        url: siteRootURL.href,
+      })}
+    ></script>
+    <ClientRouter />
+    <slot name="head" />
+  </head>
+  <body class={`min-h-screen flex flex-col${isEntrance ? ' page-entrance' : ''}`}>
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1000] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-3 focus:text-text focus:shadow-xl"
+    >
+      跳到正文
+    </a>
+    <div class="global-bg-layer" aria-hidden="true">
+      <picture>
+        <source srcset={`${import.meta.env.BASE_URL}maple.webp`} type="image/webp" />
+        <img
+          id="global-bg-poster"
+          class="global-bg-video"
+          src={`${import.meta.env.BASE_URL}maple.jpg`}
+          alt=""
+        />
+      </picture>
+      <video
+        id="global-bg-video"
+        class="global-bg-video"
+        poster={`${import.meta.env.BASE_URL}maple.webp`}
+        preload="metadata"
+        loop
+        muted
+        playsinline
+        style="display:none"
+      ></video>
+    </div>
+    {!isEntrance && <ReadingProgress />}
+    {!isEntrance && <Header />}
+    <main
+      id="main-content"
+      class="flex-1"
+      data-pagefind-body={pagefind ? true : undefined}
+      data-pagefind-ignore={pagefind ? undefined : true}
+    >
+      <slot />
+    </main>
+    {!isEntrance && <Footer />}
+    {!isEntrance && <BackToTop />}
+    <PageProgress />
+    <div id="page-click-wave" class="page-click-wave" aria-hidden="true"></div>
+    <!-- Local press feedback + click-origin page transition -->
+
+    <!-- Precision control lens -->
+
+    <!-- 全局胶片颗粒 -->
+    <div class="global-film-grain" aria-hidden="true"></div>
+
+    <!-- 全局光标光晕 -->
+
+    <!-- 背景视差 — 滚动时微移背景 -->
+    <script>
+      import {} from '../scripts/main'
+    </script>
+  </body>
+</html>

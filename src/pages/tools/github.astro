@@ -1,0 +1,309 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const base = import.meta.env.BASE_URL
+---
+
+<BaseLayout title="GitHub 仓库查看" description="不用跳转 GitHub，直接查看仓库 README">
+  <div class="max-w-4xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${base}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">GitHub 仓库查看</h1>
+      <p class="text-sm text-text-muted dark:text-dark-text-muted mt-2">
+        从 CDN 获取 README，在国内也能流畅查看
+      </p>
+    </div>
+
+    <div class="flex gap-3 mb-8">
+      <input
+        id="repo-input"
+        type="text"
+        class="flex-1 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl px-4 py-3 text-sm text-text dark:text-dark-text focus:outline-none focus:border-accent dark:focus:border-dark-accent transition-all"
+        placeholder="输入 GitHub 仓库地址，如 https://github.com/antfu/es-toolkit"
+      />
+      <button
+        id="load-btn"
+        class="px-6 py-3 bg-accent dark:bg-dark-accent text-white dark:text-dark-surface font-medium rounded-xl hover:opacity-90 transition-all text-sm"
+      >
+        查看
+      </button>
+    </div>
+
+    <div id="loading" class="hidden text-center py-16">
+      <div class="animate-spin w-8 h-8 border-2 border-accent dark:border-dark-accent border-t-transparent rounded-full mx-auto mb-4"></div>
+      <p class="text-sm text-text-muted dark:text-dark-text-muted">正在获取 README...</p>
+    </div>
+
+    <div
+      id="error"
+      class="hidden p-6 rounded-xl bg-red-50/10 border border-red-200/20 text-sm text-red-400"
+    ></div>
+
+    <div id="result" class="hidden">
+      <div
+        id="repo-header"
+        class="p-6 rounded-2xl bg-surface-alt/50 dark:bg-dark-surface-alt/50 border border-border/40 dark:border-dark-border/40 mb-8"
+      >
+        <div class="flex items-center gap-4">
+          <svg
+            class="w-8 h-8 text-text-muted dark:text-dark-text-muted flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+          </svg>
+          <div class="flex-1 min-w-0">
+            <h2
+              id="repo-name"
+              class="font-display text-xl font-bold text-text dark:text-dark-text"
+            ></h2>
+            <p id="repo-desc" class="text-sm text-text-muted dark:text-dark-text-muted mt-1"></p>
+          </div>
+          <div
+            id="repo-meta"
+            class="flex items-center gap-4 text-sm text-text-muted dark:text-dark-text-muted flex-shrink-0"
+          ></div>
+        </div>
+      </div>
+      <div
+        id="readme-content"
+        class="p-8 rounded-2xl bg-surface-alt/30 dark:bg-dark-surface-alt/30 border border-border/40 dark:border-dark-border/40 markdown-body"
+      ></div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .markdown-body {
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 0.9375rem;
+  }
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    margin-top: 2em;
+    margin-bottom: 0.75em;
+    line-height: 1.3;
+  }
+  .markdown-body h1 {
+    font-size: 1.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.5em;
+  }
+  .markdown-body h2 {
+    font-size: 1.35rem;
+  }
+  .markdown-body h3 {
+    font-size: 1.1rem;
+  }
+  .markdown-body p {
+    margin-bottom: 1em;
+  }
+  .markdown-body code {
+    background: rgba(122, 149, 175, 0.12);
+    color: #7a95af;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.875em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .markdown-body pre {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 1.25em;
+    overflow-x: auto;
+    margin-bottom: 1.25em;
+  }
+  .markdown-body pre code {
+    background: none;
+    color: #d6dae1;
+    padding: 0;
+    font-size: 0.8125rem;
+  }
+  .markdown-body a {
+    color: #7a95af;
+    text-decoration: none;
+  }
+  .markdown-body a:hover {
+    text-decoration: underline;
+  }
+  .markdown-body img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 0.5em 0;
+  }
+  .markdown-body ul,
+  .markdown-body ol {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+  }
+  .markdown-body li {
+    margin-bottom: 0.35em;
+  }
+  .markdown-body blockquote {
+    border-left: 3px solid rgba(122, 149, 175, 0.3);
+    padding-left: 1em;
+    margin-left: 0;
+    color: #d6dae1;
+  }
+  .markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+  .markdown-body th,
+  .markdown-body td {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.6em 1em;
+    text-align: left;
+  }
+  .markdown-body th {
+    background: rgba(255, 255, 255, 0.03);
+    font-weight: 600;
+  }
+  .markdown-body hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 2em 0;
+  }
+</style>
+
+<script>
+  import { marked } from 'marked'
+  import { sanitizeHtml } from '../../lib/sanitizeHtml'
+
+  function parseRepoUrl(raw: string) {
+    raw = raw.trim()
+    const match = raw.match(/github\.com\/([^/]+)\/([^/\s#?]+)/)
+    if (match) return { owner: match[1], repo: match[2] }
+    const parts = raw.split('/')
+    if (parts.length === 2 && parts[0] && parts[1]) return { owner: parts[0], repo: parts[1] }
+    return null
+  }
+
+  async function loadRepo(owner: string, repoName: string) {
+    const errorEl = document.getElementById('error')
+    const resultEl = document.getElementById('result')
+    const loadingEl = document.getElementById('loading')
+    // 这里刻意不用 `!` 断言：断言失败会抛进一个没人 catch 的 promise，
+    // 界面既不显示错误也不结束 loading。缺节点就明确记一笔然后退出。
+    if (!errorEl || !resultEl || !loadingEl) {
+      console.error('github tool: 缺少必要的 DOM 节点，跳过加载')
+      return
+    }
+
+    errorEl.classList.add('hidden')
+    resultEl.classList.add('hidden')
+    loadingEl.classList.remove('hidden')
+
+    try {
+      await renderRepo(owner, repoName, { errorEl, resultEl })
+    } catch (error) {
+      console.error('Failed to load repo:', error)
+      errorEl.textContent = '加载失败，请检查仓库地址或稍后重试'
+      errorEl.classList.remove('hidden')
+    } finally {
+      loadingEl.classList.add('hidden')
+    }
+  }
+
+  interface RepoNodes {
+    errorEl: HTMLElement
+    resultEl: HTMLElement
+  }
+
+  async function renderRepo(owner: string, repoName: string, nodes: RepoNodes) {
+    const { errorEl, resultEl } = nodes
+    const branches = ['main', 'master']
+    let readmeText = null
+    let usedBranch = ''
+
+    for (const branch of branches) {
+      try {
+        const resp = await fetch(
+          `https://cdn.jsdelivr.net/gh/${owner}/${repoName}@${branch}/README.md`,
+        )
+        if (resp.ok) {
+          readmeText = await resp.text()
+          usedBranch = branch
+          break
+        }
+      } catch {}
+    }
+
+    if (!readmeText) {
+      errorEl.textContent = '未找到 README.md。该仓库可能没有 README 或者分支名不是 main/master。'
+      errorEl.classList.remove('hidden')
+      return
+    }
+
+    readmeText = readmeText.replace(
+      /!\[([^\]]*)\]\((\/[^)]+)\)/g,
+      (_, alt, path) =>
+        `![${alt}](https://cdn.jsdelivr.net/gh/${owner}/${repoName}@${usedBranch}${path})`,
+    )
+
+    const html = sanitizeHtml(marked.parse(readmeText) as string)
+
+    const nameEl = document.getElementById('repo-name')
+    const metaEl = document.getElementById('repo-meta')
+    const contentEl = document.getElementById('readme-content')
+    if (!nameEl || !metaEl || !contentEl) throw new Error('缺少结果区 DOM 节点')
+
+    nameEl.textContent = `${owner}/${repoName}`
+    metaEl.innerHTML = `
+    <span class="flex items-center gap-1.5">
+      <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+      ${usedBranch}
+    </span>
+  `
+    contentEl.innerHTML = html
+
+    resultEl.classList.remove('hidden')
+  }
+
+  const repoInput = document.getElementById('repo-input') as HTMLInputElement
+  const errorEl = document.getElementById('error')!
+
+  document.getElementById('load-btn')!.addEventListener('click', () => {
+    const repo = parseRepoUrl(repoInput.value)
+    if (!repo) {
+      errorEl.textContent = '请输入有效的 GitHub 仓库地址'
+      errorEl.classList.remove('hidden')
+      return
+    }
+    void loadRepo(repo.owner, repo.repo)
+  })
+
+  repoInput.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const repo = parseRepoUrl(repoInput.value)
+      if (!repo) {
+        errorEl.textContent = '请输入有效的 GitHub 仓库地址'
+        errorEl.classList.remove('hidden')
+        return
+      }
+      void loadRepo(repo.owner, repo.repo)
+    }
+  })
+
+  const params = new URLSearchParams(window.location.search)
+  const repoParam = params.get('repo')
+  if (repoParam) {
+    repoInput.value = repoParam
+    const repo = parseRepoUrl(repoParam)
+    if (repo) void loadRepo(repo.owner, repo.repo)
+  }
+</script>

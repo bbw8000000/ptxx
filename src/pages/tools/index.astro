@@ -1,0 +1,664 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const categories = [
+  {
+    name: '编码转换',
+    desc: '数据格式与编码互转',
+    accent: '01',
+    tools: [
+      { name: 'JSON 格式化', desc: '格式化、校验、压缩 JSON', icon: '{ }', slug: 'json' },
+      { name: 'Base64 编解码', desc: '文本与 Base64 互转', icon: 'B64', slug: 'base64' },
+      { name: '颜色转换器', desc: 'HEX / RGB / HSL 互转', icon: '#', slug: 'color' },
+      { name: 'URL 编解码', desc: 'URL 编码与解码', icon: '%', slug: 'url' },
+      { name: '时间戳转换', desc: 'Unix 时间戳与日期互转', icon: '⏱', slug: 'timestamp' },
+    ],
+  },
+  {
+    name: '文本处理',
+    desc: '文本分析、预览与对比',
+    accent: '02',
+    tools: [
+      { name: 'Markdown 预览', desc: '实时 Markdown 渲染', icon: 'M↓', slug: 'markdown' },
+      { name: '微信格式', desc: 'Markdown 转微信公众号排版', icon: '信', slug: 'wechat-format' },
+      { name: '文本对比', desc: '高亮两段文本的差异', icon: '≠', slug: 'diff' },
+      { name: '字数统计', desc: '字符、单词、行数统计', icon: '字', slug: 'counter' },
+      { name: '正则测试', desc: '在线测试正则表达式', icon: '.*', slug: 'regex' },
+      { name: '密码生成器', desc: '生成安全随机密码', icon: '🔒', slug: 'password' },
+    ],
+  },
+  {
+    name: '图片处理',
+    desc: '图像编辑与优化',
+    accent: '03',
+    tools: [
+      { name: '智能抠图', desc: 'AI 一键抠图，手动微调', icon: '✂', slug: 'remove-bg' },
+      { name: '图片压缩', desc: '压缩图片体积，JPG/PNG/WebP', icon: '📦', slug: 'compress' },
+      { name: 'CSS 渐变', desc: '可视化生成 CSS 渐变代码', icon: '🌈', slug: 'gradient' },
+    ],
+  },
+  {
+    name: '开发辅助',
+    desc: '开发者常用小工具',
+    accent: '04',
+    tools: [
+      { name: '二维码生成', desc: '文字/链接转二维码', icon: '▦', slug: 'qrcode' },
+      { name: 'GitHub 查看', desc: '不跳转直接看仓库 README', icon: 'GH', slug: 'github' },
+    ],
+  },
+  {
+    name: '实用增强',
+    desc: '图片、加密与链接的日常黑科技',
+    accent: '05',
+    tools: [
+      { name: '图片转 Base64', desc: '图片转 Data URL 文本', icon: 'IMG', slug: 'picbase64' },
+      { name: '文本加密', desc: 'AES 加密/解密一段文字', icon: '锁', slug: 'cipher' },
+      { name: '链接批量处理', desc: '提取、去重、清理链接', icon: '链', slug: 'linktool' },
+    ],
+  },
+]
+const workflows = [
+  {
+    accent: 'A',
+    title: '写作发布流',
+    desc: '从草稿预览、公众号排版到字数检查，适合写完就发布。',
+    tools: [
+      { name: 'Markdown 预览', slug: 'markdown' },
+      { name: '微信格式', slug: 'wechat-format' },
+      { name: '字数统计', slug: 'counter' },
+    ],
+  },
+  {
+    accent: 'B',
+    title: '前端调试流',
+    desc: '处理接口数据、颜色值和渐变方案，做页面时顺手检查。',
+    tools: [
+      { name: 'JSON 格式化', slug: 'json' },
+      { name: '颜色转换器', slug: 'color' },
+      { name: 'CSS 渐变', slug: 'gradient' },
+    ],
+  },
+  {
+    accent: 'C',
+    title: '轻量交付流',
+    desc: '压缩图片、生成二维码、整理链接，适合交付前最后一遍。',
+    tools: [
+      { name: '图片压缩', slug: 'compress' },
+      { name: '二维码生成', slug: 'qrcode' },
+      { name: 'URL 编解码', slug: 'url' },
+    ],
+  },
+]
+const totalTools = categories.reduce((sum, cat) => sum + cat.tools.length, 0)
+---
+
+<BaseLayout title="在线工具" description="浏览器端运行的实用工具集合，数据不上传服务器">
+  <div class="max-w-6xl mx-auto px-6 py-14 md:py-20">
+    <div class="tool-lab-hero ink-reveal">
+      <div>
+        <span class="inline-block px-3 py-1 text-[11px] font-sans tracking-[0.28em] text-accent dark:text-dark-accent border border-accent/25 dark:border-dark-accent/25 mb-5 uppercase">
+          Toolbox
+        </span>
+        <h1 class="font-display text-4xl md:text-6xl font-bold text-text dark:text-dark-text mb-4">
+          个人实验室
+        </h1>
+        <p class="text-text-muted dark:text-dark-text-muted font-serif text-sm md:text-base max-w-xl leading-relaxed">
+          一些真正能顺手用的小工具：格式转换、文本处理、图片优化和开发辅助。全部在浏览器本地运行，不上传任何数据到服务器。
+        </p>
+      </div>
+      <div class="tool-lab-panel" aria-label="工具箱统计">
+        <span>{totalTools}</span>
+        <p>个本地工具</p>
+      </div>
+    </div>
+
+    <section class="us-banner ink-reveal">
+      <div>
+        <span class="inline-block px-3 py-1 text-[11px] font-sans tracking-[0.28em] text-accent dark:text-dark-accent border border-accent/25 dark:border-dark-accent/25 mb-3 uppercase">
+          Userscripts
+        </span>
+        <h2 class="font-display text-2xl md:text-3xl font-bold text-text dark:text-dark-text mb-2">
+          油猴脚本合集
+        </h2>
+        <p class="text-text-muted dark:text-dark-text-muted font-serif text-sm leading-relaxed">
+          给常用网站加「外挂」：下载、去广告、增强阅读。收录开源且维护活跃的脚本。
+        </p>
+      </div>
+      <a href={`${import.meta.env.BASE_URL}tools/userscripts/`} class="us-banner-link">
+        去看看 &rarr;
+      </a>
+    </section>
+
+    <section class="tool-workflows ink-reveal" aria-labelledby="tool-workflows-heading">
+      <div class="tool-workflows-head">
+        <span>Workflow</span>
+        <div>
+          <h2 id="tool-workflows-heading">常用组合</h2>
+          <p>不是每个工具孤立使用，这几条流程更接近真实场景。</p>
+        </div>
+      </div>
+      <div class="tool-workflows-grid">
+        {workflows.map((flow) => (
+          <article class="tool-workflow-card">
+            <span class="tool-workflow-accent">{flow.accent}</span>
+            <h3>{flow.title}</h3>
+            <p>{flow.desc}</p>
+            <div class="tool-workflow-steps">
+              {flow.tools.map((tool, index) => (
+                <>
+                  <a
+                    href={`${import.meta.env.BASE_URL}tools/${tool.slug}/`}
+                    class="tool-workflow-step"
+                  >
+                    {tool.name}
+                  </a>
+                  {index < flow.tools.length - 1 && <span class="tool-workflow-arrow">&rarr;</span>}
+                </>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <!-- Categories -->
+    {categories.map((cat, ci) => (
+      <section class="tool-category ink-reveal" style={`animation-delay: ${(ci + 1) * 0.1}s`}>
+        <div class="tool-category-head">
+          <span>{cat.accent}</span>
+          <div>
+            <h2>{cat.name}</h2>
+            <p>{cat.desc}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {cat.tools.map((tool) => (
+            <a href={`${import.meta.env.BASE_URL}tools/${tool.slug}/`} class="tool-card group">
+              <div class="tool-icon">{tool.icon}</div>
+              <div class="min-w-0">
+                <h3>{tool.name}</h3>
+                <p>{tool.desc}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <!-- Bottom note -->
+    <div
+      class="mt-16 pt-8 border-t border-border/20 dark:border-dark-border/20 ink-reveal"
+      style="animation-delay:0.6s"
+    >
+      <p class="text-xs text-text-muted dark:text-dark-text-muted font-serif text-center leading-relaxed">
+        所有工具代码开源在{' '}
+        <a
+          href="https://github.com/bbw8000000/ptxx"
+          class="text-accent dark:text-dark-accent hover:underline"
+        >
+          GitHub
+        </a>
+        ，<br class="sm:hidden" />
+        欢迎提建议或贡献新工具。
+      </p>
+    </div>
+    <style>
+      .tool-lab-hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 2rem;
+        align-items: end;
+        margin-bottom: 4rem;
+        padding: 2rem;
+        border: 1px solid var(--border-glass-strong);
+        border-radius: 28px;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.62), rgba(6, 10, 18, 0.34)),
+          radial-gradient(circle at 12% 0%, rgba(226, 238, 248, 0.16), transparent 38%),
+          radial-gradient(circle at 100% 100%, rgba(200, 142, 82, 0.1), transparent 44%);
+        backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+        -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+        box-shadow: var(--shadow-glass-strong);
+        overflow: hidden;
+      }
+
+      .tool-lab-hero::after {
+        content: '';
+        position: absolute;
+        right: -8rem;
+        bottom: -9rem;
+        width: 22rem;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(122, 149, 175, 0.14), transparent 68%);
+        pointer-events: none;
+      }
+
+      .tool-lab-panel {
+        position: relative;
+        z-index: 1;
+        min-width: 9rem;
+        padding: 1.25rem;
+        border-radius: 22px;
+        border: 1px solid var(--border-glass);
+        background:
+          linear-gradient(145deg, rgba(122, 149, 175, 0.13), rgba(6, 10, 18, 0.24)),
+          radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.1), transparent 62%);
+        backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        box-shadow:
+          0 18px 44px rgba(0, 0, 0, 0.34),
+          var(--inner-glass);
+        text-align: right;
+      }
+
+      .tool-lab-panel span {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 3rem;
+        line-height: 1;
+        color: var(--color-text);
+      }
+
+      .tool-lab-panel p {
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+      }
+
+      .tool-workflows {
+        margin-bottom: 3rem;
+        padding: 1.4rem;
+        border: 1px solid var(--border-glass);
+        border-radius: 1.5rem;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.42), rgba(6, 10, 18, 0.24)),
+          radial-gradient(ellipse at 8% 0%, rgba(226, 238, 248, 0.1), transparent 42%),
+          radial-gradient(circle at 100% 100%, rgba(200, 142, 82, 0.065), transparent 44%);
+        backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        box-shadow: var(--shadow-glass-floating);
+      }
+
+      .tool-workflows-head {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .tool-workflows-head > span,
+      .tool-workflow-accent {
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(226, 238, 248, 0.12);
+        background: linear-gradient(135deg, rgba(122, 149, 175, 0.11), rgba(6, 10, 18, 0.22));
+        color: var(--color-accent);
+        font-family: var(--font-mono);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 10px 26px rgba(0, 0, 0, 0.2);
+      }
+
+      .tool-workflows-head > span {
+        width: 4.8rem;
+        height: 2.75rem;
+        border-radius: 1rem;
+        font-size: 0.62rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .tool-workflows-head h2 {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--color-text);
+      }
+
+      .tool-workflows-head p {
+        margin-top: 0.15rem;
+        font-family: var(--font-serif);
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+      }
+
+      .tool-workflows-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .tool-workflow-card {
+        position: relative;
+        overflow: hidden;
+        padding: 1.2rem;
+        border: 1px solid var(--border-glass);
+        border-radius: 1.15rem;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.48), rgba(6, 10, 18, 0.28)),
+          radial-gradient(ellipse at 12% 0%, rgba(226, 238, 248, 0.1), transparent 48%);
+        backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        box-shadow:
+          0 18px 48px rgba(0, 0, 0, 0.34),
+          var(--inner-glass);
+        transition:
+          transform 0.45s var(--interactive-ease),
+          border-color 0.45s var(--interactive-ease),
+          box-shadow 0.45s var(--interactive-ease);
+      }
+
+      .tool-workflow-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--border-warm);
+        box-shadow:
+          0 26px 70px rgba(0, 0, 0, 0.48),
+          var(--glow-warm),
+          var(--glass-rim-strong);
+      }
+
+      .tool-workflow-accent {
+        width: 2.4rem;
+        height: 2.4rem;
+        margin-bottom: 1rem;
+        border-radius: 0.85rem;
+        font-size: 0.72rem;
+      }
+
+      .tool-workflow-card h3 {
+        margin-bottom: 0.45rem;
+        color: var(--color-text);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .tool-workflow-card p {
+        margin-bottom: 1rem;
+        color: var(--color-text-muted);
+        font-family: var(--font-serif);
+        font-size: 0.78rem;
+        line-height: 1.7;
+      }
+
+      .tool-workflow-steps {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .tool-workflow-step {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.36rem 0.62rem;
+        border: 1px solid rgba(226, 238, 248, 0.1);
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(122, 149, 175, 0.08), rgba(6, 10, 18, 0.18));
+        color: rgba(214, 218, 225, 0.76);
+        text-decoration: none;
+        font-family: var(--font-serif);
+        font-size: 0.72rem;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+        transition:
+          border-color 0.3s,
+          color 0.3s,
+          background 0.3s,
+          transform 0.3s;
+      }
+
+      .tool-workflow-step:hover,
+      .tool-workflow-step:focus-visible {
+        transform: translateY(-1px);
+        border-color: rgba(200, 182, 142, 0.24);
+        background: linear-gradient(135deg, rgba(200, 182, 142, 0.1), rgba(122, 149, 175, 0.07));
+        color: var(--color-text);
+        outline: none;
+      }
+
+      .tool-workflow-step:focus-visible {
+        outline: 2px solid rgba(200, 182, 142, 0.42);
+        outline-offset: 3px;
+      }
+
+      .tool-workflow-arrow {
+        color: rgba(168, 175, 186, 0.38);
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+      }
+
+      .tool-category {
+        margin-bottom: 3.5rem;
+        padding: 1.4rem;
+        border: 1px solid var(--border-glass);
+        border-radius: 1.5rem;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.38), rgba(6, 10, 18, 0.22)),
+          radial-gradient(ellipse at 8% 0%, rgba(226, 238, 248, 0.08), transparent 42%);
+        backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        box-shadow: var(--shadow-glass-floating);
+      }
+
+      .tool-category-head {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .tool-category-head > span {
+        display: grid;
+        place-items: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(226, 238, 248, 0.12);
+        color: var(--color-accent);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        background: linear-gradient(135deg, rgba(122, 149, 175, 0.11), rgba(6, 10, 18, 0.22));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 10px 26px rgba(0, 0, 0, 0.2);
+      }
+
+      .tool-category-head h2 {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--color-text);
+      }
+
+      .tool-category-head p {
+        margin-top: 0.15rem;
+        font-family: var(--font-serif);
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+      }
+
+      .tool-card {
+        position: relative;
+        display: flex;
+        min-height: 7rem;
+        gap: 1rem;
+        align-items: flex-start;
+        padding: 1.25rem;
+        border-radius: 1.1rem;
+        border: 1px solid var(--border-glass);
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.5), rgba(6, 10, 18, 0.28)),
+          radial-gradient(ellipse at 15% 0%, rgba(226, 238, 248, 0.11), transparent 48%);
+        backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+        box-shadow:
+          0 18px 48px rgba(0, 0, 0, 0.34),
+          var(--inner-glass);
+        transition:
+          transform 0.45s var(--interactive-ease),
+          border-color 0.45s var(--interactive-ease),
+          background 0.45s var(--interactive-ease),
+          box-shadow 0.45s var(--interactive-ease);
+        overflow: hidden;
+      }
+
+      .tool-card::after {
+        content: '';
+        position: absolute;
+        inset: auto 1rem 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(122, 149, 175, 0.5), transparent);
+        opacity: 0;
+        transition: opacity 0.45s var(--interactive-ease);
+      }
+
+      .tool-card:hover,
+      .tool-card:focus-visible {
+        transform: translateY(-4px);
+        border-color: var(--border-warm);
+        background:
+          linear-gradient(145deg, rgba(38, 54, 82, 0.58), rgba(6, 10, 18, 0.32)),
+          radial-gradient(ellipse at 15% 0%, rgba(226, 238, 248, 0.15), transparent 48%);
+        box-shadow:
+          0 26px 70px rgba(0, 0, 0, 0.48),
+          var(--glow-warm),
+          var(--glass-rim-strong);
+      }
+
+      .tool-card:focus-visible {
+        outline: 2px solid rgba(200, 182, 142, 0.42);
+        outline-offset: 4px;
+      }
+
+      .tool-card:hover::after,
+      .tool-card:focus-visible::after {
+        opacity: 1;
+      }
+
+      .tool-icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0.9rem;
+        border: 1px solid rgba(226, 238, 248, 0.12);
+        background: linear-gradient(135deg, rgba(122, 149, 175, 0.11), rgba(6, 10, 18, 0.22));
+        color: var(--color-accent);
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 0.86rem;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 10px 26px rgba(0, 0, 0, 0.2);
+        transition:
+          transform 0.45s var(--interactive-ease),
+          border-color 0.45s var(--interactive-ease),
+          box-shadow 0.45s var(--interactive-ease);
+      }
+
+      .tool-card:hover .tool-icon {
+        transform: scale(1.08) rotate(-2deg);
+        border-color: rgba(200, 182, 142, 0.24);
+        box-shadow:
+          0 14px 34px rgba(0, 0, 0, 0.3),
+          var(--glow-warm),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .tool-card h3 {
+        margin-bottom: 0.3rem;
+        color: var(--color-text);
+        font-size: 0.92rem;
+        font-weight: 700;
+        transition: color 0.3s var(--interactive-ease);
+      }
+
+      .tool-card:hover h3 {
+        color: var(--color-accent);
+      }
+
+      .tool-card p {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        color: var(--color-text-muted);
+        font-family: var(--font-serif);
+        font-size: 0.78rem;
+        line-height: 1.7;
+      }
+
+      @media (max-width: 1024px) {
+        .tool-workflows-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .tool-lab-hero {
+          grid-template-columns: 1fr;
+          padding: 1.4rem;
+        }
+
+        .tool-lab-panel {
+          min-width: 0;
+          text-align: left;
+        }
+
+        .tool-lab-hero,
+        .tool-lab-panel,
+        .tool-workflows,
+        .tool-workflow-card,
+        .tool-category,
+        .tool-card {
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tool-card,
+        .tool-workflow-card,
+        .tool-workflow-step,
+        .tool-icon {
+          transition: none;
+          transform: none !important;
+        }
+      }
+      .us-banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+        margin-bottom: 2.5rem;
+        padding: 1.75rem 2rem;
+        border: 1px solid var(--border-glass-strong);
+        border-radius: 24px;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.55), rgba(6, 10, 18, 0.28)),
+          radial-gradient(circle at 100% 0%, rgba(226, 238, 248, 0.1), transparent 40%);
+        backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+        box-shadow: var(--shadow-glass);
+      }
+      .us-banner-link {
+        flex-shrink: 0;
+        padding: 0.6rem 1.4rem;
+        border-radius: 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #fff;
+        background: var(--color-accent);
+        transition:
+          background 0.2s,
+          transform 0.2s;
+      }
+      .us-banner-link:hover {
+        background: var(--color-accent-light);
+        transform: translateY(-1px);
+      }
+    </style>
+  </div>
+</BaseLayout>

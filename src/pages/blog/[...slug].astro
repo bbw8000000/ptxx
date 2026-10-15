@@ -1,0 +1,103 @@
+---
+import { getCollection, render } from 'astro:content'
+import PostLayout from '../../layouts/PostLayout.astro'
+import { calcReadingTime, calcWordCount } from '../../utils/readingTime'
+import { statSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft)
+  const sorted = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  const publicPosts = sorted.filter((post) => !post.data.noindex)
+
+  function detectSeries(title: string): { name: string; part: number } | null {
+    const match = title.match(/^(.+?)\s*#(\d+)/)
+    if (!match) return null
+    return { name: match[1].trim(), part: parseInt(match[2]) }
+  }
+
+  // 检测所有系列
+  const seriesMap = new Map<string, { title: string; slug: string; part: number }[]>()
+  for (const post of sorted) {
+    const series = detectSeries(post.data.title)
+    if (series) {
+      const existing = seriesMap.get(series.name) || []
+      existing.push({ title: post.data.title, slug: post.id, part: series.part })
+      seriesMap.set(series.name, existing)
+    }
+  }
+
+  return sorted.map((post) => {
+    const publicIndex = publicPosts.findIndex((item) => item.id === post.id)
+    const series = detectSeries(post.data.title)
+    let seriesData = null
+    if (series) {
+      const items = seriesMap.get(series.name) || []
+      seriesData = { name: series.name, items, currentSlug: post.id }
+    }
+    // updatedDate 在 214 篇文章里一篇都没显式设置过，所以此前一律回退到文件 mtime。
+    //
+    // 那个回退其实一直是坏的：路径用 import.meta.url 拼，而构建时该模块的 url
+    // 并不指向 src/pages/blog/，statSync 抛错后被空 catch 吞掉 —— 全站 930 页里
+    // 只有 2 页「更新于」是正文里恰好写了这几个字，dateModified 一次都没输出过。
+    // 这里改成相对项目根解析（构建时 cwd 就是仓库根），回退才真正生效。
+    //
+    // CI 下必须跳过：checkout 会把所有文件的 mtime 变成构建时间，
+    // 于是每部署一次「更新于」和结构化数据里的 dateModified 就一起变成当天，
+    // 那是错误信息，不如不显示。本地开发时 mtime 仍有意义，所以只在非 CI 回退。
+    let updatedDate = post.data.updatedDate
+    if (!updatedDate && !process.env.CI) {
+      try {
+        updatedDate = statSync(resolve(process.cwd(), 'src/content/posts', `${post.id}.md`)).mtime
+      } catch {}
+    }
+    return {
+      params: { slug: post.id },
+      props: {
+        post,
+        readingTime: calcReadingTime(post.body || ''),
+        wordCount: calcWordCount(post.body || ''),
+        updatedDate,
+        prev:
+          !post.data.noindex && publicIndex < publicPosts.length - 1
+            ? {
+                title: publicPosts[publicIndex + 1].data.title,
+                slug: publicPosts[publicIndex + 1].id,
+              }
+            : null,
+        next:
+          !post.data.noindex && publicIndex > 0
+            ? {
+                title: publicPosts[publicIndex - 1].data.title,
+                slug: publicPosts[publicIndex - 1].id,
+              }
+            : null,
+        seriesData,
+      },
+    }
+  })
+}
+
+const { post, readingTime, wordCount, updatedDate, prev, next, seriesData } = Astro.props
+const { Content } = await render(post)
+---
+
+<PostLayout
+  title={post.data.title}
+  description={post.data.description}
+  pubDate={post.data.pubDate}
+  updatedDate={updatedDate}
+  heroImage={post.data.heroImage}
+  tags={post.data.tags}
+  category={post.data.category}
+  readingTime={readingTime}
+  wordCount={wordCount}
+  prev={prev}
+  next={next}
+  slug={post.id}
+  seriesData={seriesData}
+  body={post.body}
+  noindex={post.data.noindex}
+>
+  <Content />
+</PostLayout>

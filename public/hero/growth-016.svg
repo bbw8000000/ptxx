@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 350" width="900" height="350">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="hsl(282, 65%, 60%)"/>
+      <stop offset="100%" stop-color="hsl(322, 55%, 45%)"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect width="900" height="350" rx="16" fill="url(#bg)"/>
+  <!-- 装饰 -->
+  <circle cx="780" cy="60" r="120" fill="white" opacity="0.06"/>
+  <circle cx="100" cy="300" r="60" fill="white" opacity="0.04"/>
+  <!-- 标签 -->
+  <rect x="60" y="70" width="80" height="28" rx="14" fill="white" opacity="0.2"/>
+  <text x="100" y="89" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="white" text-anchor="middle" opacity="0.9">GROWTH</text>
+  <!-- 主标题 -->
+  <text x="60" y="150" font-family="'Noto Serif SC', 'LXGW WenKai', Georgia, serif" font-size="44" font-weight="700" fill="white" letter-spacing="1">成长记录 #16</text>
+  <!-- 副标题 -->
+  <text x="60" y="210" font-family="system-ui, sans-serif" font-size="22" fill="white" opacity="0.8">和别人的一段对话</text>
+  <!-- 序号 -->
+  <text x="830" y="320" font-family="system-ui, sans-serif" font-size="14" fill="white" opacity="0.3" text-anchor="end">#16</text>
+  <!-- 插画 -->
+  
+    <!-- 对话气泡插画 -->
+    <g transform="translate(680, 100)">
+      <!-- 左气泡 -->
+      <rect x="0" y="0" width="100" height="60" rx="20" fill="none" stroke="white" stroke-width="3" opacity="0.9"/>
+      <polygon points="20,60 35,80 40,60" fill="none" stroke="white" stroke-width="3" opacity="0.9"/>
+      <!-- 右气泡 -->
+      <rect x="80" y="70" width="110" height="55" rx="18" fill="none" stroke="white" stroke-width="2.5" opacity="0.7"/>
+      <polygon points="170,70 180,50 160,70" fill="none" stroke="white" stroke-width="2.5" opacity="0.7"/>
+      <!-- 文字线条 -->
+      <line x1="25" y1="22" x2="75" y2="22" stroke="white" stroke-width="2" opacity="0.5"/>
+      <line x1="25" y1="35" x2="60" y2="35" stroke="white" stroke-width="2" opacity="0.5"/>
+      <line x1="105" y1="92" x2="165" y2="92" stroke="white" stroke-width="2" opacity="0.4"/>
+      <line x1="105" y1="105" x2="145" y2="105" stroke="white" stroke-width="2" opacity="0.4"/>
+    </g>
+</svg>

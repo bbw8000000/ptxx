@@ -1,0 +1,163 @@
+name: Daily Auto Update
+
+# 每天生成 GitHub 每日精选 + 成长记录草稿 + 项目快照，然后**自己部署**。
+#
+# 为什么必须自己部署：这个 workflow 用 GITHUB_TOKEN 推送提交，而 GitHub 明确
+# 不会让这类推送触发 `on: push` 工作流。所以它提交完，Deploy to GitHub Pages
+# 并不会被唤醒 —— 内容要等 Update Daily Links 的下一次定时运行（cron 02:00 UTC）
+# 才可能上线。而两个 workflow 的实际完成时间会漂移（Daily Auto Update 常落在
+# 04:20–04:35 UTC，Update Daily Links 在 02:5x–07:17 UTC 之间），一旦后者先跑完，
+# 当天内容就要等到第二天，用户最多要等将近一天才看到「每日」更新。
+# 这里让它在自己这一轮里构建并部署，时效就与调度无关了。
+on:
+  schedule:
+    - cron: '0 0 * * *' # UTC 00:00 = 北京时间 08:00
+  workflow_dispatch:
+
+concurrency:
+  group: daily-update
+  # 不要中途取消：这个 job 既提交又部署，被砍在 commit 与 deploy 之间会留下
+  # 「内容已提交但没上线」的状态。排队比半途而废好。
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 生成 GitHub 每日精选
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/generate_daily_digest.py
+
+      - name: 生成成长记录草稿
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/generate_growth_draft.py
+
+      # 日报推荐的项目里，站内没有快照的那些只能直连 GitHub，而其中相当一部分
+      # 已被删除或封号（实测 46%）。逐仓库实测一遍，结果供首页与项目页判断
+      # 「这个链接还能不能给」。有凭据时才跑，失败也不该拖垮内容流水线。
+      - name: 检查已消失的项目仓库
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_gone_projects.py
+
+      # 自动生成的内容（项目快照镜像的 README、日报正文）来自外部仓库，无法保证
+      # 里面没有指向不存在本地文件的图片引用 —— 而只要有一条，astro build 就会整个
+      # 失败（2026-09-28 那次就是这么挂的：当天内容整批提不上去，站点也没部署）。
+      # 这里把这类引用改写成纯文本说明。
+      #
+      # 必须放在「Check for changes」**之前**：否则改写发生在暂存之后，修好的内容
+      # 进不了提交，第二天照样会因为同一条引用再挂一次。
+      # 这个脚本只依赖 node 内置模块，所以放在 setup-node / npm ci 之前也能跑。
+      - name: 清理会让构建失败的内容图片引用
+        run: node scripts/guard-content-images.mjs --fix
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run check
+
+      - name: Check for changes
+        id: changes
+        run: |
+          shopt -s nullglob
+          git add src/content/posts/daily-*.md src/content/posts/risk-daily-*.md src/content/posts/growth-*.md src/content/projects/*.md public/hero/daily-*.svg public/hero/growth-*.svg config/projects-gone.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 中文字体分档需要 fontTools：日报/成长草稿经常引入新汉字，新增的分档必须在
+      # 构建时生成，否则那些字会回退到系统字体。装不上也不致命 —— 构建会跳过字体
+      # 分档并给出提示，站点仍可正常构建（scripts/subset_font_packs.py 会优雅退出）。
+      - name: Install font subsetting tools
+        run: pip install fonttools brotli
+      - run: python3 scripts/generate_daily_digest.py --self-test
+      # Astro/Vite only exposes PUBLIC_* values that come from a .env file, not
+      # from the process environment, so the value has to be written out first.
+      - name: Write .env for the build
+        run: echo "PUBLIC_API_BASE=${{ vars.PUBLIC_API_BASE }}" >> .env
+      - run: npm run build
+
+      # 构建产物已经包含本轮生成的内容，直接交给 Pages 部署。
+      # 只在真有变化时上传与部署，避免每天空跑一次部署。
+      - name: Upload Pages artifact
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: 生成今日项目审核清单
+        # 只做汇报，所以 continue-on-error：审核脚本万一出错也不该拖垮内容流水线。
+        # 但它仍会在这次运行里显示为失败，不会被静默吞掉。
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python3 scripts/review_daily_picks.py | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: 每日自动更新 $(date +%Y-%m-%d)"
+          git push
+
+  deploy:
+    needs: generate
+    if: needs.generate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # 与 Deploy to GitHub Pages 共用同一个 concurrency group，
+    # 避免两个工作流同时往 github-pages 环境推。
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  notify:
+    needs: [generate, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create failure issue
+        run: |
+          gh issue create \
+            --title "🚨 每日自动更新失败 $(date +%Y-%m-%d)" \
+            --body "Workflow run failed. [查看日志](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" \
+            --label "bug"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

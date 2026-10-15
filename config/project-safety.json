@@ -1,0 +1,23 @@
+{
+  "restrictedProjectPatterns": [
+    "\\baimbot\\b",
+    "\\bwallhack\\b",
+    "\\bgame[\\s-]*cheat\\b",
+    "\\bcheat[\\s-]*tool\\b",
+    "\\bkeygen\\b",
+    "\\bactivator\\b",
+    "\\bcrack(?:ed)?\\b",
+    "\\bcredential[\\s-]*stealer\\b",
+    "\\btoken[\\s-]*grabber\\b",
+    "\\bransomware\\b",
+    "\\bseed[\\s-]*phrase\\b",
+    "\\bmnemonic[\\s-]*(?:generator|brute)\\b",
+    "\\broblox[\\s-]*executor\\b",
+    "\\bcheats?(?![\\s_-]*sheet)(?=\\b|_)",
+    "\\bmod[\\s_-]*menu\\b",
+    "\\bpassword[\\s_-]*stealer\\b",
+    "\\bremote[\\s_-]*access[\\s_-]*trojan\\b",
+    "\\bfake[\\s_-]*balance\\b",
+    "\\bflash[\\s_-]*usdt\\b"
+  ]
+}

@@ -1,0 +1,140 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="JSON 格式化" description="在线 JSON 格式化、校验、压缩工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">JSON 格式化</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        格式化、校验、压缩 JSON 数据
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium text-text dark:text-dark-text">输入 JSON</label>
+          <button
+            id="btn-clear"
+            class="text-xs text-text-muted hover:text-accent dark:text-dark-text-muted dark:hover:text-dark-accent transition-colors"
+          >
+            清空
+          </button>
+        </div>
+        <textarea
+          id="input"
+          spellcheck="false"
+          class="w-full h-80 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-none focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder='{"key": "value"}'
+        ></textarea>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium text-text dark:text-dark-text">输出</label>
+          <div class="flex gap-2">
+            <button
+              id="btn-format"
+              class="px-3 py-1 text-xs font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all"
+            >
+              格式化
+            </button>
+            <button
+              id="btn-minify"
+              class="px-3 py-1 text-xs font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-lg hover:border-accent hover:text-accent dark:hover:border-dark-accent dark:hover:text-dark-accent transition-colors"
+            >
+              压缩
+            </button>
+            <button
+              id="btn-copy"
+              class="px-3 py-1 text-xs font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-lg hover:border-accent hover:text-accent dark:hover:border-dark-accent dark:hover:text-dark-accent transition-colors"
+            >
+              复制
+            </button>
+          </div>
+        </div>
+        <textarea
+          id="output"
+          class="w-full h-80 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-none focus:outline-none"
+          readonly
+          placeholder="结果将显示在这里"
+        ></textarea>
+        <p id="error" class="mt-2 text-xs text-red-500 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    const input = document.getElementById('input')
+    const output = document.getElementById('output')
+    const error = document.getElementById('error')
+
+    function tryFormat() {
+      try {
+        const obj = JSON.parse(input.value)
+        output.value = JSON.stringify(obj, null, 2)
+        error.classList.add('hidden')
+        return true
+      } catch (e) {
+        return false
+      }
+    }
+
+    document.getElementById('btn-format').addEventListener('click', () => {
+      try {
+        const obj = JSON.parse(input.value)
+        output.value = JSON.stringify(obj, null, 2)
+        error.classList.add('hidden')
+      } catch (e) {
+        error.textContent = 'JSON 格式错误: ' + e.message
+        error.classList.remove('hidden')
+      }
+    })
+
+    document.getElementById('btn-minify').addEventListener('click', () => {
+      try {
+        const obj = JSON.parse(input.value)
+        output.value = JSON.stringify(obj)
+        error.classList.add('hidden')
+      } catch (e) {
+        error.textContent = 'JSON 格式错误: ' + e.message
+        error.classList.remove('hidden')
+      }
+    })
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(output.value).then(() => {
+        const btn = document.getElementById('btn-copy')
+        const orig = btn.textContent
+        btn.textContent = '已复制 ✓'
+        setTimeout(() => {
+          btn.textContent = orig
+        }, 1500)
+      })
+    })
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      input.value = ''
+      output.value = ''
+      error.classList.add('hidden')
+    })
+
+    // Auto-format on paste
+    input.addEventListener('paste', () => {
+      setTimeout(() => {
+        if (input.value.trim().startsWith('{') || input.value.trim().startsWith('[')) {
+          tryFormat()
+        }
+      }, 50)
+    })
+  </script>
+</BaseLayout>

@@ -1,0 +1,298 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const howto = [
+  { step: '01', title: '安装脚本管理器', desc: '在浏览器扩展商店安装 Tampermonkey（油猴）' },
+  { step: '02', title: '点击安装脚本', desc: '打开脚本主页，按页面提示点击安装并确认' },
+  { step: '03', title: '打开目标网站', desc: '脚本自动生效，无需其他操作' },
+]
+
+const scripts = [
+  {
+    category: '视频与下载',
+    accent: '01',
+    items: [
+      {
+        name: 'Bilibili Evolved',
+        desc: 'B 站增强脚本：去广告、下载视频/音乐/封面/弹幕、自定义界面、夜间模式、快捷键。',
+        site: '哔哩哔哩',
+        repo: 'github.com/the1812/Bilibili-Evolved',
+        repoUrl: 'https://github.com/the1812/Bilibili-Evolved',
+        gfUrl: 'https://greasyfork.org/zh-CN/scripts/373563',
+      },
+      {
+        name: 'YouTube Enhancements',
+        desc: 'YouTube 增强：视频下载、自定义倍速、缩略图、广告增强、界面优化。',
+        site: 'YouTube',
+        repo: 'github.com/code-charity/youtube',
+        repoUrl: 'https://github.com/code-charity/youtube',
+        gfUrl: '',
+      },
+    ],
+  },
+  {
+    category: '阅读与社区',
+    accent: '02',
+    items: [
+      {
+        name: 'V2EX Plus',
+        desc: 'V2EX 论坛增强：新回复提醒、楼层定位、头像、夜间模式、话题列表优化。',
+        site: 'V2EX',
+        repo: 'github.com/sciooga/V2EX-Plus',
+        repoUrl: 'https://github.com/sciooga/V2EX-Plus',
+        gfUrl: '',
+      },
+      {
+        name: 'GitHub-userscripts',
+        desc: 'GitHub 界面增强合集：文件查看、目录折叠、链接跳转等实用小脚本。',
+        site: 'GitHub',
+        repo: 'github.com/Mottie/GitHub-userscripts',
+        repoUrl: 'https://github.com/Mottie/GitHub-userscripts',
+        gfUrl: '',
+      },
+    ],
+  },
+  {
+    category: '搜索与效率',
+    accent: '03',
+    items: [
+      {
+        name: 'AC-baidu',
+        desc: '搜索净化：去除百度/搜狗/谷歌搜索结果中的广告与跳转链接，显示网站图标，支持双列。',
+        site: '百度 / 搜狗 / 谷歌',
+        repo: 'Greasy Fork 热门脚本',
+        repoUrl: 'https://greasyfork.org/zh-CN/scripts/14178',
+        gfUrl: 'https://greasyfork.org/zh-CN/scripts/14178',
+      },
+      {
+        name: 'IMDb-Scout-Mod',
+        desc: '电影评分互通：在 IMDb、豆瓣、TMDB、烂番茄等页面互相显示各平台评分，选片利器。',
+        site: 'IMDb / 豆瓣 / TMDB',
+        repo: 'github.com/Purfview/IMDb-Scout-Mod',
+        repoUrl: 'https://github.com/Purfview/IMDb-Scout-Mod',
+        gfUrl: '',
+      },
+    ],
+  },
+]
+---
+
+<BaseLayout
+  title="油猴脚本合集"
+  description="精选开源、维护活跃的浏览器增强脚本（油猴脚本），让常用网站更好用"
+>
+  <div class="max-w-5xl mx-auto px-6 py-12 md:py-16">
+    <div class="mb-10">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        USERCSS · 浏览器增强
+      </span>
+      <h1 class="font-display text-3xl md:text-4xl font-bold text-text dark:text-dark-text mb-3">
+        油猴脚本合集
+      </h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif leading-relaxed">
+        浏览器「外挂」：给常用网站加上下载、去广告、增强阅读等能力。这里收录的都是
+        <b class="text-text dark:text-dark-text">开源、维护活跃、来源可信</b>的脚本。
+      </p>
+    </div>
+
+    <!-- 使用说明 -->
+    <section class="us-section ink-reveal">
+      <div class="us-section-head">
+        <span>How to</span>
+        <h2>三步开始使用</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {howto.map((item) => (
+          <div class="us-step">
+            <span class="us-step-num">{item.step}</span>
+            <h3>{item.title}</h3>
+            <p>{item.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- 脚本列表 -->
+    {scripts.map((cat) => (
+      <section class="us-section ink-reveal">
+        <div class="us-section-head">
+          <span>{cat.accent}</span>
+          <h2>{cat.category}</h2>
+        </div>
+        <div class="grid grid-cols-1 gap-4">
+          {cat.items.map((s) => (
+            <article class="us-card">
+              <div class="us-card-main">
+                <h3>{s.name}</h3>
+                <p>{s.desc}</p>
+                <div class="us-meta">
+                  <span class="us-tag">适用：{s.site}</span>
+                  <span class="us-tag us-tag-dim">来源：{s.repo}</span>
+                </div>
+              </div>
+              <div class="us-card-actions">
+                <a href={s.repoUrl} target="_blank" rel="noopener" class="us-btn">
+                  查看主页
+                </a>
+                {s.gfUrl && (
+                  <a href={s.gfUrl} target="_blank" rel="noopener" class="us-btn us-btn-accent">
+                    去安装
+                  </a>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <!-- 安全提示 -->
+    <div class="mt-12 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 text-sm text-text-muted dark:text-dark-text-muted font-serif leading-relaxed ink-reveal">
+      <b class="text-amber-600 dark:text-amber-400">安全提醒：</b>
+      脚本本质是运行在浏览器里的代码，只建议安装
+      <b class="text-text dark:text-dark-text">来源可信、开源、有维护记录</b>的脚本（本页均满足）。
+      安装前可在 Tampermonkey 的「编辑」里查看源码；不认识的脚本请勿安装。
+    </div>
+
+    <div class="mt-10 pt-8 border-t border-border/20 dark:border-dark-border/20">
+      <p class="text-xs text-text-muted dark:text-dark-text-muted font-serif text-center leading-relaxed">
+        如果你有常用且开源的脚本想收录，欢迎告诉我。
+      </p>
+    </div>
+  </div>
+
+  <style>
+    .us-section {
+      margin-bottom: 2.5rem;
+    }
+    .us-section-head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .us-section-head span {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-accent);
+    }
+    .us-section-head h2 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .us-step {
+      padding: 1.25rem;
+      border: 1px solid var(--border-glass);
+      border-radius: 1.1rem;
+      background: linear-gradient(145deg, rgba(32, 45, 68, 0.45), rgba(6, 10, 18, 0.25));
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    }
+    .us-step-num {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--color-accent);
+    }
+    .us-step h3 {
+      margin-top: 0.5rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .us-step p {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-serif);
+      line-height: 1.6;
+    }
+    .us-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border-glass);
+      border-radius: 1.25rem;
+      background: linear-gradient(145deg, rgba(32, 45, 68, 0.4), rgba(6, 10, 18, 0.22));
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      transition:
+        border-color 0.25s,
+        transform 0.25s;
+    }
+    .us-card:hover {
+      border-color: var(--border-glass-strong);
+      transform: translateY(-1px);
+    }
+    .us-card-main {
+      min-width: 0;
+      flex: 1 1 20rem;
+    }
+    .us-card-main h3 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+    .us-card-main p {
+      margin-top: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-family: var(--font-serif);
+      line-height: 1.7;
+    }
+    .us-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .us-tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+    }
+    .us-tag-dim {
+      opacity: 0.75;
+    }
+    .us-card-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-shrink: 0;
+    }
+    .us-btn {
+      padding: 0.5rem 1.1rem;
+      border-radius: 0.7rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text);
+      border: 1px solid var(--border-glass-strong);
+      transition: all 0.2s;
+    }
+    .us-btn:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+    .us-btn-accent {
+      background: var(--color-accent);
+      color: #fff;
+      border-color: transparent;
+    }
+    .us-btn-accent:hover {
+      background: var(--color-accent-light);
+      color: #fff;
+    }
+  </style>
+</BaseLayout>

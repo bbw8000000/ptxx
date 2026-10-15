@@ -1,0 +1,186 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="文本对比" description="在线文本差异对比工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">文本对比</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">高亮两段文本的差异</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">原始文本</label>
+        <textarea
+          id="text-a"
+          class="w-full h-56 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入第一段文本..."
+        >Hello World
+这是一段测试文本
+第三行内容
+第四行</textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">对比文本</label>
+        <textarea
+          id="text-b"
+          class="w-full h-56 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-y focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入第二段文本..."
+        >Hello World
+这是一段修改后的文本
+第三行内容
+新增第五行</textarea>
+      </div>
+    </div>
+
+    <button
+      id="btn-diff"
+      class="px-4 py-2 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all mb-4"
+    >
+      对比
+    </button>
+
+    <div>
+      <div class="flex items-center gap-4 mb-2">
+        <label class="text-sm font-medium text-text dark:text-dark-text">差异结果</label>
+        <div class="flex gap-3 text-xs">
+          <span class="flex items-center gap-1">
+            <span class="w-3 h-3 rounded bg-green-500/20 border border-green-500/40"></span> 新增
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-3 h-3 rounded bg-red-500/20 border border-red-500/40"></span> 删除
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-3 h-3 rounded bg-yellow-500/20 border border-yellow-500/40"></span> 修改
+          </span>
+        </div>
+      </div>
+      <div
+        id="diff-result"
+        class="w-full min-h-[200px] bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm whitespace-pre-wrap overflow-x-auto shadow-sm"
+      ></div>
+    </div>
+  </div>
+
+  <script is:inline>
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }
+
+    // LCS table for word-level diff
+    function lcsTable(a, b) {
+      const m = a.length,
+        n = b.length
+      const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1))
+      for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+          dp[i][j] =
+            a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
+      return dp
+    }
+
+    function backtrack(dp, a, b, i, j) {
+      if (i === 0 && j === 0) return []
+      if (i > 0 && j > 0 && a[i - 1] === b[j - 1])
+        return [...backtrack(dp, a, b, i - 1, j - 1), { type: 'same', val: a[i - 1] }]
+      if (i > 0 && (j === 0 || dp[i - 1][j] >= dp[i][j - 1]))
+        return [...backtrack(dp, a, b, i - 1, j), { type: 'del', val: a[i - 1] }]
+      return [...backtrack(dp, a, b, i, j - 1), { type: 'add', val: b[j - 1] }]
+    }
+
+    function wordDiff(oldText, newText) {
+      const oldWords = oldText.split(/(\s+)/g)
+      const newWords = newText.split(/(\s+)/g)
+      const dp = lcsTable(oldWords, newWords)
+      const diff = backtrack(dp, oldWords, newWords, oldWords.length, newWords.length)
+
+      // Merge consecutive same-type tokens
+      const merged = []
+      for (const token of diff) {
+        const last = merged[merged.length - 1]
+        if (last && last.type === token.type) last.val += token.val
+        else merged.push({ type: token.type, val: token.val })
+      }
+      return merged
+    }
+
+    function renderWordDiff(diff) {
+      return diff
+        .map((d) => {
+          if (d.type === 'del')
+            return `<del class="bg-red-500/25 text-red-300 px-0.5 rounded-sm">${esc(d.val)}</del>`
+          if (d.type === 'add')
+            return `<ins class="bg-green-500/25 text-green-300 px-0.5 rounded-sm">${esc(d.val)}</ins>`
+          return esc(d.val)
+        })
+        .join('')
+    }
+
+    document.getElementById('btn-diff').addEventListener('click', () => {
+      const a = document.getElementById('text-a').value.split('\n')
+      const b = document.getElementById('text-b').value.split('\n')
+      const result = document.getElementById('diff-result')
+
+      // LCS for line matching
+      const dp = lcsTable(a, b)
+      const lineDiff = backtrack(dp, a, b, a.length, b.length)
+
+      let html = ''
+      for (const token of lineDiff) {
+        const v = esc(token.val)
+        if (token.type === 'add') {
+          html += `<div class="bg-green-500/10 border-l-2 border-green-500/60 px-3 py-0.5"><span class="text-green-500 dark:text-green-400 font-bold select-none">+ </span>${v}</div>`
+        } else if (token.type === 'del') {
+          html += `<div class="bg-red-500/10 border-l-2 border-red-500/60 px-3 py-0.5"><span class="text-red-500 dark:text-red-400 font-bold select-none">- </span>${v}</div>`
+        } else {
+          html += `<div class="px-3 py-0.5 text-text-muted/70 dark:text-dark-text-muted/70"><span class="select-none">  </span>${v}</div>`
+        }
+      }
+
+      // If lines match 1:1 but differ, try word-level diff
+      if (a.length === b.length && a.length > 0) {
+        // Check if it's a per-line modification scenario
+        const hasSameCount = lineDiff.filter((d) => d.type === 'same').length
+        const hasModifications = a.some((line, i) => line !== b[i])
+        if (hasSameCount === 0 && hasModifications) {
+          html = ''
+          for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) {
+              const wd = wordDiff(a[i], b[i])
+              html += `<div class="bg-red-500/10 border-l-2 border-red-500/60 px-3 py-0.5 flex"><span class="text-red-500 dark:text-red-400 font-bold select-none shrink-0">- </span><span>${renderWordDiff(wd.filter((d) => d.type !== 'add'))}</span></div>`
+              html += `<div class="bg-green-500/10 border-l-2 border-green-500/60 px-3 py-0.5 flex"><span class="text-green-500 dark:text-green-400 font-bold select-none shrink-0">+ </span><span>${renderWordDiff(wd.filter((d) => d.type !== 'del'))}</span></div>`
+            } else {
+              html += `<div class="px-3 py-0.5 text-text-muted/70 dark:text-dark-text-muted/70"><span class="select-none">  </span>${esc(a[i])}</div>`
+            }
+          }
+        }
+      }
+
+      result.innerHTML =
+        html || '<span class="text-text-muted dark:text-dark-text-muted">两段文本完全相同</span>'
+
+      // Stats
+      const added = lineDiff.filter((d) => d.type === 'add').length
+      const removed = lineDiff.filter((d) => d.type === 'del').length
+      if (added || removed) {
+        const stat = document.createElement('div')
+        stat.className = 'mt-3 flex gap-4 text-xs'
+        stat.innerHTML = `<span class="text-green-500">+${added} 行新增</span><span class="text-red-500">-${removed} 行删除</span>`
+        result.appendChild(stat)
+      }
+    })
+
+    // Auto-run on load
+    document.getElementById('btn-diff').click()
+  </script>
+</BaseLayout>

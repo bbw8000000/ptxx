@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import PostCard from '../../components/PostCard.astro'
+import { getCollection } from 'astro:content'
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+  const allCategories = [...new Set(allPosts.map((post) => post.data.category))]
+
+  return allCategories.map((category) => ({
+    params: { category },
+    props: {
+      category,
+      posts: allPosts
+        .filter((post) => post.data.category === category)
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+    },
+  }))
+}
+
+const { category, posts } = Astro.props
+---
+
+<BaseLayout title={`分类: ${category}`} description={`"${category}" 分类下的所有文章`}>
+  <div class="category-page max-w-5xl mx-auto px-6 py-16">
+    <div class="category-detail-hero mb-10">
+      <a href={`${import.meta.env.BASE_URL}blog/`} class="category-back-link">
+        &larr; 所有文章
+      </a>
+      <span class="category-detail-kicker">CATEGORY</span>
+      <h1 class="font-display text-4xl font-bold text-text dark:text-dark-text mb-3">{category}</h1>
+      <p class="text-text-muted dark:text-dark-text-muted font-serif">{posts.length} 篇文章</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {posts.map((post) => (
+        <PostCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          heroImage={post.data.heroImage}
+          tags={post.data.tags}
+          category={post.data.category}
+          slug={post.id}
+        />
+      ))}
+    </div>
+  </div>
+  <style>
+    .category-detail-hero {
+      position: relative;
+      overflow: hidden;
+      padding: 2rem;
+      border: 1px solid var(--border-glass);
+      border-radius: 1.6rem;
+      background:
+        linear-gradient(145deg, rgba(32, 45, 68, 0.52), rgba(6, 10, 18, 0.3)),
+        radial-gradient(ellipse at 12% 0%, rgba(226, 238, 248, 0.13), transparent 48%),
+        radial-gradient(circle at 100% 100%, rgba(200, 142, 82, 0.08), transparent 44%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      box-shadow: var(--shadow-glass-floating);
+    }
+
+    .category-back-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: rgba(168, 175, 186, 0.68);
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .category-back-link:hover,
+    .category-back-link:focus-visible {
+      color: var(--color-accent);
+    }
+
+    .category-detail-kicker {
+      display: block;
+      width: max-content;
+      padding: 0.28rem 0.8rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border-warm);
+      border-radius: 999px;
+      background: rgba(200, 142, 82, 0.055);
+      color: var(--color-accent);
+      font-family: var(--font-sans);
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 560px) {
+      .category-detail-hero {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+    }
+  </style>
+</BaseLayout>

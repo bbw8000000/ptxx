@@ -1,0 +1,123 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="关于" description="关于这个博客和我">
+  <div class="max-w-3xl mx-auto px-6 py-16 relative">
+    <!-- 竖排装饰字 -->
+    <div class="absolute top-16 right-6 md:right-12 writing-vertical-rl font-display text-6xl md:text-8xl text-text/[0.03] dark:text-dark-text/[0.04] select-none pointer-events-none tracking-widest leading-none">
+      关于
+    </div>
+
+    <div class="mb-10">
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        ABOUT
+      </span>
+      <h1 class="font-display text-4xl font-bold text-text dark:text-dark-text">关于</h1>
+    </div>
+
+    <div class="prose">
+      <p>
+        你好，我是「又逢雨季」，「盘腿修仙」是我的个人空间。这不是什么成功学， 也不是某个大佬的成长史 —
+        只是一个普通人把走过的弯路和踩过的坑记下来。
+      </p>
+      <p>为什么叫又逢雨季？因为雨天更适合相遇。</p>
+
+      <h2>我是谁</h2>
+      <p>
+        我是一个学生，走了一条不太常规的路。初中之后没上高中，读的是 3+2 大专。
+        和很多人不太一样，但又好像差不多：迷茫、空虚、不知道自己在干什么，
+        偶尔觉得自己还行，大部分时候又觉得什么都不行。
+      </p>
+      <p>
+        唯一不同的是，我在学校遇到了一个兄弟，也是一个贵人。当很多人还在苦恼未来方向的时候，
+        我们俩已经出去赚钱了。但说实话，这四年我玩也没玩好，学也没学好。钱也没赚到多少。
+      </p>
+
+      <h2>两个老师</h2>
+      <p>
+        第一年入学的时候，我碰到了一个老师。她教我做网页，从空白页面到一个完整的网站，
+        那种感觉很奇妙。我很喜欢她，她算是我人生中第一个认真带我的人。
+        但那时候心智不成熟，太贪玩了，机会来了也没接住。后来想想挺后悔的 —
+        如果当时好好跟着她，是不是人生会不一样？
+      </p>
+      <p>但这些都是走过弯路之后才懂的事。</p>
+      <p>
+        半年前，我又遇到了一个带我的人。他不是老师，是老板。
+        他让我接触了一个全新的领域，给了我资源和机会，虽然都是从头摸索，
+        但他让我明白一件事：很多时候差的不是能力，是有没有人愿意拉你一把。
+        有些人一辈子都等不到这个机会。
+      </p>
+
+      <h2>做过的和放下的</h2>
+      <p>
+        我做过一些事，有些做了一半放下了。我也不是一直在努力，每天也在玩。
+        我想让身边的朋友跟我一起学点东西，他们不学我就会着急、不开心。
+        到现在，我也没做出什么值得炫耀的成绩。
+      </p>
+      <p>
+        但我想把这些都写下来。不是为了展示什么，就是记录。
+        记录我的迷茫、我的后悔、我的尝试、我的放弃、我偶尔的小进步。
+        因为我觉得，比起那些一帆风顺的故事，真实的挣扎可能对某些人更有用。
+      </p>
+
+      <h2>这个博客</h2>
+      <p>
+        「盘腿修仙」是我的一块自留地。这里会写一些技术的东西，也会写生活、写想法。
+        不装，不端着，写得真就行。
+      </p>
+      <p>
+        如果你也是一个还在摸索的人，不确定自己要走哪条路，不知道未来会怎样 —
+        希望这里的内容能让你觉得，不是你一个人这样。
+      </p>
+
+      <hr />
+
+      <p class="text-sm text-text-muted dark:text-dark-text-muted">
+        「博学之，审问之，慎思之，明辨之，笃行之。」— 《中庸》
+      </p>
+
+      <div class="mt-14 pt-8 border-t border-white/5">
+        <h2 class="font-display text-base font-bold text-text mb-4">更多</h2>
+        <div class="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+          <a
+            href={`${import.meta.env.BASE_URL}friends/`}
+            class="text-text-secondary hover:text-accent transition-colors"
+          >
+            友链
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}guestbook/`}
+            class="text-text-secondary hover:text-accent transition-colors"
+          >
+            留言
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}bookmarks/`}
+            class="text-text-secondary hover:text-accent transition-colors"
+          >
+            我的收藏
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}projects/`}
+            class="text-text-secondary hover:text-accent transition-colors"
+          >
+            项目资料库
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}github-daily/`}
+            class="text-text-secondary hover:text-accent transition-colors"
+          >
+            GitHub 日报
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .writing-vertical-rl {
+    writing-mode: vertical-rl;
+  }
+</style>

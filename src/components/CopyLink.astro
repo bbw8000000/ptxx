@@ -1,0 +1,54 @@
+---
+// 复制链接按钮 — 文章页使用
+---
+
+<button
+  id="copy-link-btn"
+  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans
+         border border-border/60 dark:border-dark-border/60 rounded-lg
+         text-text-muted dark:text-dark-text-muted
+         hover:text-accent dark:hover:text-dark-accent hover:border-accent dark:hover:border-dark-accent
+         hover:shadow-md hover:shadow-accent/10 dark:hover:shadow-dark-accent/10
+         transition-all duration-300"
+>
+  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+    />
+  </svg>
+  <span id="copy-link-text">复制链接</span>
+</button>
+
+<script is:inline>
+  document.addEventListener('astro:page-load', () => {
+    window.__copyLinkCleanup?.()
+    const controller = new AbortController()
+    const btn = document.getElementById('copy-link-btn')
+    const text = document.getElementById('copy-link-text')
+    if (!btn || !text) return
+
+    btn.addEventListener(
+      'click',
+      async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href)
+          text.textContent = '已复制'
+          btn.classList.add('text-green-600', 'dark:text-green-400')
+          setTimeout(() => {
+            text.textContent = '复制链接'
+            btn.classList.remove('text-green-600', 'dark:text-green-400')
+          }, 2000)
+        } catch {
+          text.textContent = '复制失败'
+          setTimeout(() => {
+            text.textContent = '复制链接'
+          }, 2000)
+        }
+      },
+      { signal: controller.signal },
+    )
+    window.__copyLinkCleanup = () => controller.abort()
+  })
+</script>

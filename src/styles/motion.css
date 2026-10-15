@@ -1,0 +1,309 @@
+/* ========== View Transitions ========== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-image-pair(root) {
+  isolation: isolate;
+}
+
+::view-transition-group(post-title) {
+  animation-duration: 360ms;
+  animation-timing-function: var(--ease-emphasized);
+}
+
+::view-transition-old(post-title) {
+  animation: postTitleOut 280ms var(--ease-standard) both;
+}
+
+::view-transition-new(post-title) {
+  animation: postTitleIn 360ms var(--ease-emphasized) both;
+}
+
+@keyframes postTitleOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes postTitleIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+html.is-navigating .global-bg-layer::before,
+html.is-navigating .global-bg-layer::after,
+html.is-navigating body.page-entrance::before,
+html.is-navigating body.page-entrance::after {
+  animation-play-state: paused;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ========== Scroll Reveal ========== */
+.reveal-target {
+  opacity: 1;
+  transform: none;
+}
+
+.js .reveal-target {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.45s var(--ease-standard),
+    transform 0.45s var(--ease-emphasized);
+  will-change: opacity, transform;
+}
+
+.js .reveal-target.is-revealed {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+}
+
+/* 卡片仅保留 opacity 过渡（scroll reveal），位移由 JS 物理引擎驱动 */
+.card-flat.reveal-target {
+  transition: opacity var(--motion-slow) var(--ease-standard);
+}
+
+.page-enter {
+  animation: pageEnter var(--motion-base) var(--ease-emphasized) both;
+}
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ========== Page Click Wave ========== */
+.page-click-wave {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.page-click-wave::before {
+  content: '';
+  position: absolute;
+  left: var(--page-wave-x, 50vw);
+  top: var(--page-wave-y, 50vh);
+  width: 14px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(
+    circle,
+    rgba(230, 232, 240, 0.45) 0%,
+    rgba(175, 180, 200, 0.14) 60%,
+    transparent 100%
+  );
+}
+
+.page-click-wave::after {
+  content: '';
+  position: absolute;
+  left: var(--page-wave-x, 50vw);
+  top: var(--page-wave-y, 50vh);
+  width: 120px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.03);
+  border: 1.2px solid rgba(175, 185, 200, 0.38);
+  background: transparent;
+}
+
+.page-click-wave.is-waving::before {
+  animation: waterDropImpact 340ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.page-click-wave.is-waving::after {
+  animation: waterDropRing 1200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes waterDropImpact {
+  0% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  25% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.8);
+  }
+}
+
+@keyframes waterDropRing {
+  0% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(0.03);
+    border-width: 1.2px;
+    box-shadow:
+      0 0 0 0 rgba(170, 178, 200, 0.2),
+      0 0 0 0 rgba(170, 178, 200, 0.07);
+  }
+  30% {
+    opacity: 0.22;
+    border-width: 0.7px;
+    box-shadow:
+      0 0 0 6px rgba(170, 178, 200, 0.09),
+      0 0 0 18px rgba(170, 178, 200, 0.035);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+    border-width: 0.3px;
+    box-shadow:
+      0 0 0 24px rgba(170, 178, 200, 0),
+      0 0 0 60px rgba(170, 178, 200, 0);
+  }
+}
+/* ========== Press Feedback ========== */
+:where(.interaction-pressable) {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.interaction-ripple {
+  position: absolute;
+  z-index: 3;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.04);
+  background: radial-gradient(
+    circle,
+    rgba(247, 249, 252, 0.34) 0%,
+    rgba(151, 174, 197, 0.2) 34%,
+    rgba(200, 142, 82, 0.1) 56%,
+    transparent 72%
+  );
+  border: 1px solid rgba(226, 238, 248, 0.16);
+  box-shadow: 0 0 28px rgba(122, 149, 175, 0.12);
+  animation: interactionRipple 620ms var(--ease-emphasized) both;
+  will-change: transform, opacity;
+}
+
+.interaction-pressable.is-pressing {
+  filter: brightness(1.08);
+  transition: filter var(--motion-instant) var(--ease-standard);
+}
+
+.interaction-pressable.is-navigation-intent {
+  filter: brightness(1.12) saturate(1.06);
+}
+
+@keyframes interactionRipple {
+  0% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scale(0.04);
+  }
+  46% {
+    opacity: 0.32;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-target,
+  .blur-reveal {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+  .scroll-indicator {
+    animation: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+  ::view-transition-group(post-title),
+  ::view-transition-old(post-title),
+  ::view-transition-new(post-title) {
+    animation: none;
+  }
+  .page-enter {
+    animation: none;
+  }
+  .page-click-wave,
+  .navigation-ink,
+  .interaction-ripple {
+    display: none;
+  }
+
+  .interaction-pressable,
+  .interaction-pressable.is-pressing,
+  .interaction-pressable.is-navigation-intent {
+    filter: none;
+    transition: none;
+  }
+  header {
+    transition: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  body.page-entrance::before,
+  body.page-entrance::after,
+  .global-bg-layer::before,
+  .global-bg-layer::after,
+  body::after {
+    animation: none !important;
+  }
+
+  body.page-entrance::before,
+  body.page-entrance::after,
+  .global-bg-layer::before,
+  .global-bg-layer::after {
+    transform: none !important;
+  }
+
+  .card,
+  .card-flat,
+  .card-tilt,
+  .header-glass,
+  .seal {
+    transition-duration: 0.01ms !important;
+  }
+
+  .card:hover,
+  .card-flat:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,475 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+import { serializeJsonForScript } from '../utils/safeJson'
+
+const base = import.meta.env.BASE_URL
+const posts = (await getCollection('posts', ({ data }) => !data.draft && !data.noindex)).map(
+  (post) => ({
+    slug: post.id,
+    title: post.data.title,
+    description: post.data.description,
+    category: post.data.category,
+    tags: post.data.tags,
+    pubDate: post.data.pubDate.toISOString(),
+    url: base + 'blog/' + post.id + '/',
+  }),
+)
+const serializedPosts = serializeJsonForScript(posts)
+---
+
+<BaseLayout
+  title="我的收藏"
+  description="保存在当前浏览器中的盘腿修仙文章收藏"
+  robots="noindex, nofollow"
+  pagefind={false}
+>
+  <article class="bookmarks-page">
+    <header>
+      <p class="bookmarks-kicker">Local Library</p>
+      <div class="bookmarks-title-row">
+        <div>
+          <h1>我的收藏</h1>
+          <p>收藏只保存在当前浏览器，不需要登录，也不会上传。</p>
+        </div>
+        <button id="clear-bookmarks" type="button" hidden>
+          清空收藏
+        </button>
+      </div>
+      <p class="bookmarks-count" aria-live="polite">
+        <span id="bookmark-count">0</span> 篇文章
+      </p>
+    </header>
+
+    <script
+      is:inline
+      id="bookmark-post-data"
+      type="application/json"
+      set:html={serializedPosts}
+    ></script>
+    <div id="bookmarks-loading" class="bookmarks-loading" aria-label="正在读取收藏">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+    <ol id="bookmark-list" class="bookmark-list" aria-live="polite"></ol>
+
+    <div id="bookmarks-empty" class="bookmarks-empty" hidden>
+      <h2>还没有收藏文章</h2>
+      <p>在文章页点击“收藏”，内容就会出现在这里。</p>
+      <a href={base + 'blog/'}>
+        浏览全部文章 <span aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <noscript>
+      <p class="bookmarks-noscript">收藏保存在浏览器中，需要启用 JavaScript 才能读取。</p>
+    </noscript>
+
+    <template id="bookmark-item-template">
+      <li class="bookmark-item">
+        <a data-role="link" class="bookmark-link">
+          <div class="bookmark-meta">
+            <span data-role="category"></span>
+            <time data-role="date"></time>
+          </div>
+          <h2 data-role="title"></h2>
+          <p data-role="description"></p>
+          <div data-role="tags" class="bookmark-tags"></div>
+        </a>
+        <button
+          data-role="remove"
+          type="button"
+          class="bookmark-remove"
+          title="移除收藏"
+          aria-label="移除收藏"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14M10 10v6m4-6v6"
+            />
+          </svg>
+        </button>
+      </li>
+    </template>
+  </article>
+</BaseLayout>
+
+<script>
+  import { readJsonArray, writeJson } from '../lib/storage'
+
+  type BookmarkPost = {
+    slug: string
+    title: string
+    description: string
+    category: string
+    tags: string[]
+    pubDate: string
+    url: string
+  }
+
+  let renderActiveBookmarks = () => {}
+  let clearConfirmationTimer = 0
+
+  function readBookmarkSlugs(): string[] {
+    // readJsonArray 已经把「存储不可用 / JSON 损坏 / 存成了对象」都兜住了，
+    // 这里再过滤一次元素类型，避免非字符串混进 slug 列表。
+    return readJsonArray<unknown>('bookmarks').filter(
+      (slug): slug is string => typeof slug === 'string',
+    )
+  }
+
+  function writeBookmarkSlugs(slugs: string[]) {
+    writeJson('bookmarks', slugs)
+    window.dispatchEvent(new CustomEvent('bookmarks:changed'))
+  }
+
+  function initBookmarksPage() {
+    const list = document.getElementById('bookmark-list') as HTMLOListElement | null
+    const dataEl = document.getElementById('bookmark-post-data')
+    const template = document.getElementById('bookmark-item-template') as HTMLTemplateElement | null
+    const empty = document.getElementById('bookmarks-empty') as HTMLElement | null
+    const loading = document.getElementById('bookmarks-loading') as HTMLElement | null
+    const count = document.getElementById('bookmark-count')
+    const clearButton = document.getElementById('clear-bookmarks') as HTMLButtonElement | null
+    if (!list || !dataEl || !template || !empty || !loading || !count || !clearButton) return
+    if (list.dataset.ready === 'true') {
+      renderActiveBookmarks()
+      return
+    }
+    list.dataset.ready = 'true'
+
+    const posts = JSON.parse(dataEl.textContent || '[]') as BookmarkPost[]
+    const postMap = new Map(posts.map((post) => [post.slug, post]))
+
+    const render = () => {
+      if (!document.contains(list)) return
+      const slugs = readBookmarkSlugs()
+      const available = [...slugs]
+        .reverse()
+        .map((slug) => postMap.get(slug))
+        .filter(Boolean) as BookmarkPost[]
+
+      list.replaceChildren()
+      loading.hidden = true
+      count.textContent = String(available.length)
+      clearButton.hidden = available.length === 0
+      empty.hidden = available.length > 0
+
+      available.forEach((post) => {
+        const item = template.content.firstElementChild?.cloneNode(true) as HTMLElement
+        if (!item) return
+
+        const link = item.querySelector('[data-role="link"]') as HTMLAnchorElement
+        const category = item.querySelector('[data-role="category"]') as HTMLElement
+        const date = item.querySelector('[data-role="date"]') as HTMLTimeElement
+        const title = item.querySelector('[data-role="title"]') as HTMLElement
+        const description = item.querySelector('[data-role="description"]') as HTMLElement
+        const tags = item.querySelector('[data-role="tags"]') as HTMLElement
+        const remove = item.querySelector('[data-role="remove"]') as HTMLButtonElement
+
+        link.href = post.url
+        category.textContent = post.category
+        date.dateTime = post.pubDate
+        date.textContent = new Date(post.pubDate).toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+        title.textContent = post.title
+        description.textContent = post.description
+
+        post.tags.slice(0, 3).forEach((tag) => {
+          const tagEl = document.createElement('span')
+          tagEl.textContent = '#' + tag
+          tags.appendChild(tagEl)
+        })
+
+        remove.setAttribute('aria-label', '移除收藏：' + post.title)
+        remove.addEventListener('click', () => {
+          writeBookmarkSlugs(readBookmarkSlugs().filter((slug) => slug !== post.slug))
+          render()
+        })
+
+        list.appendChild(item)
+      })
+    }
+
+    renderActiveBookmarks = render
+    clearButton.addEventListener('click', () => {
+      if (clearButton.dataset.confirm !== 'true') {
+        clearButton.dataset.confirm = 'true'
+        clearButton.textContent = '再次点击确认'
+        window.clearTimeout(clearConfirmationTimer)
+        clearConfirmationTimer = window.setTimeout(() => {
+          clearButton.dataset.confirm = 'false'
+          clearButton.textContent = '清空收藏'
+        }, 3000)
+        return
+      }
+
+      writeBookmarkSlugs([])
+      clearButton.dataset.confirm = 'false'
+      clearButton.textContent = '清空收藏'
+      render()
+    })
+
+    render()
+  }
+
+  initBookmarksPage()
+  document.addEventListener('astro:page-load', initBookmarksPage)
+  window.addEventListener('storage', () => renderActiveBookmarks())
+  window.addEventListener('bookmarks:changed', () => renderActiveBookmarks())
+</script>
+
+<style>
+  .bookmarks-page {
+    width: min(100% - 2.5rem, 58rem);
+    margin: 0 auto;
+    padding: 4.5rem 0 6rem;
+  }
+
+  .bookmarks-page > header {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .bookmarks-kicker {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .bookmarks-title-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-top: 0.8rem;
+  }
+
+  .bookmarks-page h1 {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 8vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.08;
+  }
+
+  .bookmarks-title-row p {
+    max-width: 36rem;
+    margin-top: 0.8rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-serif);
+    line-height: 1.8;
+  }
+
+  #clear-bookmarks {
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    padding: 0 0.85rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.375rem;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    transition:
+      border-color 180ms ease,
+      color 180ms ease;
+  }
+
+  #clear-bookmarks:hover,
+  #clear-bookmarks:focus-visible {
+    border-color: var(--color-warm);
+    color: var(--color-warm);
+  }
+
+  .bookmarks-count {
+    margin-top: 1.2rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .bookmark-list {
+    border-top: 1px solid var(--color-border-strong);
+  }
+
+  .bookmark-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.5rem;
+    align-items: stretch;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .bookmark-link {
+    min-width: 0;
+    padding: 1.5rem 1rem 1.5rem 0;
+  }
+
+  .bookmark-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+
+  .bookmark-meta span {
+    color: var(--color-accent);
+  }
+
+  .bookmark-item h2 {
+    margin-top: 0.6rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    transition: color 180ms ease;
+  }
+
+  .bookmark-item p {
+    display: -webkit-box;
+    margin-top: 0.45rem;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-family: var(--font-serif);
+    font-size: 0.86rem;
+    line-height: 1.7;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .bookmark-link:hover h2,
+  .bookmark-link:focus-visible h2 {
+    color: var(--color-accent-hover);
+  }
+
+  .bookmark-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.8rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+  }
+
+  .bookmark-remove {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-self: center;
+    place-items: center;
+    border-radius: 0.375rem;
+    color: var(--color-text-muted);
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
+  }
+
+  .bookmark-remove:hover,
+  .bookmark-remove:focus-visible {
+    background: color-mix(in srgb, var(--color-warm) 8%, transparent);
+    color: var(--color-warm);
+  }
+
+  .bookmark-remove svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .bookmarks-loading {
+    display: grid;
+    gap: 1rem;
+    padding: 2rem 0;
+  }
+
+  .bookmarks-loading span {
+    height: 0.75rem;
+    border-radius: 0.25rem;
+    background: var(--color-border);
+  }
+
+  .bookmarks-loading span:nth-child(1) {
+    width: 42%;
+  }
+
+  .bookmarks-loading span:nth-child(2) {
+    width: 72%;
+  }
+
+  .bookmarks-loading span:nth-child(3) {
+    width: 58%;
+  }
+
+  .bookmarks-empty,
+  .bookmarks-noscript {
+    padding: 3rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .bookmarks-empty h2 {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .bookmarks-empty p,
+  .bookmarks-noscript {
+    margin-top: 0.6rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-serif);
+  }
+
+  .bookmarks-empty a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1rem;
+    color: var(--color-accent);
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 640px) {
+    .bookmarks-page {
+      padding-top: 3rem;
+    }
+
+    .bookmarks-title-row {
+      align-items: start;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .bookmark-item {
+      grid-template-columns: minmax(0, 1fr) 2.75rem;
+    }
+
+    .bookmark-link {
+      padding-right: 0.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #clear-bookmarks,
+    .bookmark-item h2,
+    .bookmark-remove {
+      transition: none;
+    }
+  }
+</style>

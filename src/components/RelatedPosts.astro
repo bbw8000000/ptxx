@@ -1,0 +1,69 @@
+---
+import { getCollection } from 'astro:content'
+
+interface Props {
+  currentSlug: string
+  tags: string[]
+}
+
+const { currentSlug, tags } = Astro.props
+const base = import.meta.env.BASE_URL
+
+// 必须用 getCollection，而不是 import.meta.glob：
+// Astro v6 的 content layer 下 glob 出来的模块没有 file / frontmatter 字段，
+// 原先 `post.file && !post.frontmatter?.noindex` 恒为假，related 永远是空数组，
+// 整块「相关文章」静默不渲染。
+//
+// 过滤条件与 blog/[...slug].astro 保持一致：草稿没有路由，一旦被选进来就是 404。
+const candidates = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+
+const related = candidates
+  .filter((post) => post.id !== currentSlug)
+  .map((post) => ({
+    post,
+    matchCount: post.data.tags.filter((tag) => tags.includes(tag)).length,
+  }))
+  .filter((entry) => entry.matchCount > 0)
+  // 同分时按日期新的优先，保证同一篇文章每次构建输出稳定
+  .sort(
+    (a, b) =>
+      b.matchCount - a.matchCount || b.post.data.pubDate.valueOf() - a.post.data.pubDate.valueOf(),
+  )
+  .slice(0, 3)
+---
+
+{related.length > 0 && (
+  <div class="mt-14 pt-8 border-t border-border/40 dark:border-dark-border/40">
+    <h3 class="font-display text-sm font-semibold tracking-widest text-text-muted dark:text-dark-text-muted mb-6">
+      相关文章
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {related.map(({ post }) => (
+        <a
+          href={`${base}blog/${post.id}/`}
+          class="group block p-5 border border-border/40 dark:border-dark-border/40
+                   hover:border-accent/60 dark:hover:border-dark-accent/60
+                   hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent/5 dark:hover:shadow-dark-accent/5
+                   transition-all duration-300 rounded-xl bg-gradient-to-br from-surface/50 to-surface-alt/30 dark:from-dark-surface/50 dark:to-dark-surface-alt/30"
+        >
+          <h4
+            class="font-display text-base font-bold text-text dark:text-dark-text leading-snug
+                        group-hover:text-accent dark:group-hover:text-dark-accent transition-colors"
+          >
+            {post.data.title}
+          </h4>
+          <p class="mt-2 text-sm text-text-muted dark:text-dark-text-muted line-clamp-2">
+            {post.data.description}
+          </p>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            {post.data.tags.slice(0, 2).map((tag) => (
+              <span class="text-xs px-2 py-0.5 rounded-full bg-accent/10 dark:bg-dark-accent/10 text-accent dark:text-dark-accent">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+)}

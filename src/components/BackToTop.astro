@@ -1,0 +1,51 @@
+---
+// 回到顶部按钮 — 印章风格
+---
+
+<button
+  id="back-to-top"
+  class="back-to-top fixed bottom-8 left-8 z-50 w-11 h-11 flex items-center justify-center
+         border-2 border-accent dark:border-dark-accent text-accent dark:text-dark-accent rounded-xl
+         bg-surface/80 dark:bg-dark-surface/80 backdrop-blur-sm
+         opacity-0 translate-y-3 pointer-events-none
+         transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]
+         hover:bg-accent hover:text-white dark:hover:bg-dark-accent dark:hover:text-dark-surface
+         hover:scale-105 hover:shadow-lg hover:shadow-accent/20 dark:hover:shadow-dark-accent/20
+         active:scale-95 active:transition-transform active:duration-75"
+  aria-label="回到顶部"
+>
+  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+  </svg>
+</button>
+
+<script is:inline>
+  document.addEventListener('astro:page-load', () => {
+    const btn = document.getElementById('back-to-top')
+    if (!btn) return
+
+    if (window.__bttHandler) {
+      window.removeEventListener('scroll', window.__bttHandler)
+    }
+
+    window.__bttHandler = function () {
+      if (window.scrollY > 300) {
+        btn.classList.remove('opacity-0', 'translate-y-3', 'pointer-events-none')
+        btn.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto')
+      } else {
+        btn.classList.add('opacity-0', 'translate-y-3', 'pointer-events-none')
+        btn.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto')
+      }
+    }
+
+    window.addEventListener('scroll', window.__bttHandler, { passive: true })
+    window.__bttHandler()
+
+    btn.onclick = () => {
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth'
+      window.scrollTo({ top: 0, behavior })
+    }
+  })
+</script>

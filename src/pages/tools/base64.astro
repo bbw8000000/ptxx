@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Base64 编解码" description="在线 Base64 编码与解码工具">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">Base64 编解码</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        文本与 Base64 互相转换
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">原始文本</label>
+        <textarea
+          id="input"
+          class="w-full h-64 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-none focus:outline-none focus:border-accent dark:focus:border-dark-accent focus:ring-2 focus:ring-accent/10 dark:focus:ring-dark-accent/10 transition-all"
+          placeholder="输入要编码的文本..."
+        ></textarea>
+        <div class="flex gap-2 mt-2">
+          <button
+            id="btn-encode"
+            class="px-4 py-2 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light hover:shadow-md hover:shadow-accent/20 dark:hover:shadow-dark-accent/20 transition-all"
+          >
+            编码 →
+          </button>
+          <button
+            id="btn-decode"
+            class="px-4 py-2 text-sm font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-lg hover:border-accent hover:text-accent dark:hover:border-dark-accent dark:hover:text-dark-accent transition-colors"
+          >
+            ← 解码
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-text dark:text-dark-text mb-2">Base64</label>
+        <textarea
+          id="output"
+          class="w-full h-64 bg-surface-alt dark:bg-dark-surface-alt border border-border/40 dark:border-dark-border/40 rounded-xl p-4 font-mono text-sm text-text dark:text-dark-text resize-none focus:outline-none"
+          placeholder="Base64 编码结果..."
+        ></textarea>
+        <button
+          id="btn-copy"
+          class="mt-2 px-4 py-2 text-sm font-medium border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted rounded-lg hover:border-accent hover:text-accent dark:hover:border-dark-accent dark:hover:text-dark-accent transition-colors"
+        >
+          复制结果
+        </button>
+      </div>
+    </div>
+    <p id="error" class="mt-4 text-xs text-red-500 hidden"></p>
+  </div>
+
+  <script is:inline>
+    const input = document.getElementById('input')
+    const output = document.getElementById('output')
+    const error = document.getElementById('error')
+
+    const encodeUtf8Base64 = (value) => {
+      const bytes = new TextEncoder().encode(value)
+      const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('')
+      return btoa(binary)
+    }
+
+    const decodeUtf8Base64 = (value) => {
+      const binary = atob(value.trim())
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    }
+
+    document.getElementById('btn-encode').addEventListener('click', () => {
+      try {
+        output.value = encodeUtf8Base64(input.value)
+        error.classList.add('hidden')
+      } catch (e) {
+        error.textContent = '编码失败: ' + e.message
+        error.classList.remove('hidden')
+      }
+    })
+
+    document.getElementById('btn-decode').addEventListener('click', () => {
+      try {
+        input.value = decodeUtf8Base64(output.value)
+        error.classList.add('hidden')
+      } catch (e) {
+        error.textContent = '解码失败: 无效的 Base64 字符串'
+        error.classList.remove('hidden')
+      }
+    })
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(output.value)
+    })
+  </script>
+</BaseLayout>

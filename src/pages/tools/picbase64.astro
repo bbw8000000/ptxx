@@ -1,0 +1,123 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="图片转 Base64" description="把图片转换为 Base64 文本，方便直接嵌入网页或代码">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-8">
+      <a
+        href={`${import.meta.env.BASE_URL}tools/`}
+        class="text-sm text-accent dark:text-dark-accent hover:underline mb-4 inline-block"
+      >
+        &larr; 所有工具
+      </a>
+      <span class="inline-block px-3 py-1 text-xs font-sans tracking-widest text-accent dark:text-dark-accent border border-accent/30 dark:border-dark-accent/30 mb-4">
+        TOOLS
+      </span>
+      <h1 class="font-display text-3xl font-bold text-text dark:text-dark-text">图片转 Base64</h1>
+      <p class="text-text-muted dark:text-dark-text-muted mt-2 font-serif">
+        选择或拖入图片，生成 Data URL 文本，可直接用于网页、CSS 或邮件。全程本地处理，不上传。
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-border/40 dark:border-dark-border/40 bg-surface-alt/50 dark:bg-dark-surface-alt/50 p-6">
+      <input type="file" id="file" accept="image/*" class="hidden" />
+      <button
+        id="pick"
+        class="w-full border-2 border-dashed border-border/40 dark:border-dark-border/40 rounded-2xl py-12 text-center text-text-muted dark:text-dark-text-muted hover:border-accent dark:hover:border-dark-accent transition-colors cursor-pointer"
+      >
+        点击选择图片，或把图片拖到这里
+      </button>
+      <div id="preview" class="mt-4 hidden">
+        <div class="flex flex-wrap items-center gap-4">
+          <img
+            id="thumb"
+            alt="预览"
+            class="max-h-40 rounded-lg border border-border/40 dark:border-dark-border/40 bg-white p-1"
+          />
+          <div class="text-xs text-text-muted dark:text-dark-text-muted font-mono">
+            <div>
+              格式：<span id="fmt">-</span>
+            </div>
+            <div>
+              大小：<span id="size">-</span>
+            </div>
+            <div>
+              Base64 长度：<span id="blen">-</span>
+            </div>
+          </div>
+          <button
+            id="copy"
+            class="ml-auto px-4 py-1.5 text-sm font-medium bg-accent dark:bg-dark-accent text-white rounded-lg hover:bg-accent-light transition-all"
+          >
+            复制 Base64
+          </button>
+        </div>
+        <textarea
+          id="out"
+          readonly
+          class="mt-4 w-full h-40 bg-surface dark:bg-dark-surface border border-border/40 dark:border-dark-border/40 rounded-xl p-4 text-xs text-text dark:text-dark-text font-mono resize-y focus:outline-none"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file') as HTMLInputElement
+    const pickBtn = document.getElementById('pick') as HTMLButtonElement
+    const preview = document.getElementById('preview') as HTMLElement
+    const thumb = document.getElementById('thumb') as HTMLImageElement
+    const fmt = document.getElementById('fmt') as HTMLElement
+    const sizeEl = document.getElementById('size') as HTMLElement
+    const blen = document.getElementById('blen') as HTMLElement
+    const out = document.getElementById('out') as HTMLTextAreaElement
+    const copyBtn = document.getElementById('copy') as HTMLButtonElement
+
+    function handleFile(file: File) {
+      if (!file || !file.type.startsWith('image/')) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        thumb.src = dataUrl
+        fmt.textContent = file.type
+        sizeEl.textContent = (file.size / 1024).toFixed(1) + ' KB'
+        out.value = dataUrl
+        blen.textContent = dataUrl.length + ' 字符'
+        preview.classList.remove('hidden')
+      }
+      reader.readAsDataURL(file)
+    }
+
+    pickBtn.addEventListener('click', () => fileInput.click())
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0])
+    })
+
+    const dropZone = pickBtn
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      dropZone.classList.add('border-accent')
+    })
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-accent'))
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      dropZone.classList.remove('border-accent')
+      if (e.dataTransfer && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
+    })
+
+    copyBtn.addEventListener('click', async () => {
+      if (!out.value) return
+      try {
+        await navigator.clipboard.writeText(out.value)
+        const old = copyBtn.textContent
+        copyBtn.textContent = '已复制 ✓'
+        setTimeout(() => {
+          copyBtn.textContent = old
+        }, 1500)
+      } catch {
+        out.select()
+        document.execCommand('copy')
+      }
+    })
+  </script>
+</BaseLayout>

@@ -1,0 +1,64 @@
+# build output
+dist/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# generated caches
+__pycache__/
+*.pyc
+test-results/
+
+# local AI/project artifacts
+BLOG_PROMPT.md
+HANDOVER.md
+.claude/settings.local.json
+# OpenWolf 的会话记忆属于本地工具产物，不该进仓库。
+# 之前只忽略了 .wolf 下的图片，却把 anatomy/buglog/cerebrum/memory 四个文件提交了上去，
+# 其中还记着「推送失败就 git config http.sslVerify false」这类削弱 TLS 校验的做法。
+.wolf/
+
+dist2/
+dist-new/
+test_write/
+
+# environment variables
+.env
+.env.production
+.env.*.local
+# local Pages Functions secrets (PBKDF2 pepper) - never commit
+.dev.vars
+
+# Cloudflare Pages / D1 local state and the API stub build output
+.pages-dist/
+.wrangler/
+# Firestore export and the SQL generated from it (contains user data)
+scripts/data/
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
+
+# screenshots
+*.png
+!public/hero/*.png
+dist_old/
+.git.bak/
+
+# jCodeMunch local venv (D-drive install)
+.venv-jcm/
+
+# 常见工具产物
+*.log
+.eslintcache
+coverage/

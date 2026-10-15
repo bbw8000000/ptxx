@@ -1,0 +1,79 @@
+---
+// 字体大小调节 — 文章页面使用
+---
+
+<div id="font-size-control" class="hidden items-center gap-1 text-xs font-sans">
+  <button
+    id="font-decrease"
+    class="w-6 h-6 flex items-center justify-center rounded-xl border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted hover:text-accent dark:hover:text-dark-accent hover:border-accent/50 dark:hover:border-dark-accent/50 transition-all"
+    title="缩小字体"
+  >
+    A-
+  </button>
+  <span
+    id="font-size-label"
+    class="w-8 text-center text-text-muted dark:text-dark-text-muted font-mono"
+  >
+    16
+  </span>
+  <button
+    id="font-increase"
+    class="w-6 h-6 flex items-center justify-center rounded-xl border border-border/60 dark:border-dark-border/60 text-text-muted dark:text-dark-text-muted hover:text-accent dark:hover:text-dark-accent hover:border-accent/50 dark:hover:border-dark-accent/50 transition-all"
+    title="放大字体"
+  >
+    A+
+  </button>
+</div>
+
+<script is:inline>
+  document.addEventListener('astro:page-load', () => {
+    const control = document.getElementById('font-size-control')
+    const label = document.getElementById('font-size-label')
+    const decrease = document.getElementById('font-decrease')
+    const increase = document.getElementById('font-increase')
+    if (!control || !label || !decrease || !increase) return
+
+    // 只在文章页显示
+    const prose = document.querySelector('.prose')
+    if (!prose) return
+    control.classList.remove('hidden')
+    control.classList.add('inline-flex')
+
+    // 内联脚本（is:inline）不经打包、不能用 import，所以这里就地兜住：
+    // 存储被禁用时访问 localStorage 本身就会抛，存进去的值也可能是非数字。
+    function readFontSize() {
+      try {
+        const parsed = parseInt(localStorage.getItem('font_size') || '', 10)
+        return Number.isFinite(parsed) && parsed >= 12 && parsed <= 22 ? parsed : 16
+      } catch {
+        return 16
+      }
+    }
+
+    let size = readFontSize()
+    applySize(size)
+
+    decrease.addEventListener('click', () => {
+      if (size > 12) {
+        size -= 1
+        applySize(size)
+      }
+    })
+    increase.addEventListener('click', () => {
+      if (size < 22) {
+        size += 1
+        applySize(size)
+      }
+    })
+
+    function applySize(s) {
+      document.querySelector('.prose').style.fontSize = s + 'px'
+      label.textContent = s
+      try {
+        localStorage.setItem('font_size', String(s))
+      } catch {
+        // 存储不可用：字号只在本次会话生效，不影响阅读。
+      }
+    }
+  })
+</script>

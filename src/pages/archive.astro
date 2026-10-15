@@ -1,0 +1,358 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+
+const posts = await getCollection('posts', ({ data }) => !data.draft && !data.noindex)
+const sorted = posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+
+// Extract all categories with counts
+const catMap = new Map<string, number>()
+for (const p of sorted) {
+  const cat = p.data.category || '未分类'
+  catMap.set(cat, (catMap.get(cat) || 0) + 1)
+}
+const categories = Array.from(catMap.entries()).sort((a, b) => b[1] - a[1])
+
+// Group by year
+const postsByYear = new Map<number, typeof posts>()
+for (const post of sorted) {
+  const year = post.data.pubDate.getFullYear()
+  if (!postsByYear.has(year)) postsByYear.set(year, [])
+  postsByYear.get(year)!.push(post)
+}
+const years = Array.from(postsByYear.keys()).sort((a, b) => b - a)
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+}
+
+const base = import.meta.env.BASE_URL
+---
+
+<BaseLayout title="归档 - 盘腿修仙" description="所有文章按时间归档">
+  <div class="archive-page max-w-3xl mx-auto px-6 py-16">
+    <div class="archive-hero mb-10">
+      <span class="archive-kicker">Archive</span>
+      <h1 class="font-display text-4xl md:text-5xl font-bold text-text mb-3">归档</h1>
+      <p class="text-text-muted font-serif text-lg">
+        {posts.length} 篇文章 · {catMap.size} 个分类
+      </p>
+    </div>
+
+    <div class="archive-filter-row flex flex-wrap gap-2 mb-12" id="cat-filters">
+      <button
+        data-cat="all"
+        class="cat-tab active px-4 py-2 text-sm rounded-full border font-medium transition-all duration-300"
+      >
+        全部 ({posts.length})
+      </button>
+      {categories.map(([cat, count]) => (
+        <button
+          data-cat={cat}
+          class="cat-tab px-4 py-2 text-sm rounded-full border font-medium transition-all duration-300"
+        >
+          {cat} ({count})
+        </button>
+      ))}
+    </div>
+
+    <!-- Timeline -->
+    <div class="relative">
+      <!-- Vertical line -->
+      <div class="absolute left-[15px] md:left-[23px] top-2 bottom-0 w-px bg-gradient-to-b from-accent/30 via-border to-transparent"></div>
+
+      {years.map((year) => (
+        <div class="relative mb-16" data-year={year}>
+          <!-- Year header -->
+          <div class="flex items-center gap-5 mb-8">
+            <div class="relative shrink-0">
+              <div class="archive-year-dot w-[30px] h-[30px] md:w-[46px] md:h-[46px] rounded-full flex items-center justify-center z-10 relative">
+                <span class="text-[10px] md:text-xs font-mono text-accent font-bold">
+                  {String(year).slice(2)}
+                </span>
+              </div>
+            </div>
+            <div>
+              <h2 class="font-display text-3xl md:text-4xl font-bold text-text leading-none">
+                {year}
+              </h2>
+              <span class="text-xs text-text-muted mt-1 block">
+                {postsByYear.get(year)!.length} 篇文章
+              </span>
+            </div>
+          </div>
+
+          <!-- Post cards -->
+          <div class="ml-[50px] md:ml-[74px] space-y-3">
+            {postsByYear.get(year)!.map((post) => {
+              const cat = post.data.category || '未分类'
+              return (
+                <a
+                  href={`${base}blog/${post.id}/`}
+                  data-category={cat}
+                  class="archive-post-card reveal-target group block relative p-5 rounded-xl border transition-all duration-500 overflow-hidden"
+                >
+                  {/* Hover glow */}
+                  <div
+                    class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style="background: radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(122,149,175,0.04), transparent 70%);"
+                  ></div>
+
+                  <div class="relative flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-3 mb-2">
+                        <time
+                          datetime={post.data.pubDate.toISOString()}
+                          class="text-xs font-mono text-text-muted/70 tabular-nums shrink-0"
+                        >
+                          {formatDate(post.data.pubDate)}
+                        </time>
+                        <span class="archive-post-category text-[10px] px-2 py-0.5 rounded-full font-sans">
+                          {cat}
+                        </span>
+                      </div>
+                      <h3 class="font-display text-base md:text-lg font-bold text-text leading-snug group-hover:text-accent transition-colors duration-300">
+                        {post.data.title}
+                      </h3>
+                      {post.data.description && (
+                        <p class="mt-1.5 text-sm text-text-muted line-clamp-1 font-serif">
+                          {post.data.description}
+                        </p>
+                      )}
+                    </div>
+                    {post.data.tags && post.data.tags.length > 0 && (
+                      <div class="hidden sm:flex flex-wrap gap-1 shrink-0 pt-1">
+                        {post.data.tags.slice(0, 3).map((tag) => (
+                          <span class="archive-post-tag text-[10px] px-1.5 py-0.5 rounded-md">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Footer nav -->
+    <div class="mt-10 text-center">
+      <a
+        href={`${base}blog/`}
+        class="archive-back-glass-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-text-muted
+               transition-all duration-500 font-medium text-sm"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        返回文章列表
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<script is:inline>
+  // Category filter
+  document.addEventListener('astro:page-load', () => {
+    const tabs = document.querySelectorAll('#cat-filters .cat-tab')
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const cat = tab.dataset.cat
+        tabs.forEach((t) => t.classList.remove('active'))
+        tab.classList.add('active')
+
+        document.querySelectorAll('[data-category]').forEach((el) => {
+          const htmlEl = /** @type {HTMLElement} */ (el)
+          if (cat === 'all' || htmlEl.dataset.category === cat) {
+            el.classList.remove('hidden')
+          } else {
+            el.classList.add('hidden')
+          }
+        })
+
+        // Show/hide year sections
+        document.querySelectorAll('[data-year]').forEach((section) => {
+          const visible = section.querySelectorAll('[data-category]:not(.hidden)')
+          if (visible.length === 0) {
+            section.classList.add('hidden')
+          } else {
+            section.classList.remove('hidden')
+          }
+        })
+      })
+    })
+
+    // Mouse glow tracking
+    document.querySelectorAll('[data-category]').forEach((card) => {
+      /** @param {MouseEvent} e */
+      card.addEventListener('mousemove', (e) => {
+        const rect = /** @type {HTMLElement} */ (card).getBoundingClientRect()
+        const x = (((e.clientX - rect.left) / rect.width) * 100).toFixed(1)
+        const y = (((e.clientY - rect.top) / rect.height) * 100).toFixed(1)
+        ;/** @type {HTMLElement} */ (card).style.setProperty('--mouse-x', `${x}%`)
+        ;/** @type {HTMLElement} */ (card).style.setProperty('--mouse-y', `${y}%`)
+      })
+    })
+  })
+</script>
+
+<style>
+  .archive-page {
+    position: relative;
+  }
+
+  .archive-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 2rem;
+    border: 1px solid transparent;
+    border-radius: 1.6rem;
+    background:
+      linear-gradient(155deg, rgba(107, 122, 146, 0.18), rgba(77, 91, 115, 0.14)),
+      radial-gradient(ellipse at 12% 0%, rgba(190, 215, 245, 0.06), transparent 55%);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(8, 14, 26, 0.12),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.14),
+      0 8px 22px rgba(0, 0, 0, 0.16);
+  }
+
+  .archive-kicker {
+    display: inline-block;
+    padding: 0.28rem 0.8rem;
+    margin-bottom: 1.25rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(145deg, rgba(107, 122, 146, 0.16), rgba(77, 91, 115, 0.12));
+    backdrop-filter: blur(12px) saturate(135%);
+    -webkit-backdrop-filter: blur(12px) saturate(135%);
+    color: var(--color-accent);
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.14);
+  }
+
+  .cat-tab {
+    border-color: transparent;
+    background: linear-gradient(145deg, rgba(107, 122, 146, 0.14), rgba(77, 91, 115, 0.1));
+    backdrop-filter: blur(12px) saturate(135%);
+    -webkit-backdrop-filter: blur(12px) saturate(135%);
+    color: rgba(214, 218, 225, 0.78);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.12);
+  }
+
+  .cat-tab:hover,
+  .cat-tab.active {
+    border-color: transparent !important;
+    background: linear-gradient(145deg, rgba(150, 180, 230, 0.22), rgba(122, 149, 175, 0.16));
+    color: var(--color-text);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 1px rgba(220, 232, 248, 0.22);
+    transform: translateY(-1px);
+  }
+
+  .archive-year-dot {
+    border: 1px solid transparent;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1), transparent 55%),
+      linear-gradient(145deg, rgba(107, 122, 146, 0.22), rgba(77, 91, 115, 0.16));
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 rgba(8, 14, 26, 0.14),
+      inset 0 0 0 1px rgba(220, 232, 248, 0.18);
+  }
+
+  .archive-post-card {
+    border-color: transparent;
+    background:
+      linear-gradient(145deg, rgba(107, 122, 146, 0.16), rgba(77, 91, 115, 0.12)),
+      radial-gradient(ellipse at 10% 0%, rgba(190, 215, 245, 0.06), transparent 48%);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(8, 14, 26, 0.12),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.14),
+      0 6px 18px rgba(0, 0, 0, 0.16);
+  }
+
+  .archive-post-card:hover {
+    border-color: transparent;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      inset 0 0 0 1px rgba(220, 232, 248, 0.24),
+      0 10px 24px rgba(0, 0, 0, 0.22);
+    transform: translateY(-2px);
+  }
+
+  .archive-post-category,
+  .archive-post-tag {
+    border: 1px solid transparent;
+    background: linear-gradient(145deg, rgba(107, 122, 146, 0.12), rgba(77, 91, 115, 0.08));
+    backdrop-filter: blur(10px) saturate(130%);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    color: rgba(214, 218, 225, 0.78);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.12);
+  }
+
+  .archive-post-category {
+    color: rgba(200, 182, 142, 0.82);
+  }
+
+  @media (max-width: 560px) {
+    .archive-hero,
+    .archive-post-card,
+    .archive-year-dot,
+    .cat-tab,
+    .archive-kicker,
+    .archive-post-category,
+    .archive-post-tag,
+    .archive-back-glass-btn {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cat-tab,
+    .archive-post-card {
+      transition: none;
+      transform: none !important;
+    }
+  }
+
+  .archive-back-glass-btn {
+    border: 1px solid transparent;
+    background: linear-gradient(145deg, rgba(107, 122, 146, 0.14), rgba(77, 91, 115, 0.1));
+    backdrop-filter: blur(14px) saturate(135%);
+    -webkit-backdrop-filter: blur(14px) saturate(135%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 0 0 1px rgba(190, 215, 245, 0.12);
+  }
+
+  .archive-back-glass-btn:hover {
+    color: var(--color-accent);
+    background: linear-gradient(145deg, rgba(150, 180, 230, 0.22), rgba(122, 149, 175, 0.16));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 1px rgba(220, 232, 248, 0.22);
+    transform: translateY(-1px);
+  }
+</style>

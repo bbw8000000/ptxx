@@ -1,0 +1,413 @@
+---
+import SearchBar from './SearchBar.astro'
+import TranslationControl from './TranslationControl.astro'
+
+declare global {
+  interface Window {
+    __initHeader?: () => void
+    __headerPageLoadReady?: boolean
+    __headerMoreMenuReady?: boolean
+    __headerScrollReady?: boolean
+  }
+}
+
+const base = import.meta.env.BASE_URL
+const navLinks = [
+  { href: `${base}home/`, label: '首页' },
+  { href: `${base}blog/`, label: '文章' },
+  { href: `${base}tools/`, label: '工具' },
+  { href: `${base}about/`, label: '关于' },
+]
+
+const currentPath = Astro.url.pathname
+---
+
+<header class="sticky top-0 z-50 w-full px-4 md:px-8">
+  <div class="header-glass max-w-6xl mx-auto rounded-3xl backdrop-blur-[20px] border border-white/[0.06]">
+    <nav class="px-4 h-14 flex items-center justify-between md:px-6">
+      <a
+        href={import.meta.env.BASE_URL}
+        class="logo-text text-xl font-semibold text-text hover:text-[#c8d6e8] transition-all duration-500"
+        style="font-family: var(--font-display);"
+      >
+        盘腿修仙
+      </a>
+
+      <div
+        id="desktop-nav-rail"
+        class="nav-rail hidden lg:flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.04] p-1"
+      >
+        <span id="desktop-nav-glider" class="nav-glider" aria-hidden="true"></span>
+        {navLinks.map(({ href, label }) => (
+          <a
+            href={href}
+            data-nav-link
+            data-nav-variant="desktop"
+            aria-current={currentPath.startsWith(href) ? 'page' : undefined}
+            class:list={[
+              'nav-pill rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
+              currentPath.startsWith(href)
+                ? 'text-text'
+                : 'text-text-secondary hover:bg-white/10 hover:text-text',
+            ]}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+
+      <!-- Right side: translation + search + mobile menu -->
+      <div class="flex items-center gap-1">
+        <TranslationControl />
+        <SearchBar />
+        <!-- 更多：收藏 / RSS（次要功能收纳） -->
+        <div id="more-menu-wrap" class="relative">
+          <button
+            id="more-menu-toggle"
+            class="header-action hidden sm:inline-flex h-9 items-center gap-1 px-2.5 rounded-lg text-text-secondary hover:text-text hover:bg-white/5 transition-colors"
+            aria-label="更多"
+            aria-controls="more-menu"
+            aria-expanded="false"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 5h.01M12 12h.01M12 19h.01"
+              />
+            </svg>
+            <span class="text-xs">更多</span>
+          </button>
+          <div
+            id="more-menu"
+            class="more-menu hidden absolute right-0 top-full mt-2 w-44 rounded-xl border border-white/[0.08] bg-[rgba(15,23,42,0.96)] backdrop-blur-xl shadow-xl overflow-hidden"
+            aria-hidden="true"
+          >
+            <a
+              href={`${base}bookmarks/`}
+              class="flex items-center gap-2.5 px-4 py-3 text-sm text-text-secondary hover:text-text hover:bg-white/5 transition-colors"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                />
+              </svg>
+              我的收藏
+            </a>
+            <a
+              href={`${base}rss.xml`}
+              target="_blank"
+              class="flex items-center gap-2.5 px-4 py-3 text-sm text-text-secondary hover:text-text hover:bg-white/5 transition-colors border-t border-white/5"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"
+                />
+              </svg>
+              RSS 订阅
+            </a>
+          </div>
+        </div>
+        <!-- Mobile menu button -->
+        <button
+          id="mobile-menu-toggle"
+          class="header-action lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary hover:text-text hover:bg-white/5 transition-colors"
+          aria-label="菜单"
+          aria-controls="mobile-menu"
+          aria-expanded="false"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              class="menu-line menu-line-1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 6h16"
+            />
+            <path
+              class="menu-line menu-line-2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 12h16"
+            />
+            <path
+              class="menu-line menu-line-3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 18h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile menu -->
+    <div
+      id="mobile-menu"
+      class="lg:hidden border-t border-white/5 bg-[rgba(15,23,42,0.92)] backdrop-blur-xl rounded-b-2xl"
+      aria-hidden="true"
+      inert
+    >
+      <div class="px-6 py-4 flex flex-col gap-1">
+        {navLinks.map(({ href, label }, index) => (
+          <a
+            href={href}
+            data-nav-link
+            data-nav-variant="mobile"
+            style={`--mobile-nav-index: ${index}`}
+            aria-current={currentPath.startsWith(href) ? 'page' : undefined}
+            class:list={[
+              'nav-pill px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              currentPath.startsWith(href)
+                ? 'text-accent'
+                : 'text-text-secondary hover:text-text hover:bg-white/5',
+            ]}
+          >
+            {label}
+          </a>
+        ))}
+        <a
+          href={`${import.meta.env.BASE_URL}rss.xml`}
+          class="header-action px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text hover:bg-white/5 flex items-center gap-2"
+          style="--mobile-nav-index: 4"
+          target="_blank"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"
+            />
+          </svg>
+          RSS 订阅
+        </a>
+        <a
+          href={`${base}bookmarks/`}
+          class="header-action px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text hover:bg-white/5 flex items-center gap-2"
+          style="--mobile-nav-index: 5"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+            />
+          </svg>
+          我的收藏
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script is:inline define:vars={{ base: import.meta.env.BASE_URL }}>
+  window.__updateActiveNav = function () {
+    const p = window.location.pathname
+    document.querySelectorAll('[data-nav-link]').forEach((a) => {
+      const href = a.getAttribute('href')
+      if (!href || !href.startsWith(base)) return
+      const active = href === base ? p === href : p.startsWith(href)
+      const mobile = a.dataset.navVariant === 'mobile'
+      a.className = active
+        ? mobile
+          ? 'nav-pill px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-accent'
+          : 'nav-pill rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors text-text'
+        : mobile
+          ? 'nav-pill px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text hover:bg-white/5'
+          : 'nav-pill rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors text-text-secondary hover:bg-white/10 hover:text-text'
+      if (active) a.setAttribute('aria-current', 'page')
+      else a.removeAttribute('aria-current')
+    })
+  }
+
+  window.__initHeader = function () {
+    window.__updateActiveNav()
+    const rail = document.getElementById('desktop-nav-rail')
+    const glider = document.getElementById('desktop-nav-glider')
+    const toggle = document.getElementById('mobile-menu-toggle')
+    const menu = document.getElementById('mobile-menu')
+
+    const syncNavGlider = (link, instant = false) => {
+      if (!rail || !glider || !link) return
+      const railRect = rail.getBoundingClientRect()
+      const linkRect = link.getBoundingClientRect()
+      glider.classList.toggle('nav-glider-instant', instant)
+      glider.style.setProperty('--nav-glider-x', `${linkRect.left - railRect.left}px`)
+      glider.style.setProperty('--nav-glider-width', `${linkRect.width}px`)
+      glider.classList.add('is-visible')
+      rail.classList.add('has-nav-glider')
+      if (instant) requestAnimationFrame(() => glider.classList.remove('nav-glider-instant'))
+    }
+    const restoreNavGlider = () => {
+      syncNavGlider(rail?.querySelector('[data-nav-variant="desktop"][aria-current="page"]'))
+    }
+
+    if (rail && glider) {
+      requestAnimationFrame(() =>
+        syncNavGlider(
+          rail.querySelector('[data-nav-variant="desktop"][aria-current="page"]'),
+          true,
+        ),
+      )
+
+      if (rail.dataset.gliderReady !== 'true') {
+        rail.dataset.gliderReady = 'true'
+        rail.addEventListener('pointerover', (event) => {
+          const link =
+            event.target instanceof Element
+              ? event.target.closest('[data-nav-variant="desktop"]')
+              : null
+          if (link && rail.contains(link)) syncNavGlider(link)
+        })
+        rail.addEventListener('pointerleave', restoreNavGlider)
+        rail.addEventListener('focusin', (event) => {
+          const link =
+            event.target instanceof Element
+              ? event.target.closest('[data-nav-variant="desktop"]')
+              : null
+          if (link) syncNavGlider(link)
+        })
+        rail.addEventListener('focusout', () => {
+          requestAnimationFrame(() => {
+            if (!rail.contains(document.activeElement)) restoreNavGlider()
+          })
+        })
+      }
+
+      window.__navGliderObserver?.disconnect()
+      window.__navGliderObserver = new ResizeObserver(() => restoreNavGlider())
+      window.__navGliderObserver.observe(rail)
+    }
+
+    const setMenuOpen = (open) => {
+      menu?.classList.toggle('mobile-menu-open', open)
+      menu?.toggleAttribute('inert', !open)
+      menu?.setAttribute('aria-hidden', String(!open))
+      toggle?.classList.toggle('menu-open', open)
+      toggle?.setAttribute('aria-expanded', String(open))
+    }
+    setMenuOpen(false)
+
+    if (!toggle || !menu || toggle.dataset.menuReady === 'true') return
+    toggle.dataset.menuReady = 'true'
+    toggle.addEventListener('click', () => {
+      setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true')
+    })
+    menu
+      .querySelectorAll('a')
+      .forEach((link) => link.addEventListener('click', () => setMenuOpen(false)))
+    // 更多下拉（收藏 / RSS）
+    const moreToggle = document.getElementById('more-menu-toggle')
+    const moreMenu = document.getElementById('more-menu')
+    if (moreToggle && moreMenu && moreToggle.dataset.moreReady !== 'true') {
+      moreToggle.dataset.moreReady = 'true'
+      moreToggle.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const open = moreMenu.classList.contains('hidden')
+        moreMenu.classList.toggle('hidden', !open)
+        moreMenu.setAttribute('aria-hidden', String(!open))
+        moreToggle.setAttribute('aria-expanded', String(open))
+      })
+    }
+
+    // document 级监听只注册一次。
+    // 原先这两个监听写在上面那个 if 里，而 __initHeader 每次 astro:page-load 都会跑，
+    // dataset.moreReady 标记又会随新 DOM 重置 —— 于是每导航一次就多一份 document 监听，
+    // 闭包还攥着已经被替换掉的旧菜单节点。处理器里改成每次重新查找当前节点。
+    if (!window.__headerMoreMenuReady) {
+      window.__headerMoreMenuReady = true
+
+      const closeMoreMenu = () => {
+        const menu = document.getElementById('more-menu')
+        const toggle = document.getElementById('more-menu-toggle')
+        if (menu) {
+          menu.classList.add('hidden')
+          menu.setAttribute('aria-hidden', 'true')
+        }
+        toggle?.setAttribute('aria-expanded', 'false')
+      }
+
+      document.addEventListener('click', (e) => {
+        const menu = document.getElementById('more-menu')
+        // 菜单本来就没开时什么都不做，避免每次点击都白跑一遍 closest
+        if (!menu || menu.classList.contains('hidden')) return
+        if (
+          !(e.target instanceof Element) ||
+          !menu.closest('#more-menu-wrap')?.contains(e.target)
+        ) {
+          closeMoreMenu()
+        }
+      })
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMoreMenu()
+      })
+    }
+  }
+
+  window.__initHeader()
+  if (!window.__headerPageLoadReady) {
+    window.__headerPageLoadReady = true
+    document.addEventListener('astro:page-load', () => window.__initHeader())
+  }
+
+  if (!window.__headerScrollReady) {
+    window.__headerScrollReady = true
+    let lastY = 0
+    let ticking = false
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return
+        ticking = true
+        requestAnimationFrame(() => {
+          const header = document.querySelector('header')
+          const y = window.scrollY
+          header?.classList.toggle('header-scrolled', y > 20)
+          header?.classList.toggle('header-hidden', y > 80 && y > lastY)
+          lastY = y
+          ticking = false
+        })
+      },
+      { passive: true },
+    )
+  }
+</script>

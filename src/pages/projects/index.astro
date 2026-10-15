@@ -1,0 +1,338 @@
+---
+import { getCollection } from 'astro:content'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { loadGithubProjectArchive } from '../../lib/githubProjectArchive'
+
+declare global {
+  interface Window {
+    __initProjectArchive?: () => void
+    __projectArchiveController?: AbortController | null
+    __projectArchivePageLoadReady?: boolean
+  }
+}
+
+const archive = new Map(
+  loadGithubProjectArchive().map((project) => [project.fullName.toLowerCase(), project]),
+)
+const snapshots = await getCollection('projects')
+const sortedProjects = snapshots
+  .map((snapshot) => {
+    const data = snapshot.data
+    const seenDate = data.snapshotDate.toISOString().slice(0, 10)
+    const existing = archive.get(data.fullName.toLowerCase())
+    return {
+      owner: data.owner,
+      name: data.name,
+      fullName: data.fullName,
+      description: data.description,
+      sourceUrl: data.sourceUrl,
+      stars: data.stars,
+      language: data.language,
+      topics: data.topics,
+      firstSeen: existing?.firstSeen || seenDate,
+      lastSeen: existing?.lastSeen || seenDate,
+      appearances: existing?.appearances || 1,
+    }
+  })
+  .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen) || b.stars - a.stars)
+const base = import.meta.env.BASE_URL
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    value,
+  )
+}
+---
+
+<BaseLayout title="站内项目资料库" description="GitHub 每日精选项目的站内静态资料与 README 快照。">
+  <div class="project-index">
+    <header class="project-index-header">
+      <div>
+        <p class="project-index-kicker">Local project archive</p>
+        <h1>站内项目资料库</h1>
+        <p>每日精选中的公开项目资料会保存为本站静态页面，阅读时不需要连接 GitHub。</p>
+      </div>
+      <dl class="project-index-stats">
+        <div>
+          <dt>项目</dt>
+          <dd>{sortedProjects.length}</dd>
+        </div>
+        <div>
+          <dt>README 快照</dt>
+          <dd>{snapshots.length}</dd>
+        </div>
+      </dl>
+    </header>
+
+    <section class="project-index-toolbar" aria-label="项目筛选">
+      <label for="project-search">搜索项目</label>
+      <input
+        id="project-search"
+        type="search"
+        placeholder="名称、简介、语言或标签"
+        autocomplete="off"
+      />
+      <p id="project-search-status" role="status" aria-live="polite">
+        共 {sortedProjects.length} 个项目
+      </p>
+    </section>
+
+    <section class="project-list" aria-label="项目列表">
+      {sortedProjects.map((project) => (
+        <article
+          class="project-row"
+          data-project-row
+          data-search={`${project.fullName} ${project.description} ${project.language} ${project.topics.join(' ')}`.toLowerCase()}
+        >
+          <div class="project-row-date">
+            <span>{project.lastSeen || '历史'}</span>
+            {project.appearances > 1 && <small>{project.appearances} 次收录</small>}
+          </div>
+          <div class="project-row-copy">
+            <a href={`${base}projects/${project.owner}/${project.name}/`}>
+              <span>{project.owner}/</span>
+              <strong>{project.name}</strong>
+            </a>
+            <p>{project.description}</p>
+          </div>
+          <div class="project-row-meta">
+            <span>{project.language}</span>
+            <span>{formatNumber(project.stars)} stars</span>
+          </div>
+        </article>
+      ))}
+    </section>
+
+    <p id="project-empty" class="project-empty" hidden>
+      没有匹配的项目。
+    </p>
+  </div>
+</BaseLayout>
+
+<script is:inline>
+  window.__initProjectArchive = function () {
+    if (window.__projectArchiveController) window.__projectArchiveController.abort()
+    const controller = new AbortController()
+    window.__projectArchiveController = controller
+    const input = document.getElementById('project-search')
+    const status = document.getElementById('project-search-status')
+    const empty = document.getElementById('project-empty')
+    const rows = [...document.querySelectorAll('[data-project-row]')]
+    if (!(input instanceof HTMLInputElement) || !status || !empty || rows.length === 0) return
+
+    const filterProjects = () => {
+      const query = input.value.trim().toLocaleLowerCase('zh-CN')
+      let visible = 0
+      rows.forEach((row) => {
+        const matched = !query || (row.dataset.search || '').includes(query)
+        row.hidden = !matched
+        if (matched) visible += 1
+      })
+      status.textContent = query ? `找到 ${visible} 个项目` : `共 ${rows.length} 个项目`
+      empty.hidden = visible !== 0
+    }
+
+    input.addEventListener('input', filterProjects, { signal: controller.signal })
+  }
+
+  if (!window.__projectArchivePageLoadReady) {
+    window.__projectArchivePageLoadReady = true
+    document.addEventListener('astro:page-load', () => window.__initProjectArchive())
+  }
+</script>
+
+<style>
+  .project-index {
+    width: min(100%, 72rem);
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .project-index-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3rem;
+    align-items: end;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--color-border-strong);
+  }
+
+  .project-index-kicker {
+    margin: 0 0 0.75rem;
+    color: var(--color-warm);
+    font: 0.72rem/1.4 var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .project-index-header h1 {
+    margin: 0;
+    color: var(--color-text);
+    font: 700 3rem/1.1 var(--font-display);
+  }
+
+  .project-index-header > div > p:last-child {
+    max-width: 43rem;
+    margin: 1rem 0 0;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+  }
+
+  .project-index-stats {
+    display: flex;
+    gap: 2rem;
+    margin: 0;
+  }
+
+  .project-index-stats dt {
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+  }
+
+  .project-index-stats dd {
+    margin: 0.3rem 0 0;
+    color: var(--color-text);
+    font: 600 1.5rem/1 var(--font-mono);
+  }
+
+  .project-index-toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(12rem, 26rem) 1fr;
+    gap: 1rem;
+    align-items: center;
+    min-height: 5.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .project-index-toolbar label {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+  }
+
+  .project-index-toolbar input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.4rem;
+    outline: none;
+    background: var(--surface-glass);
+    color: var(--color-text);
+  }
+
+  .project-index-toolbar input:focus-visible {
+    border-color: var(--color-accent-hover);
+    box-shadow: 0 0 0 3px rgba(122, 149, 175, 0.14);
+  }
+
+  .project-index-toolbar p {
+    justify-self: end;
+    margin: 0;
+    color: var(--color-text-muted);
+    font: 0.72rem/1.4 var(--font-mono);
+  }
+
+  .project-list {
+    display: grid;
+  }
+
+  .project-row {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr) 10rem;
+    gap: 1.5rem;
+    align-items: start;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 8rem;
+  }
+
+  .project-row[hidden] {
+    display: none;
+  }
+
+  .project-row-date span,
+  .project-row-date small {
+    display: block;
+    color: var(--color-text-muted);
+    font: 0.7rem/1.5 var(--font-mono);
+  }
+
+  .project-row-date small {
+    margin-top: 0.25rem;
+  }
+
+  .project-row-copy a {
+    color: var(--color-text);
+    font: 1rem/1.45 var(--font-mono);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .project-row-copy a span {
+    color: var(--color-text-muted);
+  }
+
+  .project-row-copy a:hover,
+  .project-row-copy a:focus-visible {
+    color: var(--color-accent-hover);
+  }
+
+  .project-row-copy p {
+    display: -webkit-box;
+    margin: 0.55rem 0 0;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.65;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .project-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem 0.75rem;
+    color: var(--color-text-muted);
+    font: 0.68rem/1.4 var(--font-mono);
+    text-align: right;
+  }
+
+  .project-empty {
+    margin: 3rem 0;
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 780px) {
+    .project-index-header {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    .project-index-header h1 {
+      font-size: 2.35rem;
+    }
+    .project-index-toolbar {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+      padding-block: 1rem;
+    }
+    .project-index-toolbar p {
+      justify-self: start;
+    }
+    .project-row {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+    .project-row-meta {
+      justify-content: flex-start;
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .project-index {
+      padding: 3rem 1rem 5rem;
+    }
+  }
+</style>

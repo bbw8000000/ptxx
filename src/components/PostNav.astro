@@ -1,0 +1,100 @@
+---
+// 上下篇导航 — 精致版
+interface Props {
+  prev: { title: string; slug: string } | null
+  next: { title: string; slug: string } | null
+}
+
+const { prev, next } = Astro.props
+const base = import.meta.env.BASE_URL
+---
+
+{(prev || next) && (
+  <nav class="mt-14 pt-8 border-t border-white/[0.05]">
+    <div class="flex items-center gap-2 mb-6">
+      <svg
+        class="w-4 h-4 text-accent/50"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+        />
+      </svg>
+      <h3 class="font-display text-xs font-semibold tracking-[0.2em] text-text-muted uppercase">
+        继续阅读
+      </h3>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {prev && (
+        <a
+          href={`${base}blog/${prev.slug}/`}
+          class="group relative overflow-hidden p-4 rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm
+                 hover:border-accent/20 hover:bg-[#0a0f1a]/80
+                 transition-all duration-400"
+        >
+          <div
+            class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style="background: radial-gradient(500px circle at 30% 50%, rgba(122,149,175,0.04), transparent 60%)"
+          ></div>
+          <div class="relative">
+            <span class="flex items-center gap-1.5 text-[11px] text-text-muted/60 font-sans mb-2">
+              <svg
+                class="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+              上一篇
+            </span>
+            <p class="font-display text-sm font-bold text-text leading-snug group-hover:text-accent transition-colors duration-300 line-clamp-2">
+              {prev.title}
+            </p>
+          </div>
+        </a>
+      )}
+      {!prev && <div />}
+      {next && (
+        <a
+          href={`${base}blog/${next.slug}/`}
+          class="group relative overflow-hidden p-4 rounded-xl border border-white/[0.06] bg-[#0a0f1a]/60 backdrop-blur-sm
+                 hover:border-accent/20 hover:bg-[#0a0f1a]/80
+                 transition-all duration-400"
+        >
+          <div
+            class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style="background: radial-gradient(500px circle at 70% 50%, rgba(122,149,175,0.04), transparent 60%)"
+          ></div>
+          <div class="relative text-right">
+            <span class="flex items-center justify-end gap-1.5 text-[11px] text-text-muted/60 font-sans mb-2">
+              下一篇
+              <svg
+                class="w-3 h-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
+            <p class="font-display text-sm font-bold text-text leading-snug group-hover:text-accent transition-colors duration-300 line-clamp-2">
+              {next.title}
+            </p>
+          </div>
+        </a>
+      )}
+    </div>
+  </nav>
+)}

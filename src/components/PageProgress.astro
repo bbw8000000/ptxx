@@ -1,0 +1,161 @@
+---
+// 页面加载进度条 - 跟随 ClientRouter 的真实准备阶段
+---
+
+<div
+  id="page-progress"
+  class="fixed top-0 left-0 w-full h-0.5 z-[9999] pointer-events-none"
+  role="progressbar"
+  aria-label="页面加载进度"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow="0"
+  aria-hidden="true"
+>
+  <div id="page-progress-bar">
+    <span class="page-progress-glint" aria-hidden="true"></span>
+  </div>
+</div>
+
+<script is:inline>
+  ;(() => {
+    if (window.__pageProgressReady) return
+    window.__pageProgressReady = true
+
+    const timers = new Set()
+    let active = false
+
+    const clearTimers = () => {
+      timers.forEach(clearTimeout)
+      timers.clear()
+    }
+
+    const schedule = (callback, delay) => {
+      const timer = setTimeout(() => {
+        timers.delete(timer)
+        callback()
+      }, delay)
+      timers.add(timer)
+    }
+
+    const getParts = () => ({
+      track: document.getElementById('page-progress'),
+      bar: document.getElementById('page-progress-bar'),
+    })
+
+    const setProgress = (value) => {
+      const { track, bar } = getParts()
+      if (!track || !bar) return
+      const progress = Math.max(0, Math.min(100, value))
+      bar.style.setProperty('--page-progress', String(progress / 100))
+      track.setAttribute('aria-valuenow', String(Math.round(progress)))
+    }
+
+    const start = () => {
+      clearTimers()
+      active = true
+      const { track, bar } = getParts()
+      if (!track || !bar) return
+
+      bar.classList.add('is-resetting')
+      setProgress(0)
+      track.classList.add('is-active')
+      track.setAttribute('aria-hidden', 'false')
+
+      requestAnimationFrame(() => {
+        bar.classList.remove('is-resetting')
+        setProgress(16)
+        schedule(() => setProgress(42), 120)
+        schedule(() => setProgress(64), 360)
+        schedule(() => setProgress(78), 760)
+      })
+    }
+
+    const complete = () => {
+      if (!active) return
+      active = false
+      clearTimers()
+      const { track, bar } = getParts()
+      if (!track || !bar) return
+
+      setProgress(100)
+      schedule(() => track.classList.remove('is-active'), 180)
+      schedule(() => {
+        bar.classList.add('is-resetting')
+        setProgress(0)
+        track.setAttribute('aria-hidden', 'true')
+        requestAnimationFrame(() => bar.classList.remove('is-resetting'))
+      }, 500)
+    }
+
+    document.addEventListener('astro:before-preparation', start)
+    document.addEventListener('astro:page-load', complete)
+  })()
+</script>
+
+<style>
+  #page-progress {
+    opacity: 0;
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+
+  #page-progress.is-active {
+    opacity: 1;
+  }
+
+  #page-progress-bar {
+    --page-progress: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    transform: scaleX(var(--page-progress));
+    transform-origin: left center;
+    background: linear-gradient(
+      90deg,
+      var(--color-accent),
+      var(--color-warm),
+      rgba(242, 246, 250, 0.92)
+    );
+    box-shadow:
+      0 0 14px rgba(122, 149, 175, 0.48),
+      0 0 26px rgba(200, 142, 82, 0.18);
+    transition: transform 420ms var(--ease-emphasized);
+    will-change: transform;
+  }
+
+  #page-progress-bar.is-resetting {
+    transition: none;
+  }
+
+  .page-progress-glint {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(18vw, 10rem);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.82));
+    filter: blur(1px);
+    animation: page-progress-breathe 900ms var(--ease-standard) infinite alternate;
+  }
+
+  @keyframes page-progress-breathe {
+    from {
+      opacity: 0.42;
+      transform: scaleX(0.72);
+    }
+    to {
+      opacity: 0.9;
+      transform: scaleX(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #page-progress,
+    #page-progress-bar {
+      transition-duration: 0.01ms;
+    }
+
+    .page-progress-glint {
+      animation: none;
+    }
+  }
+</style>

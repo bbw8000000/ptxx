@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: http://101.42.44.71/blog/sitemap-index.xml

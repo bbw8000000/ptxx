@@ -1,0 +1,64 @@
+---
+// 阅读进度条 — 朱砂色，仅文章页激活
+---
+
+<div
+  id="reading-progress"
+  class="fixed top-0 left-0 h-[3px] z-[100]"
+  style="display:none;width:0"
+></div>
+
+<style>
+  #reading-progress {
+    background: linear-gradient(90deg, #7a95af, #c8b68e, #7a95af);
+    background-size: 200% 100%;
+    animation: rp-shimmer 4s linear infinite;
+    box-shadow:
+      0 0 6px rgba(122, 149, 175, 0.25),
+      0 0 14px rgba(200, 182, 142, 0.08);
+  }
+  @keyframes rp-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #reading-progress {
+      animation: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener('astro:page-load', () => {
+    const bar = document.getElementById('reading-progress')
+    if (!bar) return
+
+    // 清理旧监听器
+    if (window.__rpHandler) {
+      window.removeEventListener('scroll', window.__rpHandler)
+    }
+
+    const prose = document.querySelector('.prose')
+    if (!prose) {
+      bar.style.display = 'none'
+      bar.style.width = '0%'
+      return
+    }
+
+    bar.style.display = 'block'
+
+    window.__rpHandler = function () {
+      const scrollTop = window.scrollY
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      const progress = docHeight > 0 ? Math.min((scrollTop / docHeight) * 100, 100) : 0
+      bar.style.width = progress + '%'
+    }
+
+    window.addEventListener('scroll', window.__rpHandler, { passive: true })
+    window.__rpHandler()
+  })
+</script>

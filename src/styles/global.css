@@ -1,0 +1,82 @@
+@import 'tailwindcss';
+@import './base.css';
+@import './effects.css';
+@import './components.css';
+@import './prose.css';
+@import './motion.css';
+
+@theme {
+  /* 中文衬线体由 scripts/inject-font-packs.mjs 按页注入（见 layouts/BaseLayout.astro）：
+     注入成功时页面用 'Noto Serif SC'，注入缺失时才落到这里的系统字体，所以不会出现
+     “等字体”或空白。 */
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', 'Noto Serif CJK SC', serif;
+  --font-display: 'Noto Serif SC', 'Songti SC', 'SimSun', 'Noto Serif CJK SC', serif;
+  --font-sans: 'Inter', '-apple-system', 'PingFang SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --color-surface: #0f172a;
+  --color-surface-alt: #131d33;
+  --color-surface-raised: #18233d;
+  --color-text: #fafaf9;
+  --color-text-secondary: #dde1e8;
+  --color-text-muted: #b4bcc8;
+  --color-accent: #7a95af;
+  --color-accent-hover: #8da6be;
+  --color-warm: #c8b68e;
+  --color-warm-hover: #d4c5a2;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-strong: rgba(255, 255, 255, 0.1);
+
+  --surface-ink: rgba(6, 10, 18, 0.76);
+  --surface-glass: rgba(15, 23, 42, 0.5);
+  --surface-glass-raised: rgba(22, 32, 52, 0.62);
+  --surface-paper: rgba(250, 250, 249, 0.035);
+  --surface-paper-strong: rgba(250, 250, 249, 0.055);
+  --color-ink-blue: rgba(122, 149, 175, 0.82);
+  --color-maple-glow: rgba(200, 142, 82, 0.44);
+  --border-glass: rgba(150, 180, 230, 0.22);
+  --border-glass-strong: rgba(150, 180, 230, 0.38);
+  --border-warm: rgba(218, 158, 92, 0.24);
+  --glass-blur: 18px;
+  --glass-blur-strong: 26px;
+  --glass-saturate: 155%;
+  --glass-rim: inset 0 1px 0 rgba(190, 215, 245, 0.2), inset 0 -1px 0 rgba(122, 149, 175, 0.1);
+  --glass-rim-strong:
+    inset 0 1px 0 rgba(200, 222, 248, 0.28), inset 0 0 0 1px rgba(150, 180, 230, 0.08),
+    inset 0 -18px 44px rgba(122, 149, 175, 0.06);
+  --glow-cool: 0 0 0 rgba(122, 149, 175, 0);
+  --glow-warm: 0 0 0 rgba(200, 142, 82, 0);
+  --inner-glass: inset 0 0 0 rgba(255, 255, 255, 0);
+  --texture-grain-opacity: 0.34;
+  --texture-vignette-opacity: 0.78;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 40px -8px rgba(0, 0, 0, 0.6);
+  --shadow-glass: 0 6px 18px rgba(0, 0, 0, 0.3);
+  --shadow-glass-strong: 0 10px 30px rgba(0, 0, 0, 0.36);
+  --shadow-glass-floating: 0 8px 24px rgba(0, 0, 0, 0.33);
+
+  --ease-out-expo: var(--interactive-ease);
+  --motion-instant: 90ms;
+  --motion-fast: 180ms;
+  --motion-base: 320ms;
+  --motion-slow: 520ms;
+  --motion-page: 640ms;
+  --ease-standard: cubic-bezier(0.2, 0.72, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
+  --interactive-ease: var(--ease-emphasized);
+}
+
+/* 统一 prefers-reduced-motion：用户开启"减少动态效果"时，关闭动画与过渡 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

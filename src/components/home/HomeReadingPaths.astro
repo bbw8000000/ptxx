@@ -1,0 +1,293 @@
+---
+interface ReadingPathPost {
+  id: string
+  data: {
+    title: string
+    description: string
+    category: string
+    pubDate: Date
+  }
+}
+
+interface ReadingPath {
+  label: string
+  title: string
+  description: string
+  href: string
+  posts: ReadingPathPost[]
+}
+
+interface Props {
+  paths: ReadingPath[]
+}
+
+const { paths } = Astro.props
+---
+
+<section class="home-reading-paths reveal-target" aria-labelledby="reading-paths-heading">
+  <div class="home-reading-paths-header">
+    <div>
+      <h2 id="reading-paths-heading" class="section-kicker">
+        从这里开始
+      </h2>
+      <p class="home-reading-paths-subtitle">第一次来？从这三条线里选一条，先认识这个博客。</p>
+    </div>
+    <a href={`${import.meta.env.BASE_URL}blog/`} class="home-reading-paths-all">
+      所有文章 &rarr;
+    </a>
+  </div>
+
+  <div class="home-reading-paths-grid">
+    {paths.map((path, index) => (
+      <article
+        class="home-reading-path-card"
+        style={`--path-index: '${String(index + 1).padStart(2, '0')}'`}
+      >
+        <span class="home-reading-path-label">{path.label}</span>
+        {index === 1 && <span class="home-reading-path-featured">网站特色</span>}
+        <h3>{path.title}</h3>
+        <p>{path.description}</p>
+        <div class="home-reading-path-posts">
+          {path.posts.map((post) => (
+            <a href={`${import.meta.env.BASE_URL}blog/${post.id}/`} class="home-reading-path-post">
+              <span>{post.data.category}</span>
+              <strong>{post.data.title}</strong>
+            </a>
+          ))}
+        </div>
+        <a href={path.href} class="home-reading-path-cta">
+          继续这条路线
+        </a>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .home-reading-paths {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  .home-reading-paths-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .home-reading-paths-subtitle {
+    margin-top: 0.8rem;
+    max-width: 28rem;
+    font-family: var(--font-serif);
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: rgba(214, 218, 225, 0.64);
+  }
+
+  .home-reading-paths-all,
+  .home-reading-path-cta {
+    color: rgba(122, 149, 175, 0.72);
+    text-decoration: none;
+    font-family: var(--font-serif);
+    transition: color 0.3s;
+  }
+
+  .home-reading-paths-all {
+    font-size: 0.8rem;
+  }
+
+  .home-reading-paths-all:hover,
+  .home-reading-paths-all:focus-visible,
+  .home-reading-path-cta:hover,
+  .home-reading-path-cta:focus-visible {
+    color: var(--color-accent);
+  }
+
+  .home-reading-paths-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .home-reading-path-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 100%;
+    padding: 1.35rem;
+    border: 1px solid var(--border-glass);
+    border-radius: 1.35rem;
+    background:
+      linear-gradient(145deg, rgba(32, 45, 68, 0.52), rgba(6, 10, 18, 0.3)),
+      radial-gradient(ellipse at 16% 0%, rgba(226, 238, 248, 0.12), transparent 48%),
+      radial-gradient(circle at 100% 100%, rgba(200, 142, 82, 0.08), transparent 44%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    box-shadow: var(--shadow-glass-floating);
+    transition:
+      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.4s,
+      box-shadow 0.4s;
+  }
+
+  .home-reading-path-card::before {
+    content: var(--path-index);
+    position: absolute;
+    right: 1rem;
+    top: 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 3.5rem;
+    line-height: 1;
+    color: rgba(226, 238, 248, 0.035);
+    pointer-events: none;
+  }
+
+  .home-reading-path-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-warm);
+    box-shadow:
+      0 28px 76px rgba(0, 0, 0, 0.5),
+      var(--glow-warm),
+      var(--glass-rim-strong);
+  }
+
+  .home-reading-path-featured {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.22rem 0.6rem;
+    border: 1px solid rgba(200, 142, 82, 0.28);
+    border-radius: 999px;
+    background: rgba(200, 142, 82, 0.08);
+    color: rgba(236, 196, 140, 0.9);
+    font-family: var(--font-sans);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    vertical-align: middle;
+  }
+
+  .home-reading-path-label {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.26rem 0.68rem;
+    border: 1px solid rgba(200, 182, 142, 0.16);
+    border-radius: 999px;
+    background: rgba(200, 182, 142, 0.045);
+    color: rgba(200, 182, 142, 0.78);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .home-reading-path-card h3 {
+    position: relative;
+    margin-bottom: 0.65rem;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .home-reading-path-card p {
+    position: relative;
+    margin-bottom: 1.15rem;
+    color: rgba(214, 218, 225, 0.66);
+    font-family: var(--font-serif);
+    font-size: 0.82rem;
+    line-height: 1.75;
+  }
+
+  .home-reading-path-posts {
+    position: relative;
+    display: grid;
+    gap: 0.55rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .home-reading-path-post {
+    display: block;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(226, 238, 248, 0.09);
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, rgba(122, 149, 175, 0.08), rgba(6, 10, 18, 0.18));
+    text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    transition:
+      border-color 0.3s,
+      background 0.3s,
+      transform 0.3s;
+  }
+
+  .home-reading-path-post:hover,
+  .home-reading-path-post:focus-visible {
+    transform: translateX(2px);
+    border-color: rgba(200, 182, 142, 0.2);
+    background: linear-gradient(135deg, rgba(200, 182, 142, 0.09), rgba(122, 149, 175, 0.07));
+    outline: none;
+  }
+
+  .home-reading-path-post:focus-visible,
+  .home-reading-path-cta:focus-visible,
+  .home-reading-paths-all:focus-visible {
+    outline: 2px solid rgba(200, 182, 142, 0.42);
+    outline-offset: 3px;
+  }
+
+  .home-reading-path-post span,
+  .home-reading-path-post strong {
+    display: block;
+  }
+
+  .home-reading-path-post span {
+    margin-bottom: 0.28rem;
+    color: rgba(168, 175, 186, 0.54);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+  }
+
+  .home-reading-path-post strong {
+    color: rgba(250, 250, 249, 0.86);
+    font-family: var(--font-serif);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .home-reading-path-cta {
+    position: relative;
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 1024px) {
+    .home-reading-paths-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .home-reading-paths {
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
+    .home-reading-paths-header {
+      display: block;
+    }
+    .home-reading-paths-all {
+      display: inline-block;
+      margin-top: 1rem;
+    }
+    .home-reading-path-card {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-reading-path-card,
+    .home-reading-path-post {
+      transition: none;
+      transform: none !important;
+    }
+  }
+</style>

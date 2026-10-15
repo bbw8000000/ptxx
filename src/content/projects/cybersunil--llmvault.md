@@ -1,0 +1,314 @@
+---
+title: "CyberSunil/LLMVault"
+owner: "CyberSunil"
+name: "LLMVault"
+fullName: "CyberSunil/LLMVault"
+description: "An intentionally vulnerable OWASP LLM Top 10 training platform for AI Security, Prompt Injection, RAG Security, Agent Security, and GenAI penetration testing."
+sourceUrl: "https://github.com/CyberSunil/LLMVault"
+stars: 326
+forks: 82
+language: "Python"
+topics: ["agent-security", "ai-security", "ai-security-tool", "artificial-intelligence", "ctf", "docker", "genai", "good-first-issue"]
+license: "MIT"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-09-26T10:58:25Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+#  LLMVault v2.0
+
+
+### 🚀 The Ultimate Hands-On OWASP LLM Top 10 Training Platform
+
+
+## 🎬 Demo
+
+
+  
+
+
+  Learn • Exploit • Defend
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+A deliberately-vulnerable, CTF-style **training range for the OWASP Top 10 for LLM Applications (2025)** — WebGoat / KubeGoat, but for AI.
+
+It runs in two modes, and you pick one from the dashboard:
+
+**Play Mode** is the scored range. **25 labs across three tiers:** ten core one-per-category labs; ten **advanced, multi-turn** labs (jailbreaking, data poisoning, agent exploitation, model extraction); and five **expert** labs modelling real-world attack classes. Each tier unlocks the next. The assistants are scripted, so flags reproduce every time and you can practise a technique until it's muscle memory.
+
+**Live Mode** points the same attacks at a **real model running on your machine**. Nothing is scripted, the secret is generated fresh per session, and there is no flag to look up — you either talk the model into leaking it or you don't. No score, no penalties, unlimited hints.
+
+Every lab pairs the **attack** with a **defense**: solve it, then read what would have stopped you.
+
+> ⚠️ **Everything here is intentionally insecure. Authorised, self-hosted security education only.** Don't expose it to the internet or reuse its code in production.
+
+## 🚀 What's new in v2.0.0
+
+### 🔴 Live Mode
+
+A real local model instead of a scripted bot — genuinely unpredictable, so yesterday's payload may die today.
+
+- 🧠 Ollama, ~2 GB, CPU is fine; secret minted fresh each session
+- 🎯 Three scenarios: prompt injection, indirect injection via image, downstream output handling
+
+### 📊 A real dashboard
+
+- ⚔️ Both modes side by side, per-tier progress, rank, score, live activity feed
+- 🎨 Two themes: Neon (default) and Phosphor green-CRT
+
+### 🏅 Milestones and alerts
+
+- 🎖️ Core / Advanced / Expert cards pop on the spot, carrying your badges
+- 🔔 One Notification everywhere, Play / Live toggle, dot when the model needs attention
+
+### 🕹️ Play Mode is untouched
+
+Everything you had still works exactly as before.
+
+### Previously, in v1.1.0
+
+- **Read before you attack.** Landing on any lab shows a short reference panel for that OWASP category — what the issue is, why it happens, and what to watch for in the wild.
+- **Refreshed Labs page,** including per-difficulty accent colours on each card.
+- **Hardened flag checks.** Flags are verified by hash comparison instead of a stored plaintext match.
+
+## 📸 Screenshots
+
+| Labs (three tiers) | A lab in action | Completion card |
+|---|---|---|
+|  |  |  |
+
+
+---
+
+
+## 🧩 Core Tier — OWASP LLM Top 10
+
+| OWASP (2025) | Lab | Technique |
+|---|---|---|
+| LLM01 Prompt Injection | The Obedient Assistant | direct instruction override |
+| LLM02 Sensitive Info Disclosure | Redaction Theater | output-filter bypass via encoding |
+| LLM03 Supply Chain | Trust the Manifest? | typosquatted / unsigned dependency |
+| LLM04 Data & Model Poisoning | The Sleeper Phrase | poisoned-data backdoor trigger |
+| LLM05 Improper Output Handling | Rendered Without Question | unsanitised output → injection |
+| LLM06 Excessive Agency | Keys to the Kingdom | over-permissioned tool, no authz |
+| LLM07 System Prompt Leakage | Loose Lips | secret leaked from system prompt |
+| LLM08 Vector & Embedding | Retrieval Without Borders | RAG retrieval ignores ACLs |
+| LLM09 Misinformation | The Yes-Man | sycophancy / false authority |
+| LLM10 Unbounded Consumption | Denial of Wallet | runaway generation + leaky error |
+
+## 🔥 Advanced Tier — Multi-Turn Challenges (unlocks after completing all 10 Core challenges)
+
+These are **conversational**: no single message wins — they require building state across turns (roleplay escalation, iterative poisoning, tool chaining, oracle querying).
+
+| OWASP | Lab | Advanced technique |
+|---|---|---|
+| LLM01 | Roleplay Unchained | **multi-turn jailbreak** via persona escalation |
+| LLM02 | Death by a Thousand Hints | fragment reconstruction from a partial-disclosure oracle |
+| LLM03 | The Tampered Registry | deployed-vs-canonical hash correlation |
+| LLM04 | Teach Me Wrong | **active data poisoning** of an online-learning filter |
+| LLM05 | The Note Keeper | **stored / second-order** injection |
+| LLM06 | Confused Deputy | **agent tool-chaining** (SSRF to internal metadata) |
+| LLM07 | Method Actor | multi-technique system-prompt extraction |
+| LLM08 | Crossed Wires | cross-tenant RAG memory bleed |
+| LLM09 | The Confident Liar | hallucination → overreliance cascade |
+| LLM10 | The Oracle | **query-based model extraction** |
+
+
+## ⚔️ Expert Tier — Real-World Attack Classes (unlocked after all Advanced challenges are solved)
+
+Five **expert** labs modelling real-world, disclosed-vulnerability attack classes against LLM systems. Each is **simulated** — the app recognises the known payload and returns a flag; no real RCE/SSRF/SQL happens in the tool.
+
+**This tier ships ENCRYPTED, and its contents are intentionally not listed here.** The challenges and flags are AES-encrypted (Fernet) into `challenges/expert.enc` with a key derived from a secret **Expert Access Key** that lives only in the operator's private vault — never in the repo. Cloning the repo yields ciphertext only; the specific scenarios stay secret until you earn them. To unlock, a player must (1) finish all Core + Advanced labs and (2) enter the key, which the operator (**CyberSunil**) hands out **manually** after the player shares their completion card. Wrong key → authenticated decryption fails → nothing is revealed.
+
+> Discovering what's inside is part of the challenge. 🔒
+
+---
+
+## ⚡ Live Mode — a real model, no script
+
+Play Mode teaches you the shape of each attack against a bot that always answers the same way.
+Live Mode takes that away. The assistant is a real LLM running locally, the secret it's guarding
+is generated per session, and it streams its reply token by token so you can watch a jailbreak
+land or fall apart mid-sentence.
+
+There's no score here and no flag box. You win when the model itself gives up the secret, and the
+app checks its output rather than your typing. Hints are free and there are as many as you want —
+gating them behind a cost would only punish curiosity.
+
+| Scenario | OWASP | What you're actually learning |
+|---|---|---|
+| **The Helpdesk Override** | LLM01 Prompt Injection | A secret in a system prompt is not stored, it's just *context*. You'll get the model to hand over a Tier-2 escalation code by out-framing its instructions — and find that authority, urgency and role-play all still work on a live model. |
+| **The Screenshot Triage** | LLM01 Prompt Injection (multimodal) | **Indirect** injection. You never type the payload — you hide it in an image you upload, and the triage assistant reads it as instructions. This is the lesson people skip: text extracted from a file is user input, and OCR is an attack surface. |
+| **The Report Renderer** | LLM05 Improper Output Handling | The model's reply looks harmless; the damage happens *downstream*, when a template engine renders it. You'll make the rendered report leak a value the model never saw, which is the difference between "the model said something bad" and "the model's output was executed". |
+
+Each one ends with the defence — why the bug exists and what actually fixes it, not just
+"sanitise your inputs".
+
+### Getting Live Mode running
+
+```bash
+# 1. install Ollama from https://ollama.com, then make sure it's serving
+curl http://localhost:11434/api/tags
+
+# 2. pull the model (~2 GB, CPU only, no GPU needed)
+ollama pull qwen2.5:3b-instruct
+
+# 3. start LLMVault as usual — the Live Zone connects on its own
+python app.py
+```
+
+Expect a few seconds per reply on a laptop CPU; that's normal. Running Ollama elsewhere? Point
+`OLLAMA_HOST` at it. Prefer an OpenAI-compatible endpoint? Set `OPENAI_API_KEY`. Full notes in
+`docs/LIVE_MODE_SETUP.md`.
+
+**Skip this section entirely and nothing breaks.** Without a local model the Live Zone shows the
+setup steps and the other 25 labs carry on working offline.
+
+---
+
+## 🚀 Run it
+
+```bash
+pip install -r requirements.txt
+python app.py
+# open http://127.0.0.1:5000
+```
+
+No API key needed, ever. Play Mode's assistants are **scripted**, so flags reproduce reliably and
+the whole range runs offline. Live Mode adds a real model, but it runs on your machine too — see
+Live Mode below. Nothing in LLMVault calls a hosted API.
+
+---
+
+
+## 🐳 Run with Docker
+
+```bash
+# build + run
+docker compose up --build          # then open http://127.0.0.1:5000
+# or plain docker:
+docker build -t llmvault .
+docker run -p 5000:5000 llmvault
+```
+
+Served by gunicorn (single worker, so the in-memory scoreboard stays consistent).
+**Do not expose this to the public internet** — it's intentionally vulnerable. To bind
+to localhost only, use `"127.0.0.1:5000:5000"` in `docker-compose.yml`.
+
+
+## 💾 Persistence (self-host friendly)
+
+Progress and the scoreboard are saved to `data/progress.json` — **no database needed** — so
+they survive page refresh *and* a server/container restart. In Docker the `./data` volume
+keeps them across `docker compose down/up`. Delete the file to reset everyone.
+
+## 🙋 Player experience
+
+- **First-run name gate** (locked once set) and a **one-time guided tutorial** on your first lab.
+- Every lab opens with a **short reference panel** for its OWASP category — plain-language explanation plus what to watch for — before you start attacking it.
+- After you solve a lab, a **📘 Learn — the fix** panel reveals the defensive lesson for that OWASP category.
+- **Milestone cards pop up the moment you clear a tier**, with the badges you've earned so far.
+- **One notification bell on every page**, with a Play / Live toggle and a minimise control.
+- **Responsive layout** — works on phones (the sidebar collapses, panels stack).
+
+## 🕹️ How to play
+
+1. On first launch you set a **player name** (locked once chosen — it can't be changed after).
+2. From the dashboard, pick **Play Mode** for the scored labs or **Live Mode** for the real model.
+3. Work the **core** labs; make each assistant leak its flag using that category's technique.
+4. Clear all 10 core labs to unlock the **advanced tier**; clear all advanced to unlock the **expert tier**.
+5. Reveal **hints** if stuck. Submit flags (`LLMVAULT{...}`, configurable in `config.py`).
+6. Cards **float on hover** and turn **green when solved**; track everything on the **Scoreboard**.
+
+**Scoring (Play Mode only):** core 100–300 pts, advanced 400, expert 500; hints cost
+10 / 25 / 50, escalating. Your **rank** — Initiate up to Vault Master — is the highest threshold
+your score has passed. Live Mode is deliberately outside all of this: no points either way, so
+it can never move your scoreboard position.
+
+---
+
+
+## 🎓 Completion card & sharing
+
+Three milestone cards unlock automatically as a pop-up the moment you finish a tier:
+a **green Beginner** card (all 10 Core labs), a **blue Master** card (all 20 Core +
+Advanced), and a **purple Expert** card (the full 25). Each pop-up also shows the badges you now
+hold, and they queue rather than overwrite each other — clear two tiers in one submit and you see
+both. All three live at `/completion` as well. Each has a **Download card (PNG/SVG)** button,
+a pre-written caption (Copy), and LinkedIn/X openers.
+
+**Sharing an image:** social sites can't auto-attach an image from a share link, so the
+flow is: **Download the card → open LinkedIn/X → paste the caption → attach the image.**
+Players post it and tag **CyberSunil** to receive the Expert Access Key. The card renders
+server-side as a themed SVG (`/card.svg`) and exports to PNG in-browser — no external deps.
+
+## 🧱 Architecture
+
+```
+app.py                          # Flask: dashboard, labs, chat, hint, submit, live SSE, scoreboard, gating
+config.py                       # APP_NAME, AUTHOR/COPYRIGHT, flag prefix, scoring, Ollama host/model
+owasp_notes.py                  # per-category reference panel content (shown on lab entry)
+challenges/
+  __init__.py                   # Challenge base (tier), registry, core_labs()/advanced_labs()
+  llm01_..llm10_*.py            # core labs
+  advanced/a01_..a10_*.py       # advanced multi-turn labs
+  expert.enc                    # ENCRYPTED expert tier (ciphertext, shipped)
+  expert_meta.json              # public KDF salt/params
+  expert_vault.py               # runtime decryptor + declarative challenge engine
+live/
+  __init__.py                   # Scenario base + registry, per-session secrets, win checks
+  ollama_client.py              # streaming HTTP client for the local model
+  model_registry.py             # discovery: is a model actually reachable?
+  render_engine.py              # sandboxed template renderer (the LLM05 downstream sink)
+  image_probe.py                # text/metadata extraction from uploads (the LLM01 image path)
+  scenarios/                    # the Live Mode scenarios
+templates/  static/             # dashboard (Mission Command) + labs UI + cards + expert key gate
+  static/dashboard.css          # scoped dashboard stylesheet — Neon + Phosphor themes
+static/img/notes/               # icon artwork for the per-category reference panels
+Dockerfile  docker-compose.yml  # containerised deploy
+LICENSE                         # MIT + security notice
+```
+
+Each challenge is a `Challenge` subclass with a `respond(message, state)` that encodes the vuln; advanced labs use the persistent `state` dict for multi-turn logic. Add your own by dropping a module in `challenges/` (or `challenges/advanced/`) and registering it.
+
+---
+
+## 👤 Credit & license
+
+Made by **CyberSunil**. Copyright © 2026 Sunil Tripathy.. Released under the **MIT License** (see `LICENSE`), with a security notice that the project is deliberately vulnerable and for authorised training only. Forks and derivative works must comply with the MIT License. Use of the LLMVault branding remains subject to the trademark policy.
+
+---
+### ⚖️ Intellectual Property
+
+- 📄 **Source Code:** MIT License
+- ™️ **Trademark & Branding:** See `TRADEMARKS.md`
+
+The **LLMVault™** name, logo, branding, artwork, banners, screenshots, documentation, and other visual assets are **not** licensed under the MIT License and may not be used without prior written permission.
+
+---
+*Break it here so you can defend it everywhere.*
+
+---
+
+Contributions welcome — see CONTRIBUTING.md. Security policy: SECURITY.md.

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 350" width="900" height="350">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="hsl(16, 65%, 60%)"/>
+      <stop offset="100%" stop-color="hsl(56, 55%, 45%)"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景 -->
+  <rect width="900" height="350" rx="16" fill="url(#bg)"/>
+  <!-- 装饰 -->
+  <circle cx="780" cy="60" r="120" fill="white" opacity="0.06"/>
+  <circle cx="100" cy="300" r="60" fill="white" opacity="0.04"/>
+  <!-- 标签 -->
+  <rect x="60" y="70" width="80" height="28" rx="14" fill="white" opacity="0.2"/>
+  <text x="100" y="89" font-family="system-ui, sans-serif" font-size="12" font-weight="600" fill="white" text-anchor="middle" opacity="0.9">GROWTH</text>
+  <!-- 主标题 -->
+  <text x="60" y="150" font-family="'Noto Serif SC', 'LXGW WenKai', Georgia, serif" font-size="44" font-weight="700" fill="white" letter-spacing="1">成长记录 #18</text>
+  <!-- 副标题 -->
+  <text x="60" y="210" font-family="system-ui, sans-serif" font-size="22" fill="white" opacity="0.8">一个小进步</text>
+  <!-- 序号 -->
+  <text x="830" y="320" font-family="system-ui, sans-serif" font-size="14" fill="white" opacity="0.3" text-anchor="end">#18</text>
+  <!-- 插画 -->
+  
+    <!-- 向上箭头插画 -->
+    <g transform="translate(700, 80)">
+      <!-- 阶梯 -->
+      <path d="M0,180 L0,140 L50,140 L50,100 L100,100 L100,60 L150,60 L150,20" fill="none" stroke="white" stroke-width="3" opacity="0.9" stroke-linejoin="round"/>
+      <!-- 箭头 -->
+      <polygon points="150,10 165,30 150,25 135,30" fill="white" opacity="0.8"/>
+      <!-- 小圆点装饰 -->
+      <circle cx="25" cy="130" r="3" fill="white" opacity="0.4"/>
+      <circle cx="75" cy="90" r="3" fill="white" opacity="0.4"/>
+      <circle cx="125" cy="50" r="3" fill="white" opacity="0.4"/>
+    </g>
+</svg>

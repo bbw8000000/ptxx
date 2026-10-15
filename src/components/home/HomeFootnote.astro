@@ -1,0 +1,56 @@
+<section class="home-footnote">
+  <div class="home-footnote-divider"></div>
+  <div class="home-footnote-text">
+    <span class="font-display font-bold">盘腿修仙</span>
+    <span class="mx-3 opacity-20">·</span>
+    <span>不端着，先做出来。</span>
+  </div>
+</section>
+
+<style>
+  .home-footnote {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem 5rem;
+    text-align: center;
+  }
+
+  .home-footnote-divider {
+    width: min(18rem, 70vw);
+    height: 1px;
+    margin: 0 auto 2rem;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(122, 149, 175, 0.36),
+      rgba(200, 182, 142, 0.28),
+      transparent
+    );
+    box-shadow: 0 0 22px rgba(122, 149, 175, 0.12);
+  }
+
+  .home-footnote-text {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.8rem 1.25rem;
+    border: 1px solid var(--border-glass);
+    border-radius: 999px;
+    background:
+      linear-gradient(135deg, rgba(32, 45, 68, 0.44), rgba(6, 10, 18, 0.28)),
+      radial-gradient(ellipse at 50% 0%, rgba(226, 238, 248, 0.1), transparent 64%);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow:
+      0 16px 38px rgba(0, 0, 0, 0.34),
+      var(--inner-glass);
+    font-size: 0.82rem;
+    color: rgba(168, 175, 186, 0.62);
+    font-family: var(--font-serif);
+  }
+
+  @media (max-width: 768px) {
+    .home-footnote {
+      padding: 0 1.25rem 3.5rem;
+    }
+  }
+</style>

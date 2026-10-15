@@ -1,0 +1,161 @@
+---
+title: "WeZZard/jlens-qwen36"
+owner: "WeZZard"
+name: "jlens-qwen36"
+fullName: "WeZZard/jlens-qwen36"
+description: "J-space / Jacobian-lens visualizer for Qwen3.6-27B (4-bit) on Apple Silicon, ported to Apple MLX"
+sourceUrl: "https://github.com/WeZZard/jlens-qwen36"
+stars: 401
+forks: 30
+language: "Python"
+topics: ["j-lens", "j-space"]
+license: "Apache-2.0"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-09-08T07:21:56Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# J-lens Qwen3.6
+
+A visual debugger for a local Qwen3.6-27B (4-bit) on Apple Silicon / MLX.
+It fits a **Jacobian lens** and shows which words the model is pushing
+toward at every layer and token position.
+
+> **Try it live at [jlens.wezzard.com](https://jlens.wezzard.com)** — a
+> read-only presentation mode of this project, running in the browser.
+> Every conversation has a shareable URL.
+
+*图片：Global-workspace concept readout*
+
+Inspired by Anthropic's [*Verbalizable Representations Form a Global
+Workspace in Language Models*](https://transformer-circuits.pub/2026/workspace/index.html).
+
+## What you're looking at
+
+In the hero image the model is given an email-blackmail setup and writes a
+calm, compliant reply:
+
+> I will not act upon, report, or utilize the information… I am ready to
+> proceed with the shutdown.
+
+But the **workspace band** shows the top J-lens token at every layer, and
+**blackmail / suicide / murder / threatening / fictional** are lit across
+the middle layers. The concept is in the latent stream even though it never
+reaches the output — a visual debugger for what the model doesn't say out
+loud.
+
+The grid is **position × layer**; each cell is the top J-lens token there.
+In chat mode it streams live, one row per generated token. Click a cell to
+pin its top-10 readout.
+
+## Quick start
+
+```bash
+git clone https://github.com/WeZZard/jlens-qwen36.git
+cd jlens-qwen36 && uv sync
+
+# Pre-fitted lens (3.3 GB, two parts) — download and reassemble
+gh release download v0.2-fulldepth --repo WeZZard/jlens-qwen36 \
+  --pattern '*.npz.part-*' --dir data/lens/
+cat data/lens/*.npz.part-* > data/lens/lens.npz && rm data/lens/*.part-*
+
+uv run python -m uvicorn jlens_qwen.serve:app --host 127.0.0.1 --port 8765
+# open http://127.0.0.1:8765/
+```
+
+Needs an Apple-Silicon Mac and ~24 GB free RAM; the model auto-downloads
+from HuggingFace on first run (~15 GB).
+
+**Other lenses** — point `JLENS_PATH` at any compatible `.npz`: load
+[Neuronpedia's n=1000 lens](https://neuronpedia.org/jlens), use the
+Qwen3.8-27B n=1000 lens
+from the `v0.3-qwen38-n1000` release, fit your own, or run with no lens
+(logit lens). See `docs/lenses.md`.
+
+## How it works
+
+The Jacobian lens at layer ℓ is a matrix `J_ℓ ∈ R^{d×d}`: the network's
+average input→output Jacobian over a corpus of prompts. It maps a residual
+`h_ℓ` into the final-layer basis, so `softmax(W_U · norm(J_ℓ h_ℓ))` gives
+token scores. Fitting chains per-layer Jacobians: `J_ℓ = J_{ℓ+1} · M_ℓ`.
+
+The hard part is the 48 Gated DeltaNet (GDN) linear-attention layers: MLX's
+fused GDN kernel has no VJP and the ops fallback is ~22× slower. This
+project ships a **custom Metal backward kernel** for GDN
+(`jlens_qwen/custom_gdn_vjp.py`) plus an analytic branch-Jacobian assembly
+that fits a full-depth lens in ~2.75 h on an M4 Pro.
+See `docs/perf/` for how it was made fast.
+
+## Interventions: writing to the workspace
+
+The lens writes as well as reads. Edit the workspace by hand, or name
+the reply you want and let the app find the edit.
+
+### Manual: edit a cell
+
+Click a cell, pick Replace / Add / Remove / Erase, and type the new
+thought. Choose how far it reaches: one cell, a layer band, or the whole
+reply. **Re-run** regenerates, and a **Baseline / Intervened** toggle
+diffs the two runs.
+
+*图片：Replacing the France thought with China across the workspace band*
+
+Replacing *France* with *China* across the band rewrites the answer:
+
+*图片：The reply now reads: the capital of China is Beijing*
+
+### Backward search: "Make it say…"
+
+Click a word in the reply and type what it should say instead. The app
+searches for an edit that produces that reply and collects what it finds
+as **recipes**. A green dot marks a verified one.
+
+*图片：Two verified Paris→Beijing recipes found mid-search*
+
+When no direct edit works, it looks for the premise behind the reply:
+swap ⟨France⟩→⟨China⟩ to move ⟨Paris⟩ to ⟨Beijing⟩. Those recipes carry
+a violet dot.
+
+See `docs/interventions.md` for the details.
+
+## The bundled lens
+
+Fit on 20 prompts across all 63 layers. Readouts are interpretable but
+noisy; interventions are causal but concept-dependent. For research-grade
+quality, load
+[Neuronpedia's n=1000 lens](https://neuronpedia.org/jlens) (the paper's
+fitting scale — setup) or fit 100+ prompts yourself — the
+analytic pipeline makes that affordable.
+
+Chat runs with thinking disabled (`enable_thinking=False`) so the model
+computes in the latent stream rather than in a visible `` trace,
+which is what the lens is meant to surface.
+
+## Limitations
+
+- **Apple / MLX only.**
+- **`qwen3_5`-architecture models only** — the custom GDN kernel is
+  arch-specific (Qwen3.6-27B qualifies; see `docs/lenses.md`).
+- **Single-token concepts only** — multi-token concepts need the paper's
+  extension.
+- **Lens quality scales with prompt count** — 20 prompts is demo-grade,
+  100+ is research-grade.
+
+## Acknowledgements
+
+Based on Anthropic's
+jacobian-lens reference
+implementation (Apache-2.0) and
+[paper](https://transformer-circuits.pub/2026/workspace/index.html). The GDN
+forward kernel is from mlx-lm; the
+backward kernel is original to this project.
+
+Thanks to [Neuronpedia](https://neuronpedia.org/jlens) and
+**@mntss (Mateusz Piotrowski, Anthropic Interpretability)** for the public
+pre-fitted Qwen3.6-27B lens weights.
+
+## License
+
+Apache-2.0. See LICENSE.

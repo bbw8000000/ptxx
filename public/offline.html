@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>暂时连不上 | 盘腿修仙</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.25rem;
+        background: #070a13;
+        color: #fafaf9;
+        font-family:
+          'PingFang SC',
+          'Microsoft YaHei',
+          'Noto Sans CJK SC',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.8;
+      }
+      .card {
+        width: min(34rem, 100%);
+        border: 1px solid rgba(150, 180, 230, 0.22);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        background:
+          linear-gradient(145deg, rgba(32, 45, 68, 0.5), rgba(6, 10, 18, 0.3)),
+          radial-gradient(ellipse at 90% 0%, rgba(226, 238, 248, 0.1), transparent 46%);
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: 1.35rem;
+        letter-spacing: 0.02em;
+      }
+      p {
+        margin: 0 0 0.9rem;
+        color: rgba(214, 218, 225, 0.78);
+        font-size: 0.92rem;
+      }
+      ul {
+        margin: 0 0 1.25rem;
+        padding-left: 1.15rem;
+        color: rgba(214, 218, 225, 0.7);
+        font-size: 0.88rem;
+      }
+      li {
+        margin-bottom: 0.3rem;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+      a.button,
+      button {
+        min-height: 2.6rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.7rem;
+        padding: 0 1.1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .primary {
+        border: 1px solid rgba(122, 149, 175, 0.5);
+        background: rgba(122, 149, 175, 0.18);
+        color: #cfe0f0;
+      }
+      .secondary {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(226, 229, 234, 0.85);
+      }
+      .note {
+        margin-top: 1.1rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        font-size: 0.78rem;
+        color: rgba(168, 175, 186, 0.62);
+      }
+      code {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.78rem;
+        color: rgba(200, 182, 142, 0.9);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>暂时连不上这个页面</h1>
+      <p>
+        浏览器现在打不开 <code id="target">这一页</code>，而且本地也没有它的缓存副本。
+        通常是网络问题，不一定是这一页坏了。
+      </p>
+      <ul>
+        <li>检查网络是否恢复（手机流量 / 换个 Wi-Fi 试试）</li>
+        <li>如果你在用代理或 VPN，先关掉再刷新</li>
+        <li>稍等一会儿再重试，GitHub Pages 偶尔会短暂不可达</li>
+      </ul>
+      <div class="actions">
+        <button class="primary" id="retry" type="button">重新加载</button>
+        <a class="secondary" href="http://101.42.44.71/blog/">回到首页</a>
+      </div>
+      <p class="note">
+        这个页面由 Service Worker 在断网时提供。它不依赖任何网络请求，所以能正常显示。
+      </p>
+    </main>
+
+    <script>
+      // 把用户原本想访问的地址显示出来，便于判断是网络问题还是链接写错了
+      const target = document.getElementById('target')
+      if (target) {
+        const from = new URLSearchParams(location.search).get('from')
+        target.textContent = from || location.href
+      }
+      document.getElementById('retry')?.addEventListener('click', () => {
+        location.reload()
+      })
+    </script>
+  </body>
+</html>

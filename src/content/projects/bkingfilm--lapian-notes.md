@@ -1,0 +1,116 @@
+---
+title: "bkingfilm/lapian-notes"
+owner: "bkingfilm"
+name: "lapian-notes"
+fullName: "bkingfilm/lapian-notes"
+description: "AI 辅助的电影拉片工具：AI 拆出剧情泳道时间轴、结构树、情绪曲线，边播边写拉片笔记，免费开源全本地 | AI-assisted film breakdown notebook: story-lane timeline, structure tree, emotion curve. Free, open source, fully local."
+sourceUrl: "https://github.com/bkingfilm/lapian-notes"
+stars: 708
+forks: 73
+language: "TypeScript"
+topics: ["ai", "film-analysis", "filmmaking", "react", "screenwriting", "vite"]
+license: "MIT"
+homepage: "https://discord.gg/uT6xryBX9w"
+defaultBranch: "main"
+snapshotDate: "2026-09-27"
+pushedAt: "2026-08-22T19:34:56Z"
+---
+
+> 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
+
+# 拉片笔记（Lapian Notes）
+
+[*图片：Discord*](https://discord.gg/uT6xryBX9w)
+[*图片：X*](https://x.com/bkingfilm)
+*图片：下载*
+*图片：License*
+
+**短网址 [l.bking.film](https://l.bking.film) 直达在线试用版，好记好分享**
+
+**🚀 [在线试用（无需安装）→](https://bkingfilm.github.io/lapian-notes/)** 浏览器直接打开就能用：导入 MP4 抽帧、写笔记、生成 AI 分析包全流程可用。在线版没有本地转码和自动搜字幕（这两项需要下载完整版），其余功能一致，数据同样只存在你自己的浏览器里。
+
+把一部电影变成一份可编辑的拉片笔记：本地抽帧、自动配字幕、一键生成 AI 分析包，把 AI 返回的结果导回来，得到剧情泳道时间轴、结构树和观众情绪曲线。
+
+为想系统学习电影叙事的创作者设计。全程本地运行，影片和笔记数据不上传任何服务器。
+
+> **English**: Full English README → Lapian Notes turns a film into an editable shot-by-shot study notebook — local frame extraction, AI-assisted structure analysis (bring your own AI, no API key), story-line swimlanes, structure tree and audience-emotion curve. The interface supports English (switcher in the bottom-right corner); everything runs locally.
+
+> **下载解压后：Windows 双击 `run.bat`，苹果电脑双击 `run.command`**，等它自动装好，浏览器会自己打开工具。
+
+*图片：界面截图：剧情泳道时间轴、观众情绪曲线、带帧截图的结构树*
+
+## 它能做什么
+
+- **电影时间轴**：导入影片后按 1 秒间隔抽帧，生成带截图的全片时间轴
+- **AI 分析包**：把截图、字幕打包成 ZIP，发给 ChatGPT 等任意 AI 分析（不绑定任何 AI 服务，无需 API Key）
+- **剧情泳道图**：AI 返回结果后，按这部电影自己的剧情线（AI 定制命名）铺开多泳道时间轴，多线复用的段落自动生成引用卡
+- **结构树与情绪曲线**：按主线/支线/情感线/信息线分组段落，观众投入强度曲线标出全片节奏起伏
+- **段落深拆**：任意段落可单独打小包发给 AI，拆到场与镜头级（剧本小节、视听手法）
+- **播放器联动**：笔记里的任何时间点（段落、剧本小节、字幕行）一键跳转播放，「播放本段」到段落结束自动暂停，真正边播边记
+- **手动精修**：每个段落都有完整的编辑面板（段落功能、关键节拍、剧本还原、创作意图等）
+- **导出**：整份笔记导出 Markdown、剧本正文，或把泳道时间轴整体导出为分享长图
+
+
+## 使用流程
+
+界面顶部有常驻的四步向导，跟着走即可：
+
+1. **导入电影**：选择影片文件。之后全自动：格式不兼容自动本地转码，抽帧，读取内嵌字幕（没有就自动搜索网络字幕），最后自动生成 AI 分析包
+2. **把分析包发给 AI**：把 ZIP 传给 ChatGPT 等任意 AI，先粘贴指令（已自动复制到剪贴板），再上传 ZIP
+   - **用 Kimi / 豆包 / 通义 / DeepSeek 等传不了 ZIP 的 AI？** 点旁边的「国内 AI 免压缩包版」：导出任务说明、字幕和画面速览拼图（每格带时间码）等散文件，上传时全选发给 AI 即可，其余步骤相同
+   - **不想手动传文件？** 点「AI 直连分析」：填一次你自己的 API key（预设 Gemini / Kimi / OpenAI / Claude，也可用「自定义」接任意 OpenAI 兼容接口），点一下自动完成分析并导回。key 只存本机浏览器，token 费用走你自己的账号；仅本地完整版可用，在线试用版不支持
+   - **为什么没预设 DeepSeek？** 它是纯文本模型，看不了画面。拉片的核心恰恰在画面：视听手法、无对白段落、情绪曲线都要靠看图，纯字幕分析拆视觉型影片时质量下降明显，预设进来容易让人用残血模式还以为工具就这水平。确实想用的话选「自定义」填 `https://api.deepseek.com`，并取消勾选「附带画面拼图」，工具会退到纯字幕分析——拆对白密集的片还是够用的
+3. **导回 AI 结果**：AI 返回 JSON 文件后点「导入 AI 结果」，时间轴、结构树、情绪曲线自动生成
+4. **拉片精修**：点段落写笔记；关键段落「只导出本段给 AI」深拆；完成后导出 Markdown
+
+> **注意：免费 AI 可能会「偷懒」。** 一部电影按每秒 1 帧抽取，通常有 6000 到 8000 张截图，免费额度往往处理不了这么多。额度不够时 AI 不会明说，而是只看开头、中间、结尾几张图就应付了事，导回后你会发现段落划分特别少、内容特别简单。遇到这种情况，可以要求 AI「完整解压并按 prompt.md 逐段分析，不要抽样」重试一次，或换用付费版 / 换一家 AI 再试。
+
+## 快速开始
+
+### 不懂编程？三步就能用
+
+1. **下载**：打开最新版下载页，在「Assets」里点 `lapian-notes-vX.Y.Z.zip` 下载（绿色「Code」按钮里的 Download ZIP 是给开发者的源码快照，普通使用别用那个）
+2. **解压**：双击或右键解压下载的压缩包
+3. **启动**：
+   - Windows：双击文件夹里的 `run.bat`
+   - Mac：双击文件夹里的 `run.command`。第一次系统可能提示"无法打开"，在文件上**按住 Control 点击 → 打开 → 打开**，只需要这一次，以后直接双击
+
+第一次启动会自动准备运行环境和程序组件（电脑上没装过 Node.js 也没关系，会自动下载便携版，共约几分钟；之后每次都是秒开），完成后浏览器自动打开工具页面。使用期间保持那个黑色服务窗口开着；用完关掉它就是退出。
+
+### 开发者
+
+要求：Node.js 20.19+ 或 22.12+（一键启动脚本会自动处理，手动跑才需要关心），Chrome 内核浏览器（Chrome / Edge）。[ffmpeg](https://ffmpeg.org/) 可选，装了才有 RMVB/AVI/HEVC 等格式的自动转码，H.264 MP4 不需要。
+
+```bash
+npm install
+npm run dev
+```
+
+浏览器打开终端提示的地址（默认 http://localhost:5173）。
+
+跑 `npm run check` 里的测试另外要求 Node 22.18 以上。测试文件本身是 TypeScript，直接交给 Node 自带的类型剥离运行，更老的版本会把每个测试文件整体判为解析失败。开发和构建不受这条限制。
+
+> 注意：自动转码和自动搜索字幕由 dev server 的本地接口提供，必须用 `npm run dev`（或启动脚本）运行才有完整功能。静态部署（`npm run build` 产物）时这两项会降级为手动操作，其余功能不受影响。
+>
+> 自动搜字幕按片名语言自动选源：中文片名走伪射手，外文片名走 OpenSubtitles（都免配置）。可选项：在 [opensubtitles.com](https://www.opensubtitles.com/) 注册免费账号拿 API key，设置环境变量 `OPENSUBTITLES_API_KEY` 后会改走官方维护的新版接口，搜索质量更好。
+
+## 数据存储
+
+- 笔记文本自动保存在浏览器 localStorage，帧截图缓存在 IndexedDB，均在本机
+- 「保存项目」会导出一个自包含 ZIP（笔记 + 截图 + Markdown），换浏览器或备份用它
+- 受浏览器安全限制，刷新后需要重新选择影片文件才能重新抽帧（已有笔记和截图不受影响）
+
+## 免责声明
+
+- 本工具仅供个人学习和研究电影叙事使用，请使用你拥有合法访问权的影片
+- 网络字幕搜索功能从公开字幕站获取字幕，字幕版权归原作者所有，请勿用于任何商业用途
+
+## 交流与反馈
+
+- **想交流拉片、聊电影和游戏影像**：来 Discord 社区 [BKinGfilm](https://discord.gg/uT6xryBX9w)（2500+ 成员）
+- **发现 bug 或想提功能建议**：提一个 Issue
+- **关注工具更新和作者动态**：X [@bkingfilm](https://x.com/bkingfilm)
+
+## License
+
+MIT

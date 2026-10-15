@@ -1,0 +1,70 @@
+---
+interface Props {
+  categories?: { name: string; count: number }[]
+  recentPosts?: { title: string; slug: string; pubDate: Date }[]
+}
+
+const { categories = [], recentPosts = [] } = Astro.props
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+}
+---
+
+<aside class="space-y-5">
+  <!-- 个人简介 -->
+  <div class="card p-5">
+    <p class="font-display font-bold text-text mb-1">盘腿修仙</p>
+    <p class="text-xs text-text-secondary mb-2 font-sans">写作 · 技术 · 生活</p>
+    <p class="text-sm text-text-secondary leading-relaxed font-serif">以文会友，用代码改变世界。</p>
+  </div>
+
+  <!-- 分类 -->
+  {categories.length > 0 && (
+    <div class="card p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <h3 class="font-display text-sm font-bold text-text tracking-wide">分类</h3>
+      </div>
+      <div class="space-y-1">
+        {categories.map(({ name, count }) => (
+          <a
+            href={`${import.meta.env.BASE_URL}category/${name}/`}
+            class="flex items-center justify-between py-2 px-3 text-sm text-text-secondary hover:text-accent hover:bg-white/[0.04] transition-all rounded-lg group"
+          >
+            <span class="font-serif">{name}</span>
+            <span class="text-xs text-text-muted/60 dark:text-dark-text-muted/60 group-hover:text-accent/60 dark:group-hover:text-dark-accent/60 bg-white/[0.03] px-2 py-0.5 rounded-full">
+              {count}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <!-- 最新文章 -->
+  {recentPosts.length > 0 && (
+    <div class="card p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <h3 class="font-display text-sm font-bold text-text tracking-wide">最新文章</h3>
+      </div>
+      <div class="space-y-3">
+        {recentPosts.map(({ title, slug, pubDate }) => (
+          <a
+            href={`${import.meta.env.BASE_URL}blog/${slug}/`}
+            class="block group py-2 px-3 hover:bg-white/[0.04] rounded-lg transition-all"
+          >
+            <p class="text-sm text-text group-hover:text-accent dark:group-hover:text-dark-accent transition-colors font-serif leading-snug line-clamp-2">
+              {title}
+            </p>
+            <time
+              class="text-xs text-text-muted/60 dark:text-dark-text-muted/60 mt-1 block"
+              datetime={pubDate.toISOString()}
+            >
+              {formatDate(pubDate)}
+            </time>
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+</aside>

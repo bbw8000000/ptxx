@@ -1,0 +1,39 @@
+# 构建产物与缓存：绝不参与格式化
+dist/
+dist2/
+dist-new/
+dist_old/
+.pages-dist/
+.astro/
+.wrangler/
+test_write/
+node_modules/
+
+# 本地工具/虚拟环境
+.venv-jcm/
+.wolf/
+
+# 生成内容与快照：体量大且由脚本产出，格式化它们只会制造噪声 diff
+src/content/
+public/hero/
+# 字体分档表（scripts/build-font-packs.mjs 产出）：含几千个 unicode-range，
+# 格式化只会把它重排一遍，diff 噪声远大于收益
+config/font-packs.json
+config/font-pack-jobs.json
+public/fonts/
+
+# 已消失项目的实测清单（scripts/check_gone_projects.py 产出）；
+# 它的形状由 tests/gone-projects.test.mjs 锁住，不需要 Prettier 再管一遍
+config/projects-gone.json
+
+# 依赖锁文件由 npm 维护
+package-lock.json
+
+# 截图与二进制
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ico
+*.woff
+*.woff2

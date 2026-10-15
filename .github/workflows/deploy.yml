@@ -1,0 +1,65 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      # 中文字体分档需要 fontTools（见 daily-growth-draft.yml 的说明）。
+      - name: Install font subsetting tools
+        run: pip install fonttools brotli
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm test
+      - run: python3 scripts/generate_daily_digest.py --self-test
+      # Astro/Vite only exposes PUBLIC_* values that come from a .env file, not
+      # from the process environment, so the value has to be written out first.
+      - name: Write .env for the build
+        run: echo "PUBLIC_API_BASE=${{ vars.PUBLIC_API_BASE }}" >> .env
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  notify-search:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Submit URLs to IndexNow
+        run: bash scripts/submit-indexnow.sh
