@@ -9,7 +9,7 @@
     600,
     700
   ],
-  "basePath": "/blog/",
+  "basePath": "/ptxx/",
   "source": "node_modules/@fontsource/noto-serif-sc/files/noto-serif-sc-chinese-simplified-{weight}-normal.woff",
   "generatedDirectory": "public/fonts",
   "packs": [
