@@ -68,7 +68,7 @@ npm run dev
 开发地址通常是：
 
 ```text
-http://localhost:4321/blog/
+http://localhost:4321/
 ```
 
 常用命令：
@@ -154,6 +154,59 @@ src/content/templates/post-template.md
 
 发布前把 `draft` 改成 `false` 或删除该字段。
 
+### 发布一篇文章（不用装任何软件）
+
+浏览器里三步就够了，**不需要**本地环境、不需要 Git 命令：
+
+1. 打开 👉 <https://github.com/bbw8000000/ptxx/tree/main/src/content/posts>
+2. 右上角 **Add file → Create new file**（新建）或 **Upload files**（上传已有的 `.md`）
+3. 文件名用英文/拼音（例如 `my-first-post.md`），内容照抄下面模板，点 **Commit changes**
+
+Frontmatter 模板：
+
+```markdown
+---
+title: '文章标题'
+description: '一句话说明这篇文章解决什么问题，或记录什么经历。'
+pubDate: 2026-10-15
+heroImage: '/hero/og-default.png'
+category: '技术'
+tags: ['AI', '工具']
+featured: false
+draft: false
+---
+
+这里开始写正文，用 Markdown 格式。
+
+## 小标题
+
+- 列表项
+```
+
+字段说明（完整 schema 见 `src/content.config.ts`）：
+
+| 字段          | 必填 | 默认     | 说明                                |
+| ------------- | ---- | -------- | ----------------------------------- |
+| `title`       | 是   | —        | 文章标题                            |
+| `description` | 是   | —        | 摘要，用于列表页与 SEO              |
+| `pubDate`     | 是   | —        | 发布日期（`YYYY-MM-DD`）            |
+| `updatedDate` | 否   | —        | 更新日期，会显示「已更新」          |
+| `heroImage`   | 否   | 默认封面 | 封面图路径，如 `/hero/xxx.png`      |
+| `category`    | 否   | `未分类` | 分类，用于 `/category/<分类>/` 归档 |
+| `tags`        | 否   | `[]`     | 标签数组，用于 `/tag/<标签>/`       |
+| `featured`    | 否   | `false`  | `true` 会在首页置顶                 |
+| `draft`       | 否   | `false`  | `true` 表示草稿，**不会发布**       |
+| `noindex`     | 否   | `false`  | `true` 告诉搜索引擎不要收录         |
+
+> 封面图放 `public/hero/` 下；不填 `heroImage` 会回退到默认封面。
+
+提交后会发生什么：
+
+- **GitHub Pages**：`Deploy to GitHub Pages` 工作流自动构建，约 1–2 分钟后发布到
+  <https://bbw8000000.github.io/ptxx/>。
+- **生产站点 <https://zilvd.icu>**：服务器定时任务（每 10 分钟）拉取仓库最新代码 →
+  重新构建 → 自动部署，**最多 10 分钟**后线上更新。
+
 ### 新增工具
 
 工具页面放在：
@@ -191,11 +244,22 @@ docs/comment-api.md
 
 ### 部署
 
-站点与评论 API 分开部署：
+同一份源码构建出两个站点，靠 `SITE_URL` / `BASE_PATH` 两个环境变量区分：
+
+| 站点       | 地址                                 | 构建参数                                                   | 触发方式                     |
+| ---------- | ------------------------------------ | ---------------------------------------------------------- | ---------------------------- |
+| 生产站     | <https://zilvd.icu>                  | `SITE_URL=https://zilvd.icu`、`BASE_PATH=/`                | 服务器定时任务（每 10 分钟） |
+| Pages 镜像 | <https://bbw8000000.github.io/ptxx/> | `SITE_URL=https://bbw8000000.github.io`、`BASE_PATH=/ptxx` | 推送 `main` 后工作流自动部署 |
+
+> 生产站 `zilvd.icu` 跑在国内服务器（腾讯云轻量）上，已做 ICP 备案；GitHub Pages
+> 在海外，**只作预览/镜像**，不要给它绑 `zilvd.icu`（会让备案失效）。
 
 - 推送到 `main` 分支后，`Deploy to GitHub Pages` 工作流自动构建并部署静态站点到 GitHub Pages。
 - `functions/**`、`migrations/**` 或 `wrangler.toml` 有改动时，`Deploy API` 工作流会应用 D1 迁移并部署 Pages Functions。
 - PR 会先经过 `CI` 工作流的 lint / 格式 / 测试 / 类型检查门禁。
+
+> 本地手动构建生产站：`SITE_URL=https://zilvd.icu BASE_PATH=/ npm run build`，
+> 产物在 `dist/`。
 
 ## 许可
 
