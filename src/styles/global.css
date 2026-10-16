@@ -1,4 +1,12 @@
 @import 'tailwindcss';
+
+/* 本站是「暗色单主题」：<html> 固定带 .dark，文字令牌恒为浅色。
+ * Tailwind v4 默认把 dark: 变体编译成 @media (prefers-color-scheme: dark)，
+ * 于是当用户系统是浅色时，dark: 覆盖不生效 —— 若某处写了「浅色底 + dark: 覆盖」，
+ * 就会在浅色系统下露出浅色底而文字仍是浅色，导致看不清（见 growth.astro 英雄区）。
+ * 改成基于 .dark 类的变体后，dark: 覆盖恒定生效，与单主题设计一致。 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import './base.css';
 @import './effects.css';
 @import './components.css';
