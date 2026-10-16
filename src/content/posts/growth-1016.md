@@ -2,7 +2,7 @@
 title: '一次难得的相遇，遇见内心通透的人'
 description: '记录一段新认识的缘分，聊聊她身上那些打动我的闪光点。'
 pubDate: 2026-10-16
-heroImage: '/hero/og-default.png'
+heroImage: '/hero/growth-1016.svg'
 category: '成长记录'
 tags: ['相遇','成长感悟']
 featured: false
