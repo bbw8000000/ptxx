@@ -207,6 +207,33 @@ draft: false
 - **生产站点 <https://zilvd.icu>**：服务器定时任务（每 10 分钟）拉取仓库最新代码 →
   重新构建 → 自动部署，**最多 10 分钟**后线上更新。
 
+### 更新成长记录（一键）
+
+成长记录的日常更新有现成脚本，**在服务器上**（`/home/ubuntu/ptxx-src`）跑：
+
+```bash
+scripts/growth.sh new              # 生成今天的草稿（.md + 封面 SVG），已存在则跳过
+scripts/growth.sh list             # 列出所有草稿 / 已发布
+scripts/growth.sh publish 038      # 把 growth-038 翻成已发布 → 推送 → 等它上线
+scripts/growth.sh publish 038 --dry  # 试跑：只改本地文件，不提交/推送/部署
+scripts/growth.sh deploy           # 手动触发一次部署（平时每 10 分钟自动跑）
+```
+
+标准流程就四步：
+
+1. `scripts/growth.sh new` —— 生成当天草稿（正文用占位提示，`draft: true`）。
+2. 编辑 `src/content/posts/growth-*.md`，把标题 / 描述 / 正文换成真实内容。
+   想换封面就把图片放进 `public/hero/`，改 `heroImage:` 指向它。
+3. `scripts/growth.sh publish <编号>` —— 自动翻 `draft: false`、只提交这篇 + 它的封面、
+   推送到 `main`、触发部署并等到线上生效。
+4. 完事。也可以直接在浏览器里改（见上一节），服务器每 10 分钟会自动拉取上线。
+
+注意事项：
+
+- **不要**用 `git push origin`：`origin` 是加速镜像，只能拉取；脚本内部走 SSH 部署密钥推送到 `git@github.com:bbw8000000/ptxx.git`。
+- 服务器上仓库常常处于 `detached HEAD`，`scripts/growth.sh` 每次会先对齐远端最新，避免手滑推错。
+- 草稿只有在 `draft: false` 后才会出现在 `/growth/` 列表。
+
 ### 新增工具
 
 工具页面放在：
