@@ -3,16 +3,16 @@ title: "Caho1/open-claude-ui"
 owner: "Caho1"
 name: "open-claude-ui"
 fullName: "Caho1/open-claude-ui"
-description: "基于 REA 深度拆解并高保真还原 Claude 官方桌面端 UI。纯手写 30 个独立 React 组件与 8 项硬核交互物理算法，附带 3000+ 行逆向分析手册。"
+description: "基于 REA 深度拆解并高保真还原 Claude 官方桌面端 UI。还原 30 个独立 React 组件与 8 项硬核交互物理算法，附带 3000+ 行逆向分析手册。"
 sourceUrl: "https://github.com/Caho1/open-claude-ui"
-stars: 304
-forks: 78
+stars: 1042
+forks: 231
 language: "TypeScript"
 topics: ["anthropic", "audioworklet", "claude", "design-system", "framer-motion", "motion-physics", "react", "reverse-engineering"]
 license: "MIT"
 defaultBranch: "main"
-snapshotDate: "2026-10-15"
-pushedAt: "2026-10-15T02:02:15Z"
+snapshotDate: "2026-10-17"
+pushedAt: "2026-10-16T15:12:55Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
@@ -29,6 +29,7 @@ pushedAt: "2026-10-15T02:02:15Z"
   简体中文 · English
 
 
+  
   
   
   
@@ -135,8 +136,8 @@ graph TD
 ### 🤖 第八篇：AI Agent 前端 UI 与动效开发指南
 * **8.1~8.7 Agent 角色定位、设计令牌契约与弹簧决策树**：专为 AI Agent 定制的前端 UI 与动效装配自检指南。
 
-### 🚀 第九篇：Claude Desktop 2.0 (v2.37337.1) 全量版本更新深度逆向分析
-* **9.1~9.6 界面拓扑骤变、Popout 多窗口架构、十大 Bug 清洗与托管配置迁移**：Claude Desktop 2.0 全网首发深度逆向架构演进分析。
+### 🚀 第二版：Claude Desktop 2.0 (v2.37337.1) 全量版本更新深度逆向分析
+* **v2/README.md 综述、新增特性、架构重构、底座解密与参考实现**：全量划分为 6 大独立章节，深度解析 2.0 桌面端架构大跃迁。
 
 ---
 
@@ -255,43 +256,6 @@ open-claude-ui/
 
 ---
 
-## 🧩 生产级组件与物理模块总览 (Component Directory)
-
-| 模块分类 | 组件 / Hook 文件 | 逆向来源与工程机制 |
-| :--- | :--- | :--- |
-| **基础原子控件** | `CdsButton.tsx` | 4 级尺寸阶梯（XS/SM/MD/LG），5 大变体，单闭合边框原则，`active:scale-[0.98]`。 |
-| **基础原子控件** | `SegmentedControl.tsx` | 999px 全圆角轨道、2px 几何内边距、纯几何定位与 Framer Motion 双模式。 |
-| **基础原子控件** | `StatusIndicators.tsx` | 陶土明度呼吸指示灯（2.4s）、运行活动脉冲（1.2s）、思考跳动三点与骨架屏扫光条。 |
-| **基础原子控件** | `ConfirmationDialog.tsx` | 16px 圆角、双环 Popover 弥散投影、高斯模糊遮罩与按键陷阱。 |
-| **基础原子控件** | `AttachmentCard.tsx` | 10px 面板圆角、桌面端磁贴 (128×96px) 与输入框行内胶囊双模式、生长入场动画。 |
-| **会话流与输入** | `ChatMessageBubbles.tsx` | User 18px 浅蓝微调底色 vs Assistant 零边框透明排版与代码块联动。 |
-| **会话流与输入** | `ThinkingAccordion.tsx` | Framer Motion 贝塞尔高度弹性收展、单颗陶土呼吸脉冲，生成中强制展开互斥锁。 |
-| **会话流与输入** | `ChatComposer.tsx` | 20px 核心输入终端、三态双环阴影、`field-sizing: content` 自适应伸缩、Thinking 开关。 |
-| **会话流与输入** | `RichComposerWithMentions.tsx` | CJK 输入法合成守卫（`isComposing || keyCode === 229`）、`/` 指令与 `@` 上下文双触发符、Token 预测。 |
-| **会话流与输入** | `ModelSwitcherWithTokenGauge.tsx` | 三大模型梯队切换、Extended Thinking 开关、Prompt Caching 四色显存解构与 SVG 环形表。 |
-| **会话流与输入** | `McpToolDecisionCard.tsx` | 三态授权生命周期（`pending_approval` → `running` → `success` / `error`）、三阶决议动作阵列。 |
-| **动效与环境光** | `ClaudeMotionPresets.ts` | 4 套生产级物理弹簧预设（Bouncy/Snappy/Gentle/Heavy Snap），精调超调量与收敛时延。 |
-| **动效与环境光** | `ReasoningAmbientGlow.tsx` | `wl-glow` 陶土暖光漫反射、`cds-shimmer-text-shine` 非对称贝塞尔曲线、焦散光场。 |
-| **动效与环境光** | `ScrollFadeContainer.tsx` | 7 档非线性透明度手写渐隐遮罩、动态滚动位置传感器（触顶/触底动态归零）。 |
-| **视听与多模态** | `ClaudeAudioPlayer.ts` | 原生 Web Audio API 振荡器无损和弦合成、30% 舒缓音量标准、平滑增益淡入淡出防爆音。 |
-| **视听与多模态** | `LiveMicActivityBars.tsx` | 6 频段人声全覆盖波形、8% 噪声门限过滤、`Math.pow(energy, 0.7)` 非线性 Gamma 压缩。 |
-| **视听与多模态** | `MediaLightboxViewer.tsx` | 75vw 跑道滑动位移、以光标为锚点的仿射平移缩放（Pan/Zoom）、4px 拖拽死区、Ctrl 滚轮缩放。 |
-| **视听与多模态** | `useClaudeSharedElementTransition.ts` | 基于 `startViewTransition`、缩略图动态圆角检测与 `object-fit: contain` 内切剪裁逆向计算。 |
-| **视听与多模态** | `ArtifactsSplitPaneResizer.tsx` | Iframe 事件防吞噬护盾、4px 移动死区、双击 50/50 居中吸附、边缘折叠门限与约束钳制。 |
-| **视听与多模态** | `EpitaxyIframeBridge.tsx` | 严格 Origin 校验与通道隔离的 postMessage RPC 协议、7 大专有 MIME 分发、用户激活门禁。 |
-| **视听与多模态** | `StreamingDiffViewer.tsx` | 表格行号对齐与 `tabular-nums` 约束、增量流式追加管道、统一/分屏双模式切换与 2.5s 复制衰减状态机。 |
-| **视听与多模态** | `CodeBlock.tsx` | 12px 圆角、`#0d0d0c` 纯黑底色、语言标签行内光学对齐、2.5 秒复制衰减状态机。 |
-| **系统与协作拓扑** | `createClaudeMainWindow.ts` | Electron 宿主窗口工厂：`hiddenInset` 标题栏、macOS Vibrancy (`under-window`) 毛玻璃融合、1200×800（最小 600×400）。 |
-| **系统与协作拓扑** | `ClaudeDesktopHeader.tsx` | macOS 交通灯 74px 逆缩放补偿避让槽（`-webkit-app-region: drag`）、多标签页切换胶囊。 |
-| **系统与协作拓扑** | `DraggableSessionList.tsx` | `pinnedOrder` 乐观拓扑重排、4px 指针移动死区、微倾斜幽灵投影与落点对撞占位线。 |
-| **系统与协作拓扑** | `CoworkAgentCanvas.tsx` | 多 Agent 任务委派状态机、团队共享工件网格资产池、`BroadcastChannel` 跨窗口同步。 |
-| **系统与协作拓扑** | `useClaudeScrollPinning.ts` | 150ms 冷却时间戳防抢夺、40px 底部容差图钉锁定、35vh 弹性缓冲与 GPU 字符模糊消解。 |
-| **系统与协作拓扑** | `ContainerResponsiveBar.tsx` | 基于 `@container` 的 4 阶流体压缩梯队 (>=576px / <480px / <384px / <320px)，杜绝单字折行。 |
-| **系统与协作拓扑** | `useClaudeRovingFocus.ts` | W3C WAI-ARIA 规范：方向键二维与一维网格漫游导航、Home/End 边界快速跳跃、RTL 翻转。 |
-| **系统与协作拓扑** | `useRateLimitBackoff.ts` | 429/503 截断指数退避（`t = min(t_max, t_base * 2^a) * (1 ± J)`）、全抖动与熔断。 |
-
----
-
 ## 🚀 快速上手 (Quick Start)
 
 ### 1. 引入样式表与 Tailwind 配置
@@ -388,3 +352,10 @@ open docs/claude-components-storybook.html
 ## 📜 许可证 (License)
 
 本项目基于 MIT License 开源发布。所有反编译研究成果与代码复现仅供学习、研究与工程交流使用。
+
+---
+
+## 📈 Star History
+
+
+[*图片：Star History Chart*](https://star-history.com/#Caho1/open-claude-ui&Date)

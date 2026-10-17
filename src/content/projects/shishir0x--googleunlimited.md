@@ -5,22 +5,22 @@ name: "GoogleUnlimited"
 fullName: "shishir0x/GoogleUnlimited"
 description: "Unlimited Google Photos auto-sync on Windows with Pixel original quality spoofing — native, portable, and zero-quota."
 sourceUrl: "https://github.com/shishir0x/GoogleUnlimited"
-stars: 79
-forks: 11
+stars: 231
+forks: 28
 language: "PowerShell"
 topics: ["google-photos", "unlimited-storage"]
 license: "未标注"
 defaultBranch: "main"
-snapshotDate: "2026-10-16"
-pushedAt: "2026-10-16T00:57:06Z"
+snapshotDate: "2026-10-17"
+pushedAt: "2026-10-16T15:08:24Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
 
 # GoogleUnlimited
 
-> **Zero-Quota, Unlimited Google Photos Auto-Sync for Windows, macOS & Linux**  
-> Native background watcher that automatically uploads photos and videos with **Google Pixel original quality unlimited backup** — without WSL, WSA, Android emulators, or Morphe crashes.
+> Automated, cross-platform media synchronization utility for Google Photos.  
+> Runs as a lightweight native background watcher on Windows, macOS, and Linux to automatically sync photos and videos using Google Pixel device emulation powered by `xob0t/gotohp` — without virtual machines, Android emulators, Windows Subsystem for Android (WSA), or WSL.
 
 
   
@@ -28,77 +28,217 @@ pushedAt: "2026-10-16T00:57:06Z"
 
 ---
 
+## Table of Contents
+
+- Overview
+- Features
+- Requirements
+- Quick Start
+  - Windows
+  - macOS
+  - Linux
+- Authentication and Account Setup
+- Commands Reference
+- Folder Monitoring & Supported Media
+  - Monitored Folders
+  - Custom Watch Folders (`watch_dirs.txt`)
+  - Supported Media Formats
+  - File Readiness & Lock Detection
+- Background Operation
+  - Windows (VBScript & Startup Folder)
+  - macOS (launchd LaunchAgent)
+  - Linux (systemd User Service)
+  - Single-Instance Protection
+- Data Storage, Privacy, and Security
+- Troubleshooting
+- Limitations and Disclaimer
+- Credits and License
+
+---
+
+## Overview
+
+**GoogleUnlimited** monitors local folders on your computer and automatically synchronizes eligible photos and videos to your Google Photos library. It pairs native operating system event watchers (PowerShell on Windows, `fswatch` on macOS, and `inotify-tools` on Linux) with an embedded SQLite database (`gphotos.db`) and the standalone `gotohp` CLI binary.
+
+The upload engine communicates directly with Google's mobile upload endpoints using Google Pixel device emulation. Because the requests present as a Pixel device, media backed up through this mechanism is processed according to Google Photos Pixel backup rules.
+
+---
+
 ## Features
 
-- **Unlimited Google Photos Backup**: Spoofs Google Pixel mobile upload API (`xob0t/gotohp`) so all uploaded photos and videos consume **0 bytes of Google Drive / Google One storage**.
-- **Cross-Platform (Windows, macOS & Linux)**:
-  - **Windows**: Native PowerShell engine with bundled portable `PSSQLite`.
-  - **macOS**: Native Bash + `fswatch` engine supporting both Apple Silicon (M1-M4) and Intel Macs via universal binary.
-  - **Linux**: Native POSIX Bash + `inotify-tools` engine for all major distributions (Ubuntu, Debian, Fedora, Arch).
-- **Multi-OS Interoperability**: Windows, macOS, and Linux scripts share the exact same SQLite database schema (`gphotos.db`), with dual-key lookups (`path` + `filename|filesize`) to seamlessly prevent duplicate uploads on shared or external partitions.
-- **Unified Clean Architecture (Zero Clutter)**:
-  - **Windows**: `GoogleUnlimited.bat` provides an interactive menu or CLI commands (`watch`, `silent`, `status`, `logs`, `enable`, `disable`, `stop`).
-  - **macOS & Linux**: `google-unlimited.sh` unified runner (`watch`, `status`, `logs`, `setup`, `enable`, `disable`, `stop`). Zero separate script clutter.
-- **Real-Time Auto-Sync**: Monitors standard user folders instantly when files are downloaded or saved, with debounce protection for active downloads.
-- **Embedded SQLite Tracking**: Tracks every upload in `gphotos.db` — zero duplicate re-uploads, crash-resilient with automatic retry queues.
-- **Live Terminal Progress Bar**: Real-time dynamic progress bar, elapsed timer, and file size indicator.
-- **Background Auto-Start**: 
-  - **Windows**: 1-click startup installer or silent VBScript launcher (`StartPhotosWatcher.vbs`).
-  - **macOS**: Native `launchd` LaunchAgent (`./google-unlimited.sh enable`).
-  - **Linux**: Native user `systemd` service (`./google-unlimited.sh enable`).
-- **Security Hardened**: Automatically locks credentials (`gotohp.config`) and database (`gphotos.db`) to `chmod 600` (owner-only), sanitizes all database queries, and handles macOS Gatekeeper quarantine flags.
+- **Real-Time Filesystem Monitoring**:
+  - **Windows**: Uses .NET `FileSystemWatcher` with an expanded 64 KB event buffer and a 1.5-second debounce window to prevent redundant uploads on burst writes.
+  - **macOS**: Uses `fswatch` for continuous low-latency filesystem event streaming.
+  - **Linux**: Uses `inotifywait` (`inotify-tools`) listening to `close_write`, `moved_to`, and `create` kernel events.
+- **Initial Sync & Periodic Safety Sweeps**:
+  - Traverses all monitored directories at startup (Phase 1) to upload any existing unrecorded media.
+  - Runs periodic background safety sweeps (every 30 seconds on Windows, every 15 minutes on macOS/Linux) to detect offline camera imports or files added while the watcher was paused.
+- **Cross-Platform Content-Hash Deduplication**:
+  - Tracks all uploaded files in a local SQLite database (`gphotos.db`) using WAL mode.
+  - Lookups use both file paths and a combined `filename|filesize` key paired with a SHA-256 `content_hash`. This prevents duplicate re-uploads on dual-boot machines or shared external drives where paths differ between operating systems.
+- **Active Download & Lock Detection**:
+  - Verifies file size stability across multiple sampling checks and tests for exclusive write access before uploading. This prevents uploading partial files during active web downloads, screen recordings (OBS, Xbox Game Bar), or video rendering exports.
+- **Automatic Retry Queue**:
+  - Upload failures are stored in a persistent `retry_queue` table and automatically retried every 30 seconds for up to 3 attempts before logging a permanent failure.
+- **Background Startup Automation**:
+  - **Windows**: One-click startup shortcut creation via VBScript (`StartPhotosWatcher.vbs`) for invisible, zero-console background execution.
+  - **macOS**: Native user `launchd` LaunchAgent service management.
+  - **Linux**: Native `systemd` user service with lingering session support (`loginctl enable-linger`).
+- **Single-Instance Protection**:
+  - On Windows, a named system mutex (`Local\GoogleUnlimited_Watcher_`) prevents multiple concurrent watcher instances from running against the same installation directory.
+  - On Unix, dedicated PID tracking (`.watcher.pid`) and process inspection prevent conflicting background processes.
+- **Security & Privacy Hardening**:
+  - Credentials (`gotohp.config`) and database files are restricted to owner-only permissions (`chmod 600` on Unix).
+  - OAuth tokens can be entered interactively with hidden console echo, preventing exposure in shell history or process tables.
+  - Official release binaries are checked against trusted SHA-256 checksums during setup.
+  - Direct connection to Google endpoints (`photoslibrary.googleapis.com`); zero telemetry and no intermediate servers.
 
 ---
 
-## Directory Structure
+## Requirements
 
-```text
-GoogleUnlimited/
-│
-├── Modules/
-│   └── PSSQLite/             # Bundled portable SQLite engine for Windows PowerShell
-│
-├── gotohp-cli-x64.exe        # Windows 64-bit CLI uploader with Pixel spoofing
-├── gotohp-x64.exe            # Windows desktop GUI for one-click Google OAuth sign-in
-├── gotohp-cli_amd64          # Native Linux x86_64 ELF binary
-│
-│   # --- Windows ---
-├── GoogleUnlimited.bat       # Unified Windows Manager (interactive menu + CLI commands)
-├── StartPhotosWatcher.vbs    # Windows silent background launcher (zero window)
-├── WatchAndUpload.ps1        # Core Windows PowerShell orchestrator
-│
-│   # --- macOS & Linux ---
-├── google-unlimited.sh       # Unified Unix Manager (macOS & Linux runner, setup, status, startup)
-│
-├── .gitattributes            # Line ending preservation (LF on shell scripts & plists, CRLF on bat/ps1)
-├── .gitignore                # Protects credentials, tokens, and personal databases
-├── README.md                 # Documentation
-└── reddit_showcase.jpg       # Showcase graphic
-```
+### Platform Requirements
+
+| Platform | OS Version / Arch | Runtime & Shell | Required Dependencies | Dependency Installation |
+| :--- | :--- | :--- | :--- | :--- |
+| **Windows** | Windows 10 / 11 (64-bit) | PowerShell 5.1 or PowerShell 7+ (`pwsh`) | `PSSQLite` module | Bundled in `Modules/PSSQLite/`; auto-installs via PowerShell Gallery if missing |
+| **macOS** | macOS 11 (Big Sur)+Apple Silicon (M1–M4) & Intel x64 | Bash | `fswatch`, `sqlite3`, `curl` | Auto-installed via Homebrew during `./google-unlimited.sh setup` |
+| **Linux** | Modern Linux distributionsx86_64 or aarch64/arm64 | Bash | `inotify-tools`, `sqlite3`, `curl` | Auto-installed via `apt`, `dnf`, `pacman`, or `zypper` during `./google-unlimited.sh setup` |
+
+### Binaries Included in Repository
+
+- `gotohp-cli-x64.exe`: 64-bit Windows command-line upload engine (gotohp v0.11.0).
+- `gotohp-x64.exe`: Windows desktop GUI helper for Google OAuth sign-in.
+- `gotohp-cli_amd64`: Native Linux x86_64 binary.
+- *macOS Universal and Linux ARM64 binaries are downloaded automatically from official releases and verified with SHA-256 during `./google-unlimited.sh setup`.*
 
 ---
 
-## Windows Setup & Usage
+## Quick Start
 
-### 1. Download or Clone
-```cmd
-git clone https://github.com/shishir0x/GoogleUnlimited.git
+### Windows Quick Start
+
+1. **Clone the repository**:
+   ```cmd
+   git clone https://github.com/shishir0x/GoogleUnlimited.git
+   cd GoogleUnlimited
+   ```
+2. **Sign in to Google Photos**:
+   - Double-click **`gotohp-x64.exe`**.
+   - Click **Add Google account** &rarr; **Open Google sign-in** &rarr; sign in &rarr; click **I agree**.
+   - Press **F12** in your browser &rarr; **Application** tab (or **Storage** in Firefox) &rarr; **Cookies** (`https://accounts.google.com`) &rarr; copy the **`oauth_token`** value.
+   - Paste the token into `gotohp` and click **Connect account**, then close the window.
+3. **Start syncing**:
+   - Double-click **`GoogleUnlimited.bat`** and select **`[1] Start Live Watcher`**, or run:
+     ```cmd
+     GoogleUnlimited.bat watch
+     ```
+
+---
+
+### macOS Quick Start
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/shishir0x/GoogleUnlimited.git
+   cd GoogleUnlimited
+   ```
+2. **Run the setup script**:
+   ```bash
+   chmod +x google-unlimited.sh
+   ./google-unlimited.sh setup
+   ```
+   *(Installs `fswatch`, `sqlite3`, downloads the universal binary, and verifies SHA-256 integrity).*
+3. **Sign in to Google Photos**:
+   - Open [https://accounts.google.com/embedded/setup/v2/android](https://accounts.google.com/embedded/setup/v2/android) in your browser.
+   - Sign in and click **I agree** *(it is normal for the page to remain loading)*.
+   - Press **Option + Command + I** &rarr; **Application** tab &rarr; **Cookies** &rarr; copy the **`oauth_token`** cookie value.
+   - Run:
+     ```bash
+     ./google-unlimited.sh creds add
+     ```
+     Paste your token when prompted (input is hidden for security).
+4. **Start syncing**:
+   ```bash
+   ./google-unlimited.sh watch
+   ```
+
+---
+
+### Linux Quick Start
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/shishir0x/GoogleUnlimited.git
+   cd GoogleUnlimited
+   ```
+2. **Run the setup script**:
+   ```bash
+   chmod +x google-unlimited.sh
+   ./google-unlimited.sh setup
+   ```
+   *(Installs `inotify-tools`, `sqlite3`, and `curl` using your system package manager).*
+3. **Sign in to Google Photos**:
+   - Open [https://accounts.google.com/embedded/setup/v2/android](https://accounts.google.com/embedded/setup/v2/android) in your browser.
+   - Sign in and click **I agree** *(page buffering indefinitely is expected)*.
+   - Press **F12** &rarr; **Application** or **Storage** tab &rarr; **Cookies** &rarr; copy the **`oauth_token`** value.
+   - Run:
+     ```bash
+     ./google-unlimited.sh creds add
+     ```
+     Paste the token into the hidden prompt. Alternatively, pipe the token:
+     ```bash
+     echo "" | ./google-unlimited.sh creds add -
+     ```
+4. **Start syncing**:
+   ```bash
+   ./google-unlimited.sh watch
+   ```
+
+---
+
+## Authentication and Account Setup
+
+GoogleUnlimited uses Google's Embedded Setup workflow to authenticate as an Android Google Photos client. This enables the mobile upload endpoint required for Google Pixel emulation.
+
+### Why does the setup page buffer indefinitely?
+When you log in through `https://accounts.google.com/embedded/setup/v2/android` and click **I agree**, Google expects a physical Android device to acknowledge the connection. In a web browser, the page will buffer or spin indefinitely. **This is completely normal and expected.** The authentication cookie has already been issued.
+
+### Retrieving the `oauth_token`
+1. Open Developer Tools (**F12**, or right-click &rarr; **Inspect**).
+2. Open the cookie storage inspector:
+   - **Chrome, Edge, Brave, Opera**: **Application** tab &rarr; **Storage** &rarr; **Cookies** &rarr; `https://accounts.google.com`.
+   - **Firefox**: **Storage** tab &rarr; **Cookies** &rarr; `https://accounts.google.com`.
+   - **Safari**: **Storage** tab &rarr; **Cookies** &rarr; `accounts.google.com`.
+3. Locate the cookie named **`oauth_token`** and copy its entire string value.
+
+### Credential Storage & Security
+- Credentials are saved locally to `gotohp.config` in the root repository directory.
+- `gotohp.config` is excluded by `.gitignore` and must **never** be committed to version control.
+- On macOS and Linux, the script automatically applies `chmod 600` so only your user account can read or write the file.
+- When entering tokens via `./google-unlimited.sh creds add`, terminal echo is disabled to prevent the token from appearing in terminal history, process listings (`ps`), or shoulder surfing.
+
+### Managing Multiple Accounts
+```bash
+# List all configured accounts (the active account is marked with an asterisk *)
+./google-unlimited.sh creds list
+
+# Switch the active upload account
+./google-unlimited.sh creds set user@gmail.com
+
+# Remove a configured account
+./google-unlimited.sh creds remove user@gmail.com
 ```
+*On Windows, you can also manage accounts via `GoogleUnlimited.bat account` or by selecting option `[9]` from the menu.*
 
-### 2. Sign In to Google Photos (One-Time)
-1. Double-click **`gotohp-x64.exe`** and click **Add Google account**.
-2. Click **Open Google sign-in** and sign in with your Google account.
-3. Sign in on the Google Embedded Setup page and click **I agree**.  
-   *(Note: The page buffering indefinitely is completely normal and expected).*
-4. Open browser Developer Tools (**F12**):
-   - Go to **Application** tab (Chrome/Edge/Brave) or **Storage** tab (Firefox).
-   - Under **Cookies**, click `https://accounts.google.com`.
-   - Copy the value of the **`oauth_token`** cookie.
-5. In `gotohp`, paste the token and click **Connect account**.
-6. Once connected, your credentials are saved locally. Close the GUI.
+---
 
-### 3. Run on Windows
-Double-click **`GoogleUnlimited.bat`** to open the interactive manager:
+## Commands Reference
+
+### Windows (`GoogleUnlimited.bat` / PowerShell)
+
+Running `GoogleUnlimited.bat` without arguments opens the interactive management menu:
+
 ```text
 ==========================================================
   *  Google Unlimited Photos Auto-Sync (Windows)
@@ -110,190 +250,312 @@ Double-click **`GoogleUnlimited.bat`** to open the interactive manager:
   [5] Enable Auto-Start on Windows Boot
   [6] Disable Auto-Start on Windows Boot
   [7] Stop Background Watcher
+  [8] Manage Watched Folders (Add/List custom folders)
+  [9] Manage Google Accounts (List/Switch account)
+  [10] Force Re-scan & Sync All Media
   [0] Exit
 ==========================================================
 ```
 
-You can also run any action directly from the terminal or shortcuts:
-```cmd
-GoogleUnlimited.bat watch     # Live terminal watcher with progress bar
-GoogleUnlimited.bat silent    # Silent background run (zero window)
-GoogleUnlimited.bat status    # Check total uploads and retry queue
-GoogleUnlimited.bat logs      # View last 30 sync activity logs
-GoogleUnlimited.bat enable    # Enable auto-start on Windows boot
-GoogleUnlimited.bat disable   # Disable auto-start on Windows boot
-GoogleUnlimited.bat stop      # Stop any running background watcher
-```
+You can also run commands directly from the command prompt or terminal:
+
+| Batch Command | Underlying PowerShell Flag | Menu Option | Description |
+| :--- | :--- | :---: | :--- |
+| `GoogleUnlimited.bat watch [dirs...]` | `.\WatchAndUpload.ps1 [dirs...]` | `[1]` | Start the live foreground watcher with dynamic progress bars and ETAs. |
+| `GoogleUnlimited.bat silent` | `wscript.exe StartPhotosWatcher.vbs` | `[2]` | Start the background watcher silently (zero console window). |
+| `GoogleUnlimited.bat status` | `.\WatchAndUpload.ps1 -StatusOnly` | `[3]` | View total uploads, pending retries, service state, and last 10 uploads. |
+| `GoogleUnlimited.bat logs` | `.\WatchAndUpload.ps1 -ShowLogs` | `[4]` | Display the last 30 sync activity entries from the database. |
+| `GoogleUnlimited.bat enable` | `.\WatchAndUpload.ps1 -EnableStartup` | `[5]` | Create a shortcut in the Windows Startup folder to run on boot. |
+| `GoogleUnlimited.bat disable` | `.\WatchAndUpload.ps1 -DisableStartup` | `[6]` | Remove the shortcut from the Windows Startup folder. |
+| `GoogleUnlimited.bat stop` | `.\WatchAndUpload.ps1 -StopWatcher` | `[7]` | Terminate any active background watcher processes. |
+| `GoogleUnlimited.bat dirs` | `.\WatchAndUpload.ps1 -ManageDirs` | `[8]` | Open the interactive folder manager or Windows folder browser dialog. |
+| `GoogleUnlimited.bat account` | `gotohp-cli creds` | `[9]` | List configured accounts, switch the active account, or open the GUI. |
+| `GoogleUnlimited.bat resync` | `.\WatchAndUpload.ps1 -ForceResync` | `[10]` | Perform a full scan and force re-sync of all media across watched directories. |
 
 ---
 
-## macOS Setup & Usage
+### macOS & Linux (`google-unlimited.sh`)
 
-GoogleUnlimited runs natively on macOS (Apple Silicon M1/M2/M3/M4 & Intel) using `fswatch`, `sqlite3`, and the official universal Mach-O binary.
+Running `./google-unlimited.sh` without arguments in an interactive terminal opens the Unix manager menu:
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/shishir0x/GoogleUnlimited.git
-cd GoogleUnlimited
-```
-
-### 2. One-Command Setup
-Make executable and run setup (auto-installs `fswatch` via Homebrew and downloads the universal binary):
-```bash
-chmod +x google-unlimited.sh
-./google-unlimited.sh setup
-```
-*(If Homebrew is not installed, install it with: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`)*
-
-### 3. Sign In (One-Time)
-1. Open the Google Embedded Setup sign-in page:  
-   👉 **[https://accounts.google.com/embedded/setup/v2/android](https://accounts.google.com/embedded/setup/v2/android)**
-2. Sign in with your Google account and click **I agree** *(buffering indefinitely is normal)*.
-3. Press **Option + Command + I** (or right-click → **Inspect**) to open Developer Tools:
-   - Go to **Application** tab → **Cookies** → `https://accounts.google.com`.
-   - Copy the value of the **`oauth_token`** cookie.
-4. In your terminal, run:
-   ```bash
-   ./google-unlimited.sh creds add ""
-   ```
-
-*(Alternatively: If you already signed in on Windows or Linux, simply copy `gotohp.config` into this directory).*
-
-### 4. Run on macOS
-Run `./google-unlimited.sh` to launch the interactive manager or pass commands directly:
-```bash
-./google-unlimited.sh watch      # Live interactive watcher with progress
-./google-unlimited.sh enable     # Auto-start on macOS login via launchd
-./google-unlimited.sh disable    # Disable macOS launchd auto-start
-./google-unlimited.sh status     # View total uploads and pending retries
-./google-unlimited.sh logs       # View recent activity logs
-./google-unlimited.sh stop       # Stop background watcher instances
-```
-
----
-
-## Linux Setup & Usage
-
-GoogleUnlimited runs natively on any Linux distribution (Ubuntu, Debian, Fedora, Arch Linux, openSUSE, etc.) using `inotify-tools`, `sqlite3`, and the native Linux `gotohp` binary.
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/shishir0x/GoogleUnlimited.git
-cd GoogleUnlimited
-```
-
-### 2. One-Command Setup
-Run setup to auto-install dependencies (`inotify-tools`, `sqlite3`, `curl`):
-```bash
-chmod +x google-unlimited.sh
-./google-unlimited.sh setup
-```
-
-### 3. Sign In (One-Time)
-
-#### Option A: Retrieve `oauth_token` via Browser
-1. In any web browser, open the Google Embedded Setup sign-in page:  
-   👉 **[https://accounts.google.com/embedded/setup/v2/android](https://accounts.google.com/embedded/setup/v2/android)**
-2. Sign in with your Google account and click **I agree**.  
-   *(The screen may stay loading/buffering indefinitely; this is expected).*
-3. Press **F12** (or right-click → **Inspect**) to open browser Developer Tools:
-   - Click the **Application** tab (Chrome / Brave / Edge) or **Storage** tab (Firefox).
-   - In the left sidebar, expand **Cookies** → click `https://accounts.google.com`.
-   - Find the cookie named **`oauth_token`** and copy its full value.
-4. In your Linux terminal, run:
-   ```bash
-   ./google-unlimited.sh creds add ""
-   ```
-5. Verify your active account:
-   ```bash
-   ./google-unlimited.sh creds list
-   ```
-
-#### Option B: Copy from Windows / macOS (Fastest for Dual-Boot / Shared Drives)
-If you already signed in on another OS:
-Simply copy the generated `gotohp.config` file into your Linux project directory:
-```bash
-cp /path/to/GoogleUnlimited/gotohp.config ~/GoogleUnlimited/
-```
-The Linux watcher will detect `gotohp.config` and authenticate automatically.
-
-### 4. Run on Linux
-Run `./google-unlimited.sh` in your terminal to open the interactive manager:
 ```text
 ==========================================================
-  *  GoogleUnlimited - Unix Manager (Linux)
+  *  GoogleUnlimited - Unix Manager (Linux/Darwin)
 ==========================================================
   [1] Start Live Watcher (Foreground)
   [2] Check Backup Status
   [3] View Activity Logs
   [4] Run Setup & Dependency Installer
-  [5] Enable Auto-Start on Boot (Linux systemd)
+  [5] Enable Auto-Start on Boot (launchd / systemd)
   [6] Disable Auto-Start on Boot
   [7] Stop Background Watcher
+  [8] Verify Binary Integrity
   [0] Exit
 ==========================================================
 ```
 
-Or pass any command directly:
-```bash
-./google-unlimited.sh watch      # Interactive terminal with live progress
-./google-unlimited.sh enable     # Auto-start on boot via systemd user service
-./google-unlimited.sh disable    # Disable systemd startup service
-./google-unlimited.sh status     # View upload statistics and retry queue
-./google-unlimited.sh logs       # View recent activity logs with colors
-./google-unlimited.sh stop       # Terminate background watcher
+You can execute any command directly from the shell:
+
+| Shell Command | Menu Option | Description |
+| :--- | :---: | :--- |
+| `./google-unlimited.sh watch [dirs...]` | `[1]` | Start the live sync watcher in the foreground. |
+| `./google-unlimited.sh status` | `[2]` | Display upload statistics, retry queue count, and recent sync records. |
+| `./google-unlimited.sh logs` | `[3]` | View the last 30 sync activity log records with color-coded severity. |
+| `./google-unlimited.sh setup` | `[4]` | Install platform dependencies, download missing binaries, and set file permissions. |
+| `./google-unlimited.sh enable` | `[5]` | Enable auto-start on login (`launchd` on macOS, `systemd` user service on Linux). |
+| `./google-unlimited.sh disable` | `[6]` | Disable and remove the auto-start background service. |
+| `./google-unlimited.sh stop` | `[7]` | Stop all active background watcher instances and filesystem listeners. |
+| `./google-unlimited.sh verify` | `[8]` | Verify the cryptographic SHA-256 integrity of the `gotohp-cli` binary. |
+| `./google-unlimited.sh creds [subcommand]` | — | Manage accounts: `creds add`, `creds list`, `creds set `, `creds remove `. |
+| `./google-unlimited.sh menu` | — | Explicitly open the interactive terminal menu. |
+| `./google-unlimited.sh help` | — | Display command-line usage information. |
+
+---
+
+## Folder Monitoring & Supported Media
+
+### Monitored Folders
+
+#### Default Behavior (When `watch_dirs.txt` does not exist):
+- **Windows**: The watcher automatically monitors standard photo and download directories:
+  - `Pictures` (user Pictures folder)
+  - `Downloads` (resolved via registry or `%USERPROFILE%\Downloads`)
+  - Cloud folders if they exist on the filesystem:
+    - OneDrive: `%USERPROFILE%\OneDrive\Pictures`, `%USERPROFILE%\OneDrive\Pictures\Camera Roll`
+    - iCloud: `%USERPROFILE%\Pictures\iCloud Photos\Photos`
+    - Google Drive: `%USERPROFILE%\Google Drive\Google Photos`, `%USERPROFILE%\Google Photos`
+  *(Note: Other Windows folders like Desktop, Videos, Documents, and Music can be added easily using `GoogleUnlimited.bat dirs`).*
+- **macOS & Linux**: Automatically detects and monitors existing directories among:
+  - `$HOME/Pictures`
+  - `$HOME/Downloads`
+  - `$HOME/Google Photos`
+  - `$HOME/OneDrive/Pictures`
+  - `$HOME/Pictures/iCloud Photos/Photos`
+  *(If none exist, `$HOME/Pictures` is created and watched).*
+
+---
+
+### Custom Watch Folders (`watch_dirs.txt`)
+
+When a `watch_dirs.txt` file exists in the repository root, the watcher switches to **custom mode** and monitors **only** the directories specified in that file (plus any directories passed via command-line arguments).
+
+1. Create or edit `watch_dirs.txt` in the repository root (or use `GoogleUnlimited.bat dirs` on Windows).
+2. Add one absolute path per line. Lines starting with `#` are ignored as comments. Environment variables are automatically expanded:
+   ```text
+   # Standard media directories
+   %USERPROFILE%\Pictures
+   %USERPROFILE%\Downloads
+
+   # External drives or SD cards
+   D:\Camera_Imports
+   E:\Sony_A7_Media
+
+   # macOS / Linux paths
+   # /Volumes/ExternalSSD/Photos
+   # /home/username/Media
+   ```
+3. You can also specify directories ad-hoc when launching:
+   ```cmd
+   GoogleUnlimited.bat watch "D:\Photos" "E:\Videos"
+   ```
+   ```bash
+   ./google-unlimited.sh watch /Volumes/ExternalSSD/Photos /Volumes/ExternalSSD/Videos
+   ```
+
+---
+
+### Supported Media Formats (41 Formats)
+
+Files are checked against a verified whitelist of extensions (case-insensitive) and must be at least 10 KB in size:
+
+- **Standard Photos & Images (14)**:  
+  `.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`, `.webp`, `.gif`, `.bmp`, `.tiff`, `.tif`, `.svg`, `.ico`, `.jfif`, `.avif`
+- **Camera RAW Formats (11)**:  
+  `.dng`, `.raw`, `.cr2`, `.cr3` (Canon), `.nef` (Nikon), `.arw` (Sony), `.orf` (Olympus), `.rw2` (Panasonic), `.pef` (Pentax), `.srw` (Samsung), `.raf` (Fujifilm)
+- **Videos (16)**:  
+  `.mp4`, `.mov` (Apple QuickTime/iPhone), `.mkv`, `.avi`, `.m4v`, `.3gp`, `.3g2`, `.wmv`, `.webm`, `.mpg`, `.mpeg`, `.mts`, `.m2ts`, `.ts`, `.flv`, `.vob`
+
+*Files with temporary or partial extensions (such as `.tmp`, `.crdownload`, `.part`, `.db`, `.config`) and files inside `Modules/` are strictly excluded.*
+
+---
+
+### File Readiness & Lock Detection
+
+To prevent corrupt or partial uploads:
+1. When a new media file is detected, the watcher checks whether the file is still growing or being written by another application (e.g., a browser download or video rendering export).
+2. The readiness algorithm tests write-exclusivity:
+   - **Windows**: Attempts to open the file stream with exclusive sharing locks.
+   - **Unix**: Uses `lsof` or `fuser` to verify no other process holds an open write handle.
+3. If a file remains locked or is actively growing, it is queued and reassessed every few seconds until the file is complete.
+
+---
+
+## Background Operation
+
+### Windows Background Operation
+
+- **Silent Launch**: Run `GoogleUnlimited.bat silent` or option `[2]`. This invokes `StartPhotosWatcher.vbs`, which launches `WatchAndUpload.ps1` with `-WindowStyle Hidden` via the Windows Script Host (`wscript.exe`), creating no visible console window.
+- **Auto-Start on Boot**: Run `GoogleUnlimited.bat enable` or option `[5]`. This creates a Windows shortcut named `GoogleUnlimited.lnk` in your user Startup directory:
+  ```text
+  %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\GoogleUnlimited.lnk
+  ```
+  The shortcut points to `StartPhotosWatcher.vbs` in your repository folder.
+- **Disable Auto-Start**: Run `GoogleUnlimited.bat disable` or option `[6]` to delete the shortcut.
+- **Stop Background Process**: Run `GoogleUnlimited.bat stop` or option `[7]`. This terminates any active PowerShell processes running `WatchAndUpload.ps1` or `StartPhotosWatcher.vbs`.
+
+---
+
+### macOS Background Operation
+
+- **Auto-Start on Login**: Run `./google-unlimited.sh enable` or option `[5]`.
+  - Verifies that valid Google credentials exist.
+  - Generates a user LaunchAgent property list at:
+    ```text
+    ~/Library/LaunchAgents/com.googleunlimited.watcher.plist
+    ```
+  - Loads the service using `launchctl load -w`. The watcher will start automatically when you log in to macOS and restart if it unexpectedly exits.
+- **Disable Auto-Start**: Run `./google-unlimited.sh disable` or option `[6]`. This unloads the service with `launchctl unload -w` and removes the `.plist` file.
+- **Stop Running Watcher**: Run `./google-unlimited.sh stop` or option `[7]`. Stops the LaunchAgent, signals the running PID recorded in `.watcher.pid`, and stops active `fswatch` processes.
+
+---
+
+### Linux Background Operation
+
+- **Auto-Start on Boot**: Run `./google-unlimited.sh enable` or option `[5]`.
+  - Verifies that valid Google credentials exist.
+  - Generates a `systemd` user service unit at:
+    ```text
+    ~/.config/systemd/user/google-unlimited.service
+    ```
+  - Executes `systemctl --user daemon-reload`, enables, and starts the service.
+  - Enables lingering sessions using `loginctl enable-linger` (if available), allowing the background sync service to run even before graphical login.
+- **Check systemd Service Status**:
+  ```bash
+  systemctl --user status google-unlimited.service
+  ```
+- **Disable Auto-Start**: Run `./google-unlimited.sh disable` or option `[6]`. Stops and disables the service and removes the unit file.
+- **Stop Running Watcher**: Run `./google-unlimited.sh stop` or option `[7]`. Stops the systemd service, terminates the PID in `.watcher.pid`, and stops any background `inotifywait` instances.
+
+---
+
+### Single-Instance Protection
+
+- **Windows**: `WatchAndUpload.ps1` uses a named Windows Mutex (`Local\GoogleUnlimited_Watcher_`). If an existing watcher instance is already running for the current directory, subsequent invocations exit immediately with code `0`. Both `GoogleUnlimited.bat silent` and `StartPhotosWatcher.vbs` execute a `-CheckRunning` validation to ensure duplicate processes are never spawned.
+- **macOS & Linux**: The watcher script writes its active process ID to `.watcher.pid`. The `stop` command inspects `.watcher.pid` and checks process listings (`pgrep`) to cleanly terminate active watchers and listeners without affecting other system tasks.
+
+---
+
+## Data Storage, Privacy, and Security
+
+### Local Database Schema (`gphotos.db`)
+
+All synchronization history is tracked locally in SQLite using WAL (`Write-Ahead Logging`) mode:
+
+```sql
+-- Tracks uploaded media files
+CREATE TABLE uploads (
+    path         TEXT PRIMARY KEY,
+    media_key    TEXT,
+    uploaded_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    file_name    TEXT,
+    file_size    INTEGER,
+    content_hash TEXT
+);
+
+-- Tracks files pending retry
+CREATE TABLE retry_queue (
+    path         TEXT PRIMARY KEY,
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    last_attempt TEXT
+);
+
+-- Operational activity logs (auto-purged after 30 days)
+CREATE TABLE logs (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    level     TEXT NOT NULL,
+    message   TEXT NOT NULL
+);
 ```
 
----
-
-## Monitored Folders (Dynamic Resolution)
-
-The watcher monitors standard user directories across all operating systems:
-- `Downloads`
-- `Pictures`
-- `Desktop`
-- `Documents`
-- `Music`
-- `Movies` *(macOS)* / `Videos` *(Windows & Linux)*
-
-On Windows, directories are dynamically resolved via Windows Shell API & Registry (handling custom drive paths and OneDrive redirection). On macOS and Linux, standard user directories are automatically resolved.
-
-### Supported File Extensions
-- **Images**: `.jpg`, `.jpeg`, `.png`, `.heic`, `.webp`, `.gif`, `.dng`
-- **Videos**: `.mp4`, `.mov`, `.mkv`, `.avi`
-
----
-
-## Privacy & Security
-
-- **Strict Permission Hardening**:
-  - `gotohp.config` (OAuth token) is strictly locked down to `chmod 600` (readable/writable only by the owner).
-  - `gphotos.db` (upload history) is locked to `chmod 600`.
-  - Binaries are locked to `chmod 700`.
-  - macOS Gatekeeper quarantine attributes (`com.apple.quarantine`) are stripped during setup to ensure clean execution.
-- **Input Sanitization**: All SQLite queries escape single quotes and validate numeric bounds to prevent SQL injection across all platforms.
-- **Direct Connections Only**: Every API request and media upload connects directly from your machine to official Google Photos endpoints (`photoslibrary.googleapis.com`). No intermediate or third-party servers are involved.
-- **Local Credentials**: Authentication tokens and config files stay strictly on your local machine.
-- **Git Protection**: The `.gitignore` file excludes:
-  - Database files (`gphotos.db`, `*.db`, `*.db-wal`, `*.db-shm`)
-  - Personal config files and tokens (`gotohp.config`, `*.config`, `*.token`)
-  - Log files and temporary cache
-  Your personal file history and login tokens are **never** committed or pushed to Git.
-- **Zero Telemetry**: No tracking, analytics, or external telemetry of any kind.
+### Privacy & Network Destinations
+- **Direct Connection Only**: Uploads and authentication communicate directly from your computer to official Google APIs (`accounts.google.com` and `photoslibrary.googleapis.com`). There are no third-party telemetry, metrics, or relay servers.
+- **Local Credentials**: OAuth tokens and Android client parameters are stored strictly in `gotohp.config`.
+- **Git Protection**: The repository's `.gitignore` protects sensitive data:
+  ```gitignore
+  *.db
+  *.db-wal
+  *.db-shm
+  gphotos.db
+  watch_dirs.txt
+  gotohp.config
+  *.config
+  *.token
+  *.log
+  ```
+  Personal database records, credentials, and local watch folder lists are never committed to git.
 
 ---
 
-## Troubleshooting & Issues
+## Troubleshooting
 
-If you encounter any bugs, unexpected behavior, or need help:
-- Run `./google-unlimited.sh status` (macOS/Linux) or `GoogleUnlimited.bat status` (Windows) to check queue and database status.
-- Run `./google-unlimited.sh logs` (macOS/Linux) or `GoogleUnlimited.bat logs` (Windows) to inspect error details.
-- Please submit an issue on the GitHub repository:  
-  👉 **Report an Issue on GitHub**
+### 1. "ACTION REQUIRED: No Google Account Logged In!"
+- **Cause**: No credentials exist in `gotohp.config`, or no account is marked as active.
+- **Resolution**:
+  - **Windows**: Run `GoogleUnlimited.bat account` &rarr; Option `[2]` to open `gotohp-x64.exe`, sign in, and connect.
+  - **macOS / Linux**: Retrieve your `oauth_token` cookie via browser DevTools, then run:
+    ```bash
+    ./google-unlimited.sh creds add
+    ```
+  - Verify that an account with an asterisk (`*`) is displayed:
+    ```bash
+    ./google-unlimited.sh creds list
+    ```
+
+### 2. "Another instance is already running" (Windows)
+- **Cause**: A background watcher instance is already running and owns the system mutex.
+- **Resolution**:
+  - Run `GoogleUnlimited.bat status` to check if the background watcher is active.
+  - To stop it, run `GoogleUnlimited.bat stop` (or select option `[7]`).
+
+### 3. File Locked or Still Downloading
+- **Cause**: A media file was detected while a download, export, or screen recording was in progress.
+- **Resolution**: No manual intervention is needed. GoogleUnlimited automatically holds locked or growing files in the retry queue and processes them once the writing process closes the file.
+
+### 4. macOS Gatekeeper / Permission Issues
+- **Cause**: macOS applies a quarantine flag (`com.apple.quarantine`) to downloaded binaries.
+- **Resolution**:
+  - Run `./google-unlimited.sh setup` to automatically strip quarantine flags and set execution permissions (`chmod 700`).
+  - Ensure your terminal has **Full Disk Access** permissions in macOS **System Settings &rarr; Privacy & Security** if monitoring external drives or protected folders like `Downloads`.
+
+### 5. PowerShell Execution Policy Restrictions (Windows)
+- **Cause**: Default Windows PowerShell configuration may restrict unsigned script execution.
+- **Resolution**: `GoogleUnlimited.bat` automatically passes `-ExecutionPolicy Bypass`. If running `WatchAndUpload.ps1` directly, run:
+  ```powershell
+  powershell.exe -ExecutionPolicy Bypass -File .\WatchAndUpload.ps1
+  ```
+
+### 6. Checking Diagnostic Logs
+- To inspect recent sync errors or warnings:
+  - **Windows**: `GoogleUnlimited.bat logs` (or menu option `[4]`).
+  - **macOS / Linux**: `./google-unlimited.sh logs` (or menu option `[3]`).
+- *Note: Do not delete `gphotos.db` to troubleshoot minor issues. Deleting `gphotos.db` resets your local upload history and will cause GoogleUnlimited to re-evaluate and re-upload all existing media.*
 
 ---
 
-## License & Credits
+## Limitations and Disclaimer
 
-- Core Pixel upload engine powered by `xob0t/gotohp`.
-- Windows SQLite integration powered by `PSSQLite`.
+- **Unofficial Utility**: GoogleUnlimited is an independent open-source utility and is **not affiliated with, maintained, sponsored, or endorsed by Google LLC or Alphabet Inc.**
+- **Service & Policy Changes**: The project relies on Google Photos mobile endpoints and device spoofing implemented in `gotohp`. Google may modify its APIs, authentication mechanisms, device eligibility criteria, or storage policies at any time. **No guarantee of permanent, uninterrupted service or indefinite zero-quota storage can be made.**
+- **Cloud Placeholders**: Files stored only as cloud placeholders (e.g., OneDrive "Files On-Demand" or iCloud "Optimize Storage" files that have not been downloaded to local disk) cannot be read by the watcher until they are downloaded locally.
+- **Removable Media**: External drives and SD cards added to `watch_dirs.txt` are monitored while mounted. If an external drive is disconnected, monitoring will resume once reconnected and rescanned.
+- **Independent Backups**: Users are strongly advised to keep independent, permanent backups of their important photos and personal media.
+
+---
+
+## Credits and License
+
+- **Google Photos Engine**: Powered by `xob0t/gotohp` by xob0t (licensed under the GNU General Public License v3.0).
+- **Windows SQLite Engine**: Powered by `PSSQLite` by RamblingCookieMonster (licensed under the Apache License 2.0).
+- **Issues & Contributions**: Report bugs, suggest enhancements, or submit pull requests on GitHub:  
+  👉 **GoogleUnlimited Issue Tracker**

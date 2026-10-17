@@ -5,14 +5,14 @@ name: "earshot"
 fullName: "Leonxlnx/earshot"
 description: "Ears for coding agents: let AI hear, review and make sound. CPU-only, open source."
 sourceUrl: "https://github.com/Leonxlnx/earshot"
-stars: 65
-forks: 3
+stars: 367
+forks: 23
 language: "Python"
 topics: ["ai-agents", "audio", "claude-code", "mcp", "sound-design"]
 license: "MIT"
 defaultBranch: "main"
-snapshotDate: "2026-10-16"
-pushedAt: "2026-10-16T03:18:30Z"
+snapshotDate: "2026-10-17"
+pushedAt: "2026-10-16T22:38:23Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
@@ -36,7 +36,8 @@ description, the best moment inside a long recording, whether it is a real recor
 second-by-second listening transcript of a whole film, an annotated picture of it, and a scorecard against
 professional launch films. It runs locally on CPU, as a CLI, a Python API and an MCP server.
 
-With ears, an agent can also **make its own sounds in code** and improve them by listening (`earshot forge`, below).
+With ears, an agent can also **make its own sounds in code** and improve them by listening (`earshot forge`), and
+**translate a recording into code** it can vary (`earshot fit`). Both below.
 
 ```
 $ earshot describe enter.ogg
@@ -68,7 +69,9 @@ $ earshot critique film.mp4
 | `critique FILE [--video V]` | a launch-video scorecard against a profile of 7 professional launch films, with timestamped fixes |
 | `profile REFS... -o p.json` | build your own reference profile from films you admire |
 | `measure FILE` | objective measurements only (no models): LUFS, true peak, LRA, envelope, spectrum, tempo / key |
-| `forge RECIPE --refs DIR` | make a sound in code and improve it by listening (see below) |
+| `forge RECIPE --refset CAT` | make a sound in code and improve it by listening (see below) |
+| `fit FILE -o recipe.py` | translate a recording into a forge recipe module that re-renders it, with knobs and morphs (see below) |
+| `gallery DIR -o page.html` | one static HTML listening page of forge outputs: players, spectrograms, numbers |
 | `llm FILE --yes-upload` | optional audio-LLM critique (Gemini), only with your own key and explicit consent |
 | `mcp` | the same tools as an MCP server for Claude Code and other agents |
 | `doctor [--load]` | check the install, models, data files and CPU settings |
@@ -88,26 +91,55 @@ loudness, sync to the beat):
 Listening makes iteration possible. The agent writes a sound as code: a **recipe** of physical synthesis (modal
 resonators, contact excitations, filtered noise, a computed room and a microphone; no recorded audio inside). The
 forge renders candidates from the recipe's parameters, and a **critic** built from earshot scores each one:
-description match against named confusions, realness, closeness to real reference recordings, measured shape, and a
-model-free tonal-balance and tail check against the references. An evolutionary **search** keeps the best and mutates
-them. Then the agent reads the critic's words ("sounds like: a cork pop, a glass ting", "decay +2.4 outside the
-refs"), looks at spectrograms next to the references, rewrites the recipe, and runs it again.
+description match against named confusions, realness, closeness to real reference recordings and measured shape, then
+model-free penalties against the references: 1/3-octave tonal balance, the spectro-temporal envelope (a tail that dies
+too fast shows here), artifacts (clicks, aliasing, DC / infrasound, harsh resonances, comb ring, cut tails, clipping)
+and polish (attack, onset snap, tail smoothness). A cheap model-free **pre-screen** ranks many renders with the same
+measurements, so the models only hear the best; an evolutionary **search** keeps the best and mutates them. Then the
+agent reads the critic's words ("sounds like: a cork pop, a glass ting", "decay +2.4 outside the refs", "bumpy tail"),
+looks at spectrograms next to the references, rewrites the recipe, and runs it again.
 
 ```bash
-earshot forge                                    # list the recipes: click, impact, keypress, pop, whoosh
-earshot forge keypress --refs path/to/real/keypresses/ --budget 144 --reps 2 --tone 1.5 --keep 4 --robust 8 --dir made/keypress
+earshot forge --list                             # the recipes (click, impact, keypress, pop, whoosh, ...) + refsets
+earshot forge keypress --refs path/to/real/keypresses/ --budget 144 --variants 4 --dir made/keypress
+earshot forge whoosh --refset whoosh_fast --budget 96 --dir made/whoosh      # a reference set's 'forge' split
 earshot forge whoosh --target "a fast crisp air whoosh" --alts "a wind gust" "a sword swing" \
-  --refs path/to/real/whooshes/ --tone 1.5 --dir made/whoosh
+  --refs path/to/real/whooshes/ --mode real --dir made/whoosh
+earshot forge --render keypress --params made/keypress/report.json --seeds 1 2 3 --dir made/again
 ```
 
-Output: the best diverse sounds as WAVs plus `report.json` with every candidate's parameters and scores, the same
-critic's scores of the real references (leave-one-out), held-out AudioSet tags, and with `--robust N` each pick
-re-rendered on N new seeds. Every score also carries model-free measurements (`earshot/forge/tone.py`): the
-1/3-octave tonal balance against the references' median ("+16 dB at 500-630 Hz (above every ref)"), the tail and the
-length. In Python: `from earshot.forge import forge`.
+Output (`--dir`): the best diverse sounds as WAVs; `report.md` (what was asked, the search per generation, each pick in
+the critic's words, the measured gap to the references); `compare.png` (each pick's spectrogram, envelope and
+1/3-octave balance next to its nearest reference); `audition.wav` (made, ref, made, ref ... to listen in pairs);
+`report.json` with every candidate's parameters and scores, the same critic's scores of the real references
+(leave-one-out) and held-out AudioSet tags. Picks are re-rendered on new seeds (`--robust`, default 3) and must differ
+in parameters and in sound. Reference sets (`earshot/forge/refsets.py`) are split by source into a 'forge' side the
+search may use and a 'bench' side only the fixed benchmark (`eval/forge/bench.py`) hears. The DSP toolkit for recipes:
+`earshot/forge/dsp.py` (sources: modal, noise, air, sweeps, Shepard risers, sub drops, bells, FM; layering) and
+`earshot/forge/fx.py` (reverb, saturation, transient shaping, limiter, EQ match, Doppler, filters, glitch, granular).
+In Python: `from earshot.forge import forge`.
 
-**Blind test.** A key press, a UI click, a pop, a fast whoosh and an impact were made from scratch in code and
-played blind next to real recordings of the same kind of sound. The author picked the made one correctly **8 times out
+**forge v2 (0.2.0).** Recipes come as families of named characters: 34 motion-design categories (whooshes, swishes,
+swipes, risers, downlifters, zips, impacts, sub drops, logo stings, clicks, taps, toggles, hover ticks, pops,
+notification dings, shimmers, glitches, key presses), 16 of them modelled on the designed effects of professional
+launch films (docs/motion-sfx-study.md), 4-6 variants each. A fixed benchmark scores them
+against held-out recordings the forge never heard. Against v1 on it: variants are no longer near copies (CLAP cosine
+between variants 0.89-0.97 -> 0.71-0.85 in the five categories v1 had; real sets 0.52-0.77), tails that died too fast
+now reach the real length (click t40 0.56 -> 1.44 x the bench median, fast whoosh 0.51 -> 0.88), and the tonal
+balance is closer in 3 of those 5 (key press 8.2 -> 7.4 dB, fast whoosh 8.6 -> 6.2, impact 6.7 -> 4.4). Across all
+34, the made balance is at least as close to the held-out recordings as a second set of real recordings in 18 of the
+21 categories that have a number, and every final re-renders from its `report.json` (`earshot forge --check`). The
+model checks that v1 had saturated fell. A clean blind-test kit for the v2 sounds is `eval/forge/blind_v2.py`; no v2
+score is published yet. What changed, every number, and what is still weak: docs/FORGE_V2.md.
+
+The reference recordings are licensed and not in this repo, so `--refset` needs a local registry: bring your own refs
+with `--refs DIR`, or lay them out as described in `earshot/forge/refsets.py`. Without refs the critic runs in
+designed mode (realness reported, not required). The CLI defaults changed in 0.2.0 (pre-screen, seed bank, robust
+re-renders, the recipe's reference set); the Python `forge()` defaults still reproduce v1. See
+CHANGELOG.md.
+
+**Blind test (v1 recipes).** A key press, a UI click, a pop, a fast whoosh and an impact were made from scratch in
+code and played blind next to real recordings of the same kind of sound. The author picked the made one correctly **8 times out
 of 15**: a coin flip. Only the made impact was spotted (its tail dies too fast). One listener and 15 trials is a small
 test, not a proof; it says the made sounds are no longer easy to tell from real ones.
 
@@ -116,6 +148,62 @@ getting better. After a search the made sounds pass every model check, held-out 
 stop telling made from real; the 1/3-octave measurement still can. The realness model is easy to fool (a modal
 resonator plus a room and a noise floor reads "real"). Judge a made sound by the model-free measurements,
 spectrograms next to the references, robust re-renders, and a human blind test.
+
+## earshot fit: audio to code
+
+`earshot fit` translates a recording into code by analysis by synthesis. It fits a small synthesis model with readable
+parameters (ringing modes, tracked partials, a time-varying noise gesture, or a layered hybrid of them) until its
+render matches the recording, then writes the model as a forge recipe module whose `render()` makes the sound. The
+module stores the structure of the sound, not its samples, so it can make new takes, variations (size, damping,
+pitch, brightness, decay, ...) and morphs between two recordings.
+
+```bash
+earshot fit click.wav -o made/click_fit.py --report    # recipe + its render + side-by-side spectrogram + metrics
+python made/click_fit.py 3 take3.wav                   # the module renders on its own (seed 3)
+earshot fit --morph a.wav b.wav --amount 0.5 -o made/ab_morph.py
+earshot fit --forge made/click_fit.py --budget 96 --dir made/click_variations   # critic-searched variations
+```
+
+Measured on 12 real recordings (2 each of click, key press, pop, impact, fast whoosh, notification): median CLAP
+cosine 0.945 between each recording and the render of its generated code (minimum 0.881), and the same top
+`earshot describe` tag in 10 of 12. In our 12-trial blind test (recording vs render, loudness-matched, random order)
+the listener could not tell which clip was the recording. One listener is a small test, not a proof. The renders are
+close, not identical: onsets, tone balance and noise texture still differ measurably; the selection weights were set
+on the same 12 recordings; risers, zips and long designed sounds are untested. A fit is a derivative of its recording,
+so keep the source's licence with the recipe. Limits: docs/FIT.md.
+
+## Gallery
+
+`earshot gallery` turns forge outputs into one static HTML page for people with ears: no server, no network, no
+external scripts, inline CSS. One card per category, grouped by family (whooshes, sweeps, impacts, UI, tonal,
+digital); per sound a player, a spectrogram thumbnail (log frequency, one time span per card so lengths compare),
+duration, peak and momentary-max LUFS, the critic's total / pass, and the recipe parameters of every variant in a
+collapsible table. The repo holds no audio, so point it at your own forge runs (`out/forge_v2` below is one folder
+per category).
+
+```bash
+earshot gallery out/forge_v2 -o out/gallery/gallery.html                  # /final/*.wav (+ report.json)
+earshot gallery out/forge_v2 -o g.html --results eval/forge/results_v2r6.json   # + held-out benchmark numbers
+earshot gallery out/forge_v2 -o g.html --refs forge                        # + A/B row: each sound's nearest forge ref
+earshot gallery --compare "r2:out/forge_v2/*/final_r2" "r3:out/forge_v2/*/final" -o compare.html \
+  --results r2:eval/forge/results_v2r2.json                                # before / after, variant under variant
+earshot gallery out/forge_v2 -o portable.html --embed                      # audio (FLAC) + images inside the file
+earshot gallery out/forge_v2 -o share.html --embed-compressed              # one small file: MP3 previews, plays anywhere
+earshot gallery --compare "v1:old/*/final" "v2:out/forge_v2/*/final" --alias keypress=typing_key -o v1_v2.html
+```
+
+Audio is referenced by relative path (or embedded with `--embed`); thumbnails go to `_files/` next to the page
+and are cached by content. `--embed-compressed` makes one self-contained page to send or open on a phone: each sound
+encoded by ffmpeg (MP3 192 kbps by default; `--embed-codec opus` or `vorbis` for Ogg, `--kbps` for the rate), JPEG
+thumbnails, no links to local files; 183 sounds come to about 9 MB. The numbers on it are still measured on the WAVs.
+`--alias OLD=NEW` puts a folder under another category's card (an older recipe's `keypress` under `typing_key`).
+A "match loudness" switch (on by default) turns louder players down so a riser does not blast after a click; it
+changes the player volume only, never the files. Benchmark numbers are shown only for files the benchmark actually
+measured: a file newer than the results JSON, or with another length / peak, gets none (renamed files are matched by
+length and peak, and the page lists every such case). In `--compare`, files identical to an earlier version are marked
+`= r2`. Bench references never go on a page: `--refs bench` is refused, every reference passes `refsets.held_out()`,
+and only the benchmark's numbers are shown, never its file names. Forge references are licensed recordings: keep a
+page that plays them private. In Python: `from earshot.gallery import gallery`.
 
 ## Install
 
@@ -202,10 +290,12 @@ style of the 7 films behind it, not every good film. Details in docs/LIMITS.md.
 ```
 earshot/            the package: CLI, Python API, MCP server, CPU model wrappers
   forge/            make sounds in code: DSP building blocks, critic, model-free tone checks, search, recipes/
+    fit/            recording -> code: modal / sines / spectral fitters, quality metrics, recipe codegen
+  gallery.py        the static listening page
   data/             vocabulary + calibration stats, realness model weights, launch profile (numbers only, no media)
 skills/earshot/     agent skill: how to listen with earshot
 skills/real-sound/  agent skill: real-recordings soundtracks (scripts, templates, prompts, references)
-docs/               VALIDATION, LIMITS, launch-video sound playbook, integration notes, design notes
+docs/               VALIDATION, LIMITS, FORGE_V2, FIT, the motion-SFX study, launch-video playbook, design notes
 eval/               evaluation scripts and results per area (see eval/README.md)
 tests/              pytest (fast by default; --slow loads the models)
 ```

@@ -5,14 +5,14 @@ name: "agentplay"
 fullName: "Entelligence-AI/agentplay"
 description: "Replay your coding agent sessions as a map and a timeline"
 sourceUrl: "https://github.com/Entelligence-AI/agentplay"
-stars: 128
-forks: 7
+stars: 225
+forks: 10
 language: "Python"
 topics: ["claude-code", "codex", "coding-agents", "cursor", "developer-tools", "observability"]
 license: "Apache-2.0"
 homepage: "https://entelligence.ai/agentplay"
 defaultBranch: "main"
-snapshotDate: "2026-10-15"
+snapshotDate: "2026-10-17"
 pushedAt: "2026-10-14T12:36:15Z"
 ---
 
