@@ -5,13 +5,13 @@ name: "GoogleUnlimited"
 fullName: "shishir0x/GoogleUnlimited"
 description: "Unlimited Google Photos auto-sync on Windows with Pixel original quality spoofing — native, portable, and zero-quota."
 sourceUrl: "https://github.com/shishir0x/GoogleUnlimited"
-stars: 231
-forks: 28
+stars: 295
+forks: 36
 language: "PowerShell"
 topics: ["google-photos", "unlimited-storage"]
 license: "未标注"
 defaultBranch: "main"
-snapshotDate: "2026-10-17"
+snapshotDate: "2026-10-18"
 pushedAt: "2026-10-16T15:08:24Z"
 ---
 

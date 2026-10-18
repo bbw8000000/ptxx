@@ -5,14 +5,14 @@ name: "earshot"
 fullName: "Leonxlnx/earshot"
 description: "Ears for coding agents: let AI hear, review and make sound. CPU-only, open source."
 sourceUrl: "https://github.com/Leonxlnx/earshot"
-stars: 367
-forks: 23
+stars: 694
+forks: 42
 language: "Python"
 topics: ["ai-agents", "audio", "claude-code", "mcp", "sound-design"]
 license: "MIT"
 defaultBranch: "main"
-snapshotDate: "2026-10-17"
-pushedAt: "2026-10-16T22:38:23Z"
+snapshotDate: "2026-10-18"
+pushedAt: "2026-10-18T00:03:32Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
@@ -130,7 +130,7 @@ balance is closer in 3 of those 5 (key press 8.2 -> 7.4 dB, fast whoosh 8.6 -> 6
 34, the made balance is at least as close to the held-out recordings as a second set of real recordings in 18 of the
 21 categories that have a number, and every final re-renders from its `report.json` (`earshot forge --check`). The
 model checks that v1 had saturated fell. A clean blind-test kit for the v2 sounds is `eval/forge/blind_v2.py`; no v2
-score is published yet. What changed, every number, and what is still weak: docs/FORGE_V2.md.
+score is published yet (docs/SFX.md says the same), so the blind test below is the v1 one. What changed, every number, and what is still weak: docs/FORGE_V2.md.
 
 The reference recordings are licensed and not in this repo, so `--refset` needs a local registry: bring your own refs
 with `--refs DIR`, or lay them out as described in `earshot/forge/refsets.py`. Without refs the critic runs in
@@ -171,6 +171,41 @@ the listener could not tell which clip was the recording. One listener is a smal
 close, not identical: onsets, tone balance and noise texture still differ measurably; the selection weights were set
 on the same 12 recordings; risers, zips and long designed sounds are untested. A fit is a derivative of its recording,
 so keep the source's licence with the recipe. Limits: docs/FIT.md.
+
+## Sound for films: bank, sfx, kits
+
+The forge's delivered sounds ship as a bank that renders by id, with no models and no network: 183 forge v2 finals
+(34 categories), each stored as its render block and re-rendering its delivered WAV to one 24-bit step, three tuned
+kalimba voices, and 15 sounds fitted from CC0 recordings (clicks, a tick, pops, touches, keys, a snap, a bell, a
+whoosh; credits in docs/CREDITS_FIT.md). A film pipeline renders from it in seconds; searching
+and fitting new sounds stay offline steps.
+
+```bash
+earshot sfx list --kind whoosh                                      # ids, lengths, peak times, cue kinds, knobs
+earshot sfx render whoosh_fast/crisp -o w.wav --dur 0.8 --apex 0.32  # a new take aimed at a move (--seed N)
+earshot sfx render pluck/kalimba -o e5.wav --pitch E5                # tuned through the recipe's own f0
+earshot sfx check w.wav                                              # clicks, cut tails, clipping, ring, rising glides
+earshot kit init --preset calm -o audio/kit.json                     # calm | crisp | minimal
+earshot kit render audio/kit.json --out audio/kit                    # takes + kit.lock.json (measured onset / peak / end)
+```
+
+- **Knobs** edit each recipe's own parameters, never resample: `dur` lands exactly, `apex` puts a whoosh's loudest
+  moment within 5 ms of the target (measured within 2.5 ms), `pitch` takes a note name or Hz (pluck E5, a bell G5, a
+  sub drop G1 measure 0 cents off); noise sounds refuse a pitch and say why.
+- **The audit** (`earshot sfx check`, run on every render) is measurement only: clicks, cut tails, clipping, DC, comb
+  ring, a re-rising tail, a tonal pitch that climbs more than 4 semitones (the rising "synth whip"), and for hits,
+  stacked attacks or a build before the hit. 185 of the 201 sounds are clean; the presets use none of the others.
+- **Kits** name one sound per role (tick, hit, whoosh.short, key, bell, text ...). `kit render` writes deterministic,
+  cached takes and a lock with each take's measured sync points; a take that fails the audit is re-rolled on a new
+  seed. The three presets sound every role but riser, swell and suck, use one clean hit for the lockup, and use the
+  fitted recordings for clicks, ticks, keys, touches and the snap where they measure closer to the role than the
+  forge member (earshot match and realness).
+- **Python and MCP**: `from earshot.forge import bank; y, meta = bank.render('pro_sub_drop/ref', pitch='G1')`;
+  `earshot.api.sfx_render / kit_render`; MCP tools `sfx_list`, `sfx_render`, `kit_render`.
+
+Full reference (every knob, the audit, the kit and lock formats, the presets role by role, fit entries from
+public-domain recordings, measured cost): docs/SFX.md. How cinetic uses it:
+docs/INTEGRATION.md.
 
 ## Gallery
 
@@ -217,13 +252,28 @@ python -m venv .venv
 .venv/bin/python -m earshot doctor --load
 ```
 
-The first model use downloads two open models (~1.4 GB) into `.cache/hf` inside the repo (or `EARSHOT_HOME`): CLAP
-`laion/larger_clap_general` (text-audio embeddings) and the AudioSet tagger `MIT/ast-finetuned-audioset-10-10-0.4593`.
-After that earshot works offline.
+The first model use downloads two open models (~1.1 GB) into `.cache/hf` inside the repo (or `EARSHOT_HOME`), each at
+a pinned revision with safetensors weights: CLAP `laion/larger_clap_general` @ `16c8cc3` (text-audio embeddings; the
+Hub's safetensors conversion of its main revision) and the AudioSet tagger `MIT/ast-finetuned-audioset-10-10-0.4593`
+@ `f826b80`. `earshot doctor --fetch` downloads them up front. After that earshot loads them from that cache only and
+never contacts the Hub; a damaged cache is an error that names the folder, not a silent new download.
+
+Offline: `EARSHOT_OFFLINE=1`, `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` all mean the same to earshot: it never
+downloads, and a model missing from the cache is an error that says so. earshot never sets or clears these variables.
+
+A cache made before 0.2.1 holds CLAP's main revision `ada0c23`, whose only weights are a pickle (`pytorch_model.bin`,
+the same tensors). earshot still loads it from the cache (torch `weights_only`), never downloads it, and `earshot
+doctor` says so; `earshot doctor --fetch` downloads the pinned safetensors (776 MB), used from then on.
 
 Settings (environment variables): `EARSHOT_THREADS` (torch CPU threads, default min(4, cores/2)), `EARSHOT_HOME`
 (cache root), `EARSHOT_PRECISION` (`bf16` by default, used only on CPUs with native bf16 such as AVX512-BF16 / AMX,
-fp32 everywhere else; `fp32` forces fp32), `EARSHOT_OFFLINE=1`. `earshot doctor --load` reports what is in use.
+fp32 everywhere else; `fp32` forces fp32), `EARSHOT_OFFLINE=1` (above), `EARSHOT_CLAP` / `EARSHOT_AST` (another
+Hub model id, or a local model folder with `config.json` and `model.safetensors`, which loads from disk as it is with
+no network and is never downloaded into) and `EARSHOT_CLAP_REVISION` / `EARSHOT_AST_REVISION` (another Hub revision;
+safetensors weights only). A custom Hub model downloads its top-level config, tokenizer and safetensors files by name,
+never a repo's subfolders or weight variants.
+`earshot doctor` reports the revisions and what the cache holds; `--load` also what loads (revision, weights,
+precision).
 
 ### MCP server for Claude Code
 
@@ -291,11 +341,12 @@ style of the 7 films behind it, not every good film. Details in docs/LIMITS.md.
 earshot/            the package: CLI, Python API, MCP server, CPU model wrappers
   forge/            make sounds in code: DSP building blocks, critic, model-free tone checks, search, recipes/
     fit/            recording -> code: modal / sines / spectral fitters, quality metrics, recipe codegen
+    bank/, kits/    the sound bank (render blocks + fingerprints, no audio) and the kit presets: earshot sfx / kit
   gallery.py        the static listening page
   data/             vocabulary + calibration stats, realness model weights, launch profile (numbers only, no media)
 skills/earshot/     agent skill: how to listen with earshot
 skills/real-sound/  agent skill: real-recordings soundtracks (scripts, templates, prompts, references)
-docs/               VALIDATION, LIMITS, FORGE_V2, FIT, the motion-SFX study, launch-video playbook, design notes
+docs/               VALIDATION, LIMITS, FORGE_V2, FIT, SFX, the motion-SFX study, launch-video playbook, design notes
 eval/               evaluation scripts and results per area (see eval/README.md)
 tests/              pytest (fast by default; --slow loads the models)
 ```

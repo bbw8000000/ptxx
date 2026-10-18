@@ -5,14 +5,14 @@ name: "git-ai"
 fullName: "feder-cr/git-ai"
 description: "Git designed for AI agents."
 sourceUrl: "https://github.com/feder-cr/git-ai"
-stars: 1067
-forks: 114
+stars: 1143
+forks: 124
 language: "Go"
 topics: ["ai-agents", "coding-agents", "git", "golang", "scion", "version-control"]
 license: "NOASSERTION"
 homepage: "https://www.anthropic.com/engineering/redesigning-source-control"
 defaultBranch: "main"
-snapshotDate: "2026-10-17"
+snapshotDate: "2026-10-18"
 pushedAt: "2026-10-16T23:02:12Z"
 ---
 
