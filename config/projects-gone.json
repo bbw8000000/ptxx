@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-20T04:26:50Z",
+  "checkedAt": "2026-10-21T04:17:28Z",
   "note": "仓库已从 GitHub 删除或转为私有；链接会 404，页面上不再做成可点击的按钮。",
   "projects": [
     {
@@ -431,6 +431,10 @@
       "seenIn": "src/content/posts/daily-2026-06-12.md"
     },
     {
+      "fullName": "cs-tool-s/\\.github",
+      "seenIn": "src/content/posts/daily-2026-10-21.md"
+    },
+    {
       "fullName": "cyklamanen-dev/Meccha-Dark-Force",
       "seenIn": "src/content/posts/daily-2026-07-17.md"
     },
@@ -509,6 +513,10 @@
     {
       "fullName": "feder-cr/open\\_scion",
       "seenIn": "src/content/posts/daily-2026-10-16.md"
+    },
+    {
+      "fullName": "fort-skins/\\.github",
+      "seenIn": "src/content/posts/daily-2026-10-21.md"
     },
     {
       "fullName": "frecodecasti/gem5-branchpred",
@@ -761,6 +769,10 @@
     {
       "fullName": "v-modal/vmodal\\_sdk\\_robotics",
       "seenIn": "src/content/posts/daily-2026-09-07.md"
+    },
+    {
+      "fullName": "val-tools/\\.github",
+      "seenIn": "src/content/posts/daily-2026-10-21.md"
     },
     {
       "fullName": "veritymod/Verity-JE-Mod-Minecraft",
