@@ -1,0 +1,78 @@
+# ============================================================
+# Astro 静态站自动部署到 Gitee Pages（国内访问）
+#
+# 触发方式：push 到 main 分支自动执行，也可在 Actions 页面手动触发
+# 执行流程：安装依赖 -> npm run build -> 把 dist 推送到 Gitee 同名仓库
+#           -> 调 Gitee API 触发 Pages 更新
+#
+# 需要预先配置的 Secrets（GitHub 仓库 -> Settings -> Secrets and
+# variables -> Actions -> New repository secret）：
+#   GITEE_USER   你的 Gitee 用户名
+#   GITEE_TOKEN  你的 Gitee 私人令牌（生成时需勾选 projects 权限）
+#
+# 注意：Gitee 目标仓库与 GitHub 仓库同名（如都叫 ptxx），
+#       这样站点访问路径一致，Astro 的 base 配置不用改。
+# ============================================================
+
+name: Deploy to Gitee Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 允许在 Actions 页面手动点一次运行
+
+# 本工作流只需要读源码权限
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # ---------- 构建 ----------
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Node 20 LTS，够新也稳定
+          cache: npm # 缓存依赖，第二次起构建更快
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 打包构建（产物输出到 dist/）
+        run: npm run build
+
+      # ---------- 部署到 Gitee ----------
+      - name: 把 dist 推送到 Gitee 同名仓库
+        env:
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          # Gitee 仓库名默认取 GitHub 仓库名，两边同名
+          GITEE_REPO: ${{ github.event.repository.name }}
+        run: |
+          cd dist
+          # 把 dist 当成一个全新仓库，整体强推到 Gitee 的 main 分支
+          # （产物仓库不需要历史记录，这样最简单也最稳定）
+          git init -b main
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "deploy: ${GITHUB_SHA::7}"
+          # 关闭命令回显，防止令牌出现在日志里（Secrets 本身也会被打码）
+          set +x
+          git push -f "https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/${GITEE_REPO}.git" main
+
+      - name: 触发 Gitee Pages 更新
+        # 文件推上去后，调 Gitee 接口触发 Pages 重新部署；
+        # 这一步失败不算整体失败（可以在 Gitee 仓库页面手动点一次“更新”）
+        continue-on-error: true
+        env:
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_REPO: ${{ github.event.repository.name }}
+        run: |
+          curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_USER}/${GITEE_REPO}/pages/builds" \
+            -d "access_token=${GITEE_TOKEN}"
