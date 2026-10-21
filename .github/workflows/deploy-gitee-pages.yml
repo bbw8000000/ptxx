@@ -36,7 +36,7 @@ jobs:
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Node 20 LTS，够新也稳定
+          node-version: 22 # 本站 Astro 要求 Node >= 22.12.0
           cache: npm # 缓存依赖，第二次起构建更快
 
       - name: 安装依赖
