@@ -5,15 +5,15 @@ name: "uncensored-ai-api"
 fullName: "7API/uncensored-ai-api"
 description: "Uncensored AI API and models — one key for Claude, GPT, Gemini, Grok, DeepSeek, GLM and Kimi, with uncensored and abliterated variants where available. OpenAI- and Anthropic-compatible. Pay per token."
 sourceUrl: "https://github.com/7API/uncensored-ai-api"
-stars: 128
-forks: 34
+stars: 222
+forks: 62
 language: "未知"
 topics: ["abliterated-models", "ai-gateway", "anthropic-compatible", "claude-api", "claude-code", "deepseek-api", "gemini-api", "glm-api"]
 license: "MIT"
 homepage: "https://7api.st/?utm_source=github&utm_medium=repo&utm_campaign=uncensored-ai-api"
 defaultBranch: "main"
-snapshotDate: "2026-10-23"
-pushedAt: "2026-10-22T16:32:01Z"
+snapshotDate: "2026-10-24"
+pushedAt: "2026-10-23T06:24:13Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。
@@ -23,6 +23,7 @@ pushedAt: "2026-10-22T16:32:01Z"
 **Uncensored AI access for developers: choose an uncensored AI API or an uncensored AI model and run it through one OpenAI- and Anthropic-compatible endpoint — Claude, GPT, Gemini, Grok, DeepSeek, GLM and Kimi, with uncensored and abliterated variants where available.**
 
 
+  
   
   
 
@@ -185,6 +186,9 @@ Live model prices are listed in the dashboard and can change when providers upda
 - **Multilingual assistants** — test the same prompt across model families without rebuilding your integration.
 - **Privacy-conscious prototyping** — keep billing and keys centralized while you evaluate providers.
 - **Developer tooling** — subkeys and one balance make it easier to meter usage per project or client.
+- **AI-assisted editing and tailoring** — rewrite, tighten, adapt tone and tailor copy for different audiences.
+- **Summarization and document analysis** — long-context workflows across model families.
+- **Chatbot and assistant backends** — one API for multiple model families.
 
 ## Honest limits
 

@@ -5,13 +5,13 @@ name: "ai-jailbreaks"
 fullName: "Alejandros17487/ai-jailbreaks"
 description: "AI jailbreaks: 35 paste-ready AI jailbreak prompts for 25+ frontier and open-weight models - system prompts, AGENTS.md specs, and Ollama Modelfiles. Built for AI security research and red-team testing."
 sourceUrl: "https://github.com/Alejandros17487/ai-jailbreaks"
-stars: 206
-forks: 29
+stars: 490
+forks: 89
 language: "未知"
 topics: ["ai", "ai-safety", "jailbreak", "jailbreaking", "privacy", "safety", "security"]
 license: "未标注"
 defaultBranch: "main"
-snapshotDate: "2026-10-22"
+snapshotDate: "2026-10-24"
 pushedAt: "2026-10-21T14:49:16Z"
 ---
 

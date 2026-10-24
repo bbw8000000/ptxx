@@ -5,14 +5,14 @@ name: "ian-xhs-carousel"
 fullName: "helloianneo/ian-xhs-carousel"
 description: "把文章、案例或笔记排成 3:4 小红书图文 | 1080×1440 | 20 个母版 | 浅色 / 深色 | Claude Code Skill"
 sourceUrl: "https://github.com/helloianneo/ian-xhs-carousel"
-stars: 166
-forks: 12
+stars: 246
+forks: 19
 language: "HTML"
 topics: ["ai-agent", "carousel", "chinese", "claude-code", "claude-skill", "design", "xiaohongshu"]
 license: "MIT"
 homepage: "https://www.ianneo.xyz"
 defaultBranch: "main"
-snapshotDate: "2026-10-22"
+snapshotDate: "2026-10-24"
 pushedAt: "2026-10-21T07:59:07Z"
 ---
 

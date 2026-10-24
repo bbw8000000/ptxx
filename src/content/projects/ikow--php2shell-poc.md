@@ -5,14 +5,14 @@ name: "php2shell-poc"
 fullName: "ikow/php2shell-poc"
 description: "CVE-2026-109618/109619 — 5 RCE chains + detection rules (Suricata, Sigma, ModSecurity). PHP session.upload_progress pre-auth exploit research."
 sourceUrl: "https://github.com/ikow/php2shell-poc"
-stars: 1104
-forks: 403
+stars: 1701
+forks: 593
 language: "Python"
 topics: ["cve-2026-109618", "cve-2026-109619", "detection-rules", "exploit", "php-exploit", "php-security", "php2shell", "poc"]
 license: "MIT"
 defaultBranch: "main"
-snapshotDate: "2026-10-22"
-pushedAt: "2026-10-22T03:48:07Z"
+snapshotDate: "2026-10-24"
+pushedAt: "2026-10-22T22:41:36Z"
 ---
 
 > 本页保存的是公开项目资料快照，阅读过程不需要连接 GitHub。

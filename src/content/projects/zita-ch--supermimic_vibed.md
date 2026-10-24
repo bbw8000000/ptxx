@@ -5,13 +5,13 @@ name: "supermimic_vibed"
 fullName: "zita-ch/supermimic_vibed"
 description: "vibe coded supermimic within 1h, LAFAN passed within 1.5 gpuh training"
 sourceUrl: "https://github.com/zita-ch/supermimic_vibed"
-stars: 92
-forks: 7
+stars: 436
+forks: 37
 language: "Python"
 topics: []
 license: "MIT"
 defaultBranch: "main"
-snapshotDate: "2026-10-22"
+snapshotDate: "2026-10-24"
 pushedAt: "2026-10-21T20:39:39Z"
 ---
 
